@@ -4,6 +4,8 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // GitHub Pages部署路径（仓库名）
+  base: '/HeartMirror/',
   plugins: [react()],
   resolve: {
     alias: {
