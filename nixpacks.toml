@@ -1,11 +1,11 @@
-# HeartMirror 项目 Railway 构建配置
-# 指定从 backend 目录构建 Python FastAPI 服务
+# HeartMirror Railway 构建配置
+# 确保 Python 和 pip 都被正确安装
 
 [phases.setup]
-nixPkgs = ['python311']
+nixPkgs = ['python311', 'python311Packages.pip']
 
 [phases.install]
-cmds = ['cd backend && pip install -r requirements.txt']
+cmds = ['python3.11 -m pip install --upgrade pip', 'python3.11 -m pip install -r backend/requirements.txt']
 
 [start]
-cmd = 'cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT'
+cmd = 'cd backend && python3.11 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT'
