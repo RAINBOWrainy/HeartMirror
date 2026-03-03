@@ -12,11 +12,14 @@ import { useAuthStore } from './stores/authStore'
 
 const { Content } = Layout
 
+// GitHub Pages basename配置
+const basename = import.meta.env.BASE_URL || '/HeartMirror/'
+
 function App() {
   const { isAuthenticated } = useAuthStore()
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <Layout style={{ minHeight: '100vh' }}>
         <Routes>
           {/* 公开路由 */}
