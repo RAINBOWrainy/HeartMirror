@@ -1,0 +1,138 @@
+{
+  "crisis_resources": [
+    {
+      "id": "national",
+      "name": "全国心理援助热线",
+      "phone": "400-161-9995",
+      "description": "全国心理危机干预热线",
+      "available_hours": "24小时",
+      "region": "全国",
+      "languages": ["中文"]
+    },
+    {
+      "id": "beijing",
+      "name": "北京心理危机研究与干预中心",
+      "phone": "010-82951332",
+      "description": "北京市心理危机干预服务",
+      "available_hours": "24小时",
+      "region": "北京",
+      "languages": ["中文"]
+    },
+    {
+      "id": "shanghai",
+      "name": "上海心理援助热线",
+      "phone": "021-34289888",
+      "description": "上海市心理援助服务",
+      "available_hours": "24小时",
+      "region": "上海",
+      "languages": ["中文"]
+    },
+    {
+      "id": "guangzhou",
+      "name": "广州市心理援助热线",
+      "phone": "020-81899120",
+      "description": "广州市心理危机干预服务",
+      "available_hours": "24小时",
+      "region": "广州",
+      "languages": ["中文"]
+    },
+    {
+      "id": "shenzhen",
+      "name": "深圳市心理危机干预热线",
+      "phone": "0755-25629459",
+      "description": "深圳市心理援助服务",
+      "available_hours": "24小时",
+      "region": "深圳",
+      "languages": ["中文"]
+    },
+    {
+      "id": "hangzhou",
+      "name": "杭州市心理援助热线",
+      "phone": "0571-85029595",
+      "description": "杭州市心理援助服务",
+      "available_hours": "24小时",
+      "region": "杭州",
+      "languages": ["中文"]
+    },
+    {
+      "id": "chengdu",
+      "name": "成都市心理援助热线",
+      "phone": "028-87577510",
+      "description": "成都市心理援助服务",
+      "available_hours": "24小时",
+      "region": "成都",
+      "languages": ["中文"]
+    }
+  ],
+  "emergency_contacts": {
+    "emergency": "120",
+    "police": "110",
+    "fire": "119"
+  },
+  "safety_plan_template": {
+    "steps": [
+      {
+        "step": 1,
+        "title": "识别警示信号",
+        "description": "列出可能触发危机的情况或感受"
+      },
+      {
+        "step": 2,
+        "title": "内部应对策略",
+        "description": "列出可以自我安抚的活动"
+      },
+      {
+        "step": 3,
+        "title": "社交支持",
+        "description": "列出可以联系的人及其联系方式"
+      },
+      {
+        "step": 4,
+        "title": "专业帮助",
+        "description": "列出可以联系的专业机构和热线"
+      },
+      {
+        "step": 5,
+        "title": "安全环境",
+        "description": "确保环境安全，移除危险物品"
+      }
+    ]
+  },
+  "grounding_exercises": [
+    {
+      "name": "5-4-3-2-1 接地技术",
+      "description": "使用五感来关注当下，帮助缓解焦虑",
+      "steps": [
+        "说出5件你能看到的东西",
+        "说出4件你能触摸的东西",
+        "说出3件你能听到的声音",
+        "说出2件你能闻到的气味",
+        "说出1件你能尝到的味道"
+      ],
+      "duration": "5分钟"
+    },
+    {
+      "name": "深呼吸练习",
+      "description": "4-7-8呼吸法，快速平复情绪",
+      "steps": [
+        "用鼻子慢慢吸气，数4秒",
+        "屏住呼吸，数7秒",
+        "用嘴巴慢慢呼气，数8秒",
+        "重复3-4次"
+      ],
+      "duration": "2分钟"
+    },
+    {
+      "name": "身体扫描",
+      "description": "逐步放松身体各部位",
+      "steps": [
+        "从头顶开始，注意紧张感",
+        "慢慢移到额头、眼睛、下巴",
+        "继续到肩膀、手臂、手",
+        "最后到胸部、腹部、腿部、脚",
+        "感受身体的放松"
+      ],
+      "duration": "10分钟"
+    }
+  ]
+}

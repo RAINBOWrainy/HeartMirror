@@ -1,0 +1,98 @@
+"""
+Knowledge Base Data - DSM-5 Symptoms
+DSM-5症状数据
+"""
+import json
+
+# DSM-5症状数据
+DSM5_SYMPTOMS = {
+    "depression": {
+        "name": "抑郁症",
+        "code": "F32",
+        "core_symptoms": [
+            {"id": "dep1", "name": "情绪低落", "description": "持续感到悲伤、空虚或绝望"},
+            {"id": "dep2", "name": "兴趣减退", "description": "对以往感兴趣的活动失去兴趣"},
+            {"id": "dep3", "name": "体重变化", "description": "明显的体重增加或减少"},
+            {"id": "dep4", "name": "睡眠障碍", "description": "失眠或过度睡眠"},
+            {"id": "dep5", "name": "精神运动变化", "description": "激动或迟缓"},
+            {"id": "dep6", "name": "疲劳", "description": "感到疲倦或精力不足"},
+            {"id": "dep7", "name": "自我评价低", "description": "感到无价值或过度内疚"},
+            {"id": "dep8", "name": "注意力下降", "description": "难以集中注意力或做决定"},
+            {"id": "dep9", "name": "消极想法", "description": "反复想到死亡或自杀"}
+        ],
+        "diagnostic_criteria": "至少5个症状持续2周以上，且包括情绪低落或兴趣减退"
+    },
+    "anxiety": {
+        "name": "广泛性焦虑障碍",
+        "code": "F41.1",
+        "core_symptoms": [
+            {"id": "anx1", "name": "过度担忧", "description": "对多种事物过度担心"},
+            {"id": "anx2", "name": "坐立不安", "description": "感到紧张或焦躁"},
+            {"id": "anx3", "name": "易疲劳", "description": "容易感到疲倦"},
+            {"id": "anx4", "name": "注意力困难", "description": "难以集中注意力"},
+            {"id": "anx5", "name": "易激惹", "description": "容易烦躁或生气"},
+            {"id": "anx6", "name": "肌肉紧张", "description": "肌肉紧绷或疼痛"},
+            {"id": "anx7", "name": "睡眠障碍", "description": "难以入睡或睡眠质量差"}
+        ],
+        "diagnostic_criteria": "至少3个症状持续6个月以上"
+    }
+}
+
+# 干预方案数据库
+INTERVENTION_DB = {
+    "cbt": {
+        "name": "认知行为疗法",
+        "type": "心理治疗",
+        "duration": "12-20次",
+        "suitable_for": ["depression", "anxiety"],
+        "techniques": ["认知重构", "行为激活", "问题解决"]
+    },
+    "mindfulness": {
+        "name": "正念冥想",
+        "type": "自助练习",
+        "duration": "每日10-30分钟",
+        "suitable_for": ["anxiety", "stress"],
+        "techniques": ["呼吸冥想", "身体扫描", "正念行走"]
+    },
+    "breathing": {
+        "name": "呼吸训练",
+        "type": "自助练习",
+        "duration": "5-15分钟",
+        "suitable_for": ["anxiety", "panic"],
+        "techniques": ["4-7-8呼吸法", "腹式呼吸", "盒式呼吸"]
+    }
+}
+
+# 危机资源
+CRISIS_RESOURCES = [
+    {
+        "name": "全国心理援助热线",
+        "phone": "400-161-9995",
+        "hours": "24小时",
+        "region": "全国"
+    },
+    {
+        "name": "北京心理危机研究与干预中心",
+        "phone": "010-82951332",
+        "hours": "24小时",
+        "region": "北京"
+    },
+    {
+        "name": "上海心理援助热线",
+        "phone": "021-34289888",
+        "hours": "24小时",
+        "region": "上海"
+    }
+]
+
+def get_symptoms_data() -> dict:
+    """获取症状数据"""
+    return DSM5_SYMPTOMS
+
+def get_intervention_data() -> dict:
+    """获取干预数据"""
+    return INTERVENTION_DB
+
+def get_crisis_resources() -> list:
+    """获取危机资源"""
+    return CRISIS_RESOURCES
