@@ -2,9 +2,26 @@
 HeartMirror Application Configuration
 """
 from functools import lru_cache
-from typing import List
+from typing import List, Union
+import json
+import os
 
 from pydantic_settings import BaseSettings
+
+
+def parse_cors_origins(value: str) -> List[str]:
+    """解析 CORS 源列表"""
+    if not value:
+        return ["*"]
+    try:
+        # 尝试解析 JSON 字符串
+        parsed = json.loads(value)
+        if isinstance(parsed, list):
+            return parsed
+        return [parsed]
+    except json.JSONDecodeError:
+        # 如果不是 JSON，按逗号分割
+        return [origin.strip() for origin in value.split(",")]
 
 
 class Settings(BaseSettings):
@@ -21,7 +38,6 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # Database - PostgreSQL
-    # 支持 Railway 提供的 postgres:// 或 postgresql:// 格式
     DATABASE_URL: str = "sqlite+aiosqlite:///./heartmirror.db"
     DATABASE_SYNC_URL: str = "sqlite:///./heartmirror.db"
 
@@ -50,9 +66,6 @@ class Settings(BaseSettings):
     # Encryption
     ENCRYPTION_KEY: str = ""
 
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
-
     # Crisis Support
     CRISIS_HOTLINE: str = "400-161-9995"
 
@@ -60,6 +73,16 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        """获取 CORS 源列表"""
+        # 从环境变量读取
+        cors_env = os.environ.get("CORS_ORIGINS", "")
+        if cors_env:
+            return parse_cors_origins(cors_env)
+        # 默认值
+        return ["http://localhost:5173", "http://localhost:3000"]
 
 
 @lru_cache()
