@@ -46,8 +46,8 @@ def get_engine_args():
         args["pool_pre_ping"] = True
         args["pool_size"] = 5
         args["max_overflow"] = 10
-        # Render PostgreSQL 需要 SSL
-        args["connect_args"] = {"ssl": "require"}
+        # Render PostgreSQL 需要 SSL - 使用 True 表示需要 SSL
+        args["connect_args"] = {"ssl": True}
     else:
         # SQLite 不支持这些参数
         args["pool_pre_ping"] = False
