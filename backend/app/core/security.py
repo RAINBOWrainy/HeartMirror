@@ -4,16 +4,17 @@ Security Module
 """
 import base64
 import os
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # 密码哈希上下文
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -34,17 +35,7 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None,
     extra_data: Optional[dict] = None
 ) -> str:
-    """
-    创建JWT访问令牌
-
-    Args:
-        subject: 令牌主体（通常是用户ID）
-        expires_delta: 过期时间增量
-        extra_data: 额外数据
-
-    Returns:
-        JWT令牌字符串
-    """
+    """创建JWT访问令牌"""
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -65,15 +56,7 @@ def create_access_token(
 
 
 def verify_token(token: str) -> Optional[dict]:
-    """
-    验证JWT令牌
-
-    Args:
-        token: JWT令牌字符串
-
-    Returns:
-        解码后的载荷，验证失败返回None
-    """
+    """验证JWT令牌"""
     try:
         payload = jwt.decode(
             token,
@@ -86,61 +69,57 @@ def verify_token(token: str) -> Optional[dict]:
 
 
 class EncryptionService:
-    """
-    数据加密服务
-    使用Fernet对称加密（AES-128）实现端到端加密
-    """
+    """数据加密服务 - 使用Fernet对称加密"""
 
     def __init__(self, encryption_key: Optional[str] = None):
-        """
-        初始化加密服务
+        """初始化加密服务"""
+        self.fernet = None
 
-        Args:
-            encryption_key: 32字节加密密钥的base64编码
-        """
-        if encryption_key:
-            self.key = base64.urlsafe_b64decode(encryption_key)
-        else:
-            # 从环境变量获取或生成新密钥
-            key_str = settings.ENCRYPTION_KEY
+        try:
+            key_str = encryption_key or settings.ENCRYPTION_KEY
+
             if key_str:
-                self.key = base64.urlsafe_b64decode(key_str)
-            else:
-                # 开发环境生成临时密钥
-                self.key = Fernet.generate_key()
+                # 检查是否是 Fernet 格式的密钥（44字符，以=结尾）
+                if len(key_str) == 44 and key_str.endswith('='):
+                    try:
+                        self.fernet = Fernet(key_str.encode())
+                        logger.info("Using provided Fernet key")
+                        return
+                    except Exception as e:
+                        logger.warning(f"Failed to use key as Fernet format: {e}")
 
-        self.fernet = Fernet(
-            base64.urlsafe_b64encode(self.key)
-        )
+                # 尝试 base64 解码
+                try:
+                    decoded = base64.urlsafe_b64decode(key_str)
+                    if len(decoded) == 32:
+                        self.fernet = Fernet(base64.urlsafe_b64encode(decoded))
+                        logger.info("Using decoded base64 key")
+                        return
+                except Exception as e:
+                    logger.warning(f"Failed to decode base64 key: {e}")
+
+            # 生成临时密钥
+            logger.warning("No valid encryption key, generating temporary key")
+            self.fernet = Fernet(Fernet.generate_key())
+
+        except Exception as e:
+            logger.error(f"Encryption init error: {e}")
+            self.fernet = Fernet(Fernet.generate_key())
 
     def encrypt(self, data: str) -> str:
-        """
-        加密字符串数据
-
-        Args:
-            data: 待加密的明文
-
-        Returns:
-            加密后的base64编码字符串
-        """
-        encrypted = self.fernet.encrypt(data.encode("utf-8"))
-        return encrypted.decode("utf-8")
+        """加密数据"""
+        if not self.fernet:
+            raise RuntimeError("Encryption not initialized")
+        return self.fernet.encrypt(data.encode("utf-8")).decode("utf-8")
 
     def decrypt(self, encrypted_data: str) -> str:
-        """
-        解密数据
-
-        Args:
-            encrypted_data: 加密后的数据
-
-        Returns:
-            解密后的明文
-        """
-        decrypted = self.fernet.decrypt(encrypted_data.encode("utf-8"))
-        return decrypted.decode("utf-8")
+        """解密数据"""
+        if not self.fernet:
+            raise RuntimeError("Encryption not initialized")
+        return self.fernet.decrypt(encrypted_data.encode("utf-8")).decode("utf-8")
 
 
-# 全局加密服务实例
+# 全局实例
 _encryption_service: Optional[EncryptionService] = None
 
 
@@ -153,10 +132,10 @@ def get_encryption_service() -> EncryptionService:
 
 
 def encrypt_data(data: str) -> str:
-    """加密数据便捷函数"""
+    """加密数据"""
     return get_encryption_service().encrypt(data)
 
 
 def decrypt_data(encrypted_data: str) -> str:
-    """解密数据便捷函数"""
+    """解密数据"""
     return get_encryption_service().decrypt(encrypted_data)
