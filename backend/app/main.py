@@ -47,6 +47,8 @@ async def lifespan(app: FastAPI):
         rag_engine = RAGEngine()
         await rag_engine.initialize_knowledge_base()
         logger.info("✅ RAG Knowledge Base initialized")
+    except ImportError as e:
+        logger.warning(f"⚠️ RAG module not available: {e}")
     except Exception as e:
         logger.warning(f"⚠️ RAG initialization failed: {e}")
 

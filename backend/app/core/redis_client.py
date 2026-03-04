@@ -98,7 +98,18 @@ redis_client = RedisClient(settings.REDIS_URL)
 
 async def init_redis():
     """初始化Redis连接"""
-    await redis_client.connect()
+    # 检查 Redis URL 是否有效
+    url = settings.REDIS_URL
+    if not url or not any(url.startswith(scheme) for scheme in ['redis://', 'rediss://', 'unix://']):
+        print("⚠️ Redis URL not configured or invalid, skipping Redis initialization")
+        redis_client.client = None
+        return
+
+    try:
+        await redis_client.connect()
+    except Exception as e:
+        print(f"⚠️ Redis connection failed: {e}")
+        redis_client.client = None
 
 
 async def close_redis():
