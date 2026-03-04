@@ -30,6 +30,11 @@ def get_database_url():
     elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+    # Render PostgreSQL 需要添加 sslmode=require 来处理自签名证书
+    if "postgresql" in url and "sslmode" not in url:
+        separator = "?" if "?" not in url else "&"
+        url = f"{url}{separator}sslmode=require"
+
     logger.info(f"Database URL scheme: {url.split('://')[0]}")
     return url
 
@@ -46,8 +51,8 @@ def get_engine_args():
         args["pool_pre_ping"] = True
         args["pool_size"] = 5
         args["max_overflow"] = 10
-        # Render PostgreSQL 需要 SSL - 使用 True 表示需要 SSL
-        args["connect_args"] = {"ssl": True}
+        # Render PostgreSQL 使用自签名证书，需要在 URL 中添加 sslmode=require
+        # 不在这里设置 connect_args，让 URL 中的参数生效
     else:
         # SQLite 不支持这些参数
         args["pool_pre_ping"] = False
