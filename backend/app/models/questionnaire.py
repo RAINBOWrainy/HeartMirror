@@ -127,6 +127,11 @@ class QuestionnaireSession(Base):
     )
 
     # 关系
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="questionnaire_sessions"
+    )
+
     answers: Mapped[List["QuestionnaireAnswer"]] = relationship(
         "QuestionnaireAnswer",
         back_populates="session",

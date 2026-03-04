@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.emotion import EmotionRecord
     from app.models.session import ChatSession
     from app.models.intervention import InterventionPlan
+    from app.models.questionnaire import QuestionnaireSession
 
 
 class User(Base):
@@ -136,6 +137,12 @@ class User(Base):
 
     intervention_plans: Mapped[List["InterventionPlan"]] = relationship(
         "InterventionPlan",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    questionnaire_sessions: Mapped[List["QuestionnaireSession"]] = relationship(
+        "QuestionnaireSession",
         back_populates="user",
         cascade="all, delete-orphan"
     )

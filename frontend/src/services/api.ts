@@ -2,7 +2,6 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
-const isDevMode = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
 
 // 创建 axios 实例
 const api = axios.create({
@@ -18,13 +17,7 @@ api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token
     if (token) {
-      // 开发模式下使用mock token时跳过Authorization header
-      if (token !== 'dev-mock-token') {
-        config.headers.Authorization = `Bearer ${token}`
-      } else {
-        // 开发模式标记
-        config.headers['X-Dev-Mode'] = 'true'
-      }
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
@@ -38,13 +31,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // 开发模式下不重定向到登录页
-      if (!isDevMode) {
-        useAuthStore.getState().logout()
-        window.location.href = '/login'
-      } else {
-        console.log('[Dev Mode] 401 error - would redirect to login in production')
-      }
+      useAuthStore.getState().logout()
+      window.location.href = '/login'
     }
     return Promise.reject(error)
   }

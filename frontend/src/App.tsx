@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import MainLayout from './components/common/MainLayout'
@@ -12,6 +12,7 @@ import Crisis from './pages/Crisis'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import { useAuthStore } from './stores/authStore'
+import { authApi } from './services/api'
 
 // 主题配置
 const themeConfig = {
@@ -39,30 +40,54 @@ const themeConfig = {
 const basename = import.meta.env.BASE_URL || '/HeartMirror/'
 
 function App() {
-  const { isAuthenticated, isDevMode, devBypassLogin } = useAuthStore()
+  const { isAuthenticated, guestLogin } = useAuthStore()
+  const [loading, setLoading] = useState(true)
 
-  // 开发模式下自动登录
+  // 自动游客登录 - 确保用户可以直接访问
   useEffect(() => {
-    const isDevBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
-    if (isDevBypass && !isAuthenticated) {
-      console.log('[Dev Mode] Auto-login enabled')
-      devBypassLogin()
+    const autoLogin = async () => {
+      if (!isAuthenticated) {
+        try {
+          const response = await authApi.guestLogin()
+          const { access_token, user } = response.data
+          guestLogin(access_token, user)
+          console.log('[Auto Login] Guest session created')
+        } catch (error) {
+          console.error('[Auto Login] Failed:', error)
+        }
+      }
+      setLoading(false)
     }
-  }, [isAuthenticated, devBypassLogin])
+
+    autoLogin()
+  }, [isAuthenticated, guestLogin])
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh'
+      }}>
+        <Spin size="large" tip="正在初始化..." />
+      </div>
+    )
+  }
 
   return (
     <ErrorBoundary>
       <ConfigProvider theme={themeConfig} locale={zhCN}>
         <BrowserRouter basename={basename}>
           <Routes>
-            {/* 登录/注册路由 - 开发模式下重定向到首页 */}
+            {/* 登录/注册路由 */}
             <Route
               path="/login"
-              element={isDevMode ? <Navigate to="/" /> : (!isAuthenticated ? <Login /> : <Navigate to="/" />)}
+              element={!isAuthenticated ? <Login /> : <Navigate to="/" />}
             />
             <Route
               path="/register"
-              element={isDevMode ? <Navigate to="/" /> : (!isAuthenticated ? <Register /> : <Navigate to="/" />)}
+              element={!isAuthenticated ? <Register /> : <Navigate to="/" />}
             />
 
             {/* 主应用路由 */}
