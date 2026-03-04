@@ -90,6 +90,20 @@ class User(Base):
         comment="用户是否确认免责声明"
     )
 
+    # 游客用户标记
+    is_guest: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="是否为游客用户"
+    )
+
+    # 游客会话过期时间
+    guest_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="游客会话过期时间"
+    )
+
     # 时间戳
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

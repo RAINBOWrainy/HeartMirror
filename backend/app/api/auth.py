@@ -2,8 +2,9 @@
 Authentication API Routes
 用户认证接口
 """
-from datetime import datetime, timezone
-from typing import Annotated
+import uuid
+from datetime import datetime, timezone, timedelta
+from typing import Annotated, Optional
 import logging
 import traceback
 
@@ -69,11 +70,59 @@ async def get_current_user(
             detail="用户已被禁用",
         )
 
+    # 检查游客会话是否过期
+    if user.is_guest and user.guest_expires_at:
+        if datetime.now(timezone.utc) > user.guest_expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="游客会话已过期",
+            )
+
     # 更新最后活跃时间
     user.last_active_at = datetime.now(timezone.utc)
     await db.commit()
 
     return user
+
+
+async def get_current_user_optional(
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+) -> Optional[User]:
+    """获取当前用户（可选）- 用于游客模式"""
+    if credentials is None:
+        return None
+
+    try:
+        token = credentials.credentials
+        payload = verify_token(token)
+
+        if not payload:
+            return None
+
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+
+        if not user or not user.is_active:
+            return None
+
+        # 检查游客会话是否过期
+        if user.is_guest and user.guest_expires_at:
+            if datetime.now(timezone.utc) > user.guest_expires_at:
+                return None
+
+        # 更新最后活跃时间
+        user.last_active_at = datetime.now(timezone.utc)
+        await db.commit()
+
+        return user
+    except Exception as e:
+        logger.warning(f"Optional auth check failed: {e}")
+        return None
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -174,6 +223,72 @@ async def login(
         token_type="bearer",
         user=UserResponse.model_validate(user),
     )
+
+
+@router.post("/guest", response_model=TokenResponse)
+async def create_guest_session(
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    创建游客会话
+
+    - 自动生成游客ID
+    - 24小时有效期
+    - 可体验所有核心功能
+    """
+    try:
+        # 生成唯一的游客ID
+        guest_id = f"guest_{uuid.uuid4().hex[:8]}"
+
+        # 确保ID唯一
+        while True:
+            result = await db.execute(
+                select(User).where(User.anonymous_id == guest_id)
+            )
+            if not result.scalar_one_or_none():
+                break
+            guest_id = f"guest_{uuid.uuid4().hex[:8]}"
+
+        # 生成随机密码
+        random_password = uuid.uuid4().hex
+
+        # 设置游客会话过期时间（24小时）
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+
+        # 创建游客用户
+        user = User(
+            anonymous_id=guest_id,
+            password_hash=get_password_hash(random_password),
+            consent_given=True,  # 游客自动同意
+            disclaimer_accepted=True,  # 游客自动接受
+            is_guest=True,
+            guest_expires_at=expires_at,
+        )
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        logger.info(f"Guest session created: {guest_id}")
+
+        # 创建访问令牌
+        access_token = create_access_token(
+            subject=str(user.id),
+            expires_delta=timedelta(hours=24)
+        )
+
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserResponse.model_validate(user),
+        )
+
+    except Exception as e:
+        logger.error(f"Guest session creation failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"创建游客会话失败: {str(e)}",
+        )
 
 
 @router.get("/me", response_model=UserResponse)

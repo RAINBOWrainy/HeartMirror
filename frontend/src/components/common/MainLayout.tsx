@@ -19,6 +19,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
+import GuestModeBanner from './GuestModeBanner'
 
 const { Header, Sider, Content } = Layout
 const { Text } = Typography
@@ -33,7 +34,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [drawerVisible, setDrawerVisible] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout } = useAuthStore()
+  const { user, logout, isGuest, isDevMode } = useAuthStore()
   const screens = useBreakpoint()
 
   // 判断是否为移动端
@@ -98,7 +99,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const handleUserMenuClick = (key: string) => {
     if (key === 'logout') {
       logout()
-      navigate('/login')
+      // 游客模式或开发模式下留在首页
+      if (!isGuest && !isDevMode) {
+        navigate('/login')
+      }
     }
   }
 
@@ -209,6 +213,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             background: '#f5f5f5'
           }}
         >
+          {isGuest && <GuestModeBanner guestExpiresAt={user?.guest_expires_at} />}
           {children}
         </Content>
       </Layout>
@@ -269,9 +274,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <Space style={{ cursor: 'pointer' }}>
               <Avatar
                 icon={<UserOutlined />}
-                style={{ backgroundColor: '#1890ff' }}
+                style={{ backgroundColor: isGuest ? '#faad14' : '#1890ff' }}
               />
-              <Text>{user?.anonymous_id || '用户'}</Text>
+              <Text>
+                {user?.anonymous_id || '用户'}
+                {isGuest && <Text type="warning" style={{ marginLeft: 4, fontSize: 12 }}>(游客)</Text>}
+              </Text>
             </Space>
           </Dropdown>
         </Header>
@@ -281,6 +289,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             minHeight: 'calc(100vh - 56px)'
           }}
         >
+          {isGuest && <GuestModeBanner guestExpiresAt={user?.guest_expires_at} />}
           {children}
         </Content>
       </Layout>

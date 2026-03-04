@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
@@ -38,18 +39,33 @@ const themeConfig = {
 const basename = import.meta.env.BASE_URL || '/HeartMirror/'
 
 function App() {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, isDevMode, devBypassLogin } = useAuthStore()
+
+  // 开发模式下自动登录
+  useEffect(() => {
+    const isDevBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+    if (isDevBypass && !isAuthenticated) {
+      console.log('[Dev Mode] Auto-login enabled')
+      devBypassLogin()
+    }
+  }, [isAuthenticated, devBypassLogin])
 
   return (
     <ErrorBoundary>
       <ConfigProvider theme={themeConfig} locale={zhCN}>
         <BrowserRouter basename={basename}>
           <Routes>
-            {/* 公开路由 */}
-            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
-            <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
+            {/* 登录/注册路由 - 开发模式下重定向到首页 */}
+            <Route
+              path="/login"
+              element={isDevMode ? <Navigate to="/" /> : (!isAuthenticated ? <Login /> : <Navigate to="/" />)}
+            />
+            <Route
+              path="/register"
+              element={isDevMode ? <Navigate to="/" /> : (!isAuthenticated ? <Register /> : <Navigate to="/" />)}
+            />
 
-            {/* 受保护路由 */}
+            {/* 主应用路由 */}
             <Route
               path="/"
               element={

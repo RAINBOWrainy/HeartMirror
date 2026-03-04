@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
-import { Card, Form, Input, Button, Checkbox, Typography, Space, Alert, message } from 'antd'
-import { UserOutlined, LockOutlined } from '@ant-design/icons'
+import React from 'react'
+import { Card, Form, Input, Button, Checkbox, Typography, Space, Alert, message, Divider } from 'antd'
+import { UserOutlined, LockOutlined, EyeOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { useRequest } from 'ahooks'
 import { authApi } from '../services/api'
@@ -10,7 +10,7 @@ const { Title, Text, Paragraph } = Typography
 
 const Login: React.FC = () => {
   const navigate = useNavigate()
-  const { setAuth } = useAuthStore()
+  const { setAuth, guestLogin } = useAuthStore()
   const [form] = Form.useForm()
 
   const { run: login, loading } = useRequest(
@@ -25,6 +25,22 @@ const Login: React.FC = () => {
       },
       onError: (error: any) => {
         message.error(error.response?.data?.detail || '登录失败')
+      },
+    }
+  )
+
+  const { run: handleGuestLogin, loading: guestLoading } = useRequest(
+    () => authApi.guestLogin(),
+    {
+      manual: true,
+      onSuccess: (response) => {
+        const { access_token, user } = response.data
+        guestLogin(access_token, user)
+        message.success('游客登录成功')
+        navigate('/')
+      },
+      onError: (error: any) => {
+        message.error(error.response?.data?.detail || '游客登录失败')
       },
     }
   )
@@ -110,11 +126,36 @@ const Login: React.FC = () => {
             </Form.Item>
           </Form>
 
+          <Divider style={{ margin: '8px 0' }}>或者</Divider>
+
+          <Button
+            type="default"
+            size="large"
+            block
+            icon={<EyeOutlined />}
+            onClick={handleGuestLogin}
+            loading={guestLoading}
+            style={{
+              borderColor: '#1890ff',
+              color: '#1890ff'
+            }}
+          >
+            游客体验
+          </Button>
+
           <div style={{ textAlign: 'center' }}>
             <Text type="secondary">
               还没有账号？ <Link to="/register">立即注册</Link>
             </Text>
           </div>
+
+          <Alert
+            message="游客模式说明"
+            description="游客模式下可体验所有功能，数据保留24小时。建议注册账号以永久保存数据。"
+            type="info"
+            showIcon
+            style={{ fontSize: '12px' }}
+          />
         </Space>
       </Card>
     </div>

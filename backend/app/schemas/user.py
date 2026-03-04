@@ -32,6 +32,8 @@ class UserResponse(UserBase):
     risk_level: str
     consent_given: bool
     disclaimer_accepted: bool
+    is_guest: bool = False
+    guest_expires_at: Optional[datetime] = None
     created_at: datetime
     last_active_at: Optional[datetime] = None
 
