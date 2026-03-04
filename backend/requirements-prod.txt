@@ -34,3 +34,6 @@ tenacity>=8.0.0
 loguru>=0.7.0
 httpx>=0.26.0
 aiofiles>=23.2.1
+
+# ===== 缓存（可选）=====
+redis>=5.0.0
