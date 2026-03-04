@@ -3,6 +3,7 @@ Database Configuration
 PostgreSQL + SQLAlchemy Async Setup
 """
 import logging
+import ssl
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -30,10 +31,11 @@ def get_database_url():
     elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-    # Render PostgreSQL 需要添加 sslmode=require 来处理自签名证书
-    if "postgresql" in url and "sslmode" not in url:
-        separator = "?" if "?" not in url else "&"
-        url = f"{url}{separator}sslmode=require"
+    # 移除 URL 中的 sslmode 参数（asyncpg 不支持）
+    if "?sslmode=" in url:
+        url = url.split("?sslmode=")[0]
+    elif "&sslmode=" in url:
+        url = url.replace("&sslmode=require", "").replace("&sslmode=verify-ca", "")
 
     logger.info(f"Database URL scheme: {url.split('://')[0]}")
     return url
@@ -51,8 +53,11 @@ def get_engine_args():
         args["pool_pre_ping"] = True
         args["pool_size"] = 5
         args["max_overflow"] = 10
-        # Render PostgreSQL 使用自签名证书，需要在 URL 中添加 sslmode=require
-        # 不在这里设置 connect_args，让 URL 中的参数生效
+        # Render PostgreSQL 使用自签名证书
+        # asyncpg 需要 ssl=True 或 ssl=SSLContext
+        args["connect_args"] = {
+            "ssl": True  # 接受自签名证书
+        }
     else:
         # SQLite 不支持这些参数
         args["pool_pre_ping"] = False
