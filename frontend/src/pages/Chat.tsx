@@ -1,52 +1,151 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Card, Input, Button, Space, Typography, Avatar, Spin, Empty, message, Modal, Alert } from 'antd'
-import { SendOutlined, UserOutlined, RobotOutlined, AlertOutlined } from '@ant-design/icons'
-import { useParams, useNavigate } from 'react-router-dom'
+/**
+ * Chat Page
+ * AI对话页面 - 完整版本（WebSocket + 离线支持）
+ */
+
+import React, { useEffect, useState, useCallback } from 'react'
+import { Card, Alert, message, Modal, Typography, Button, Tag, Space, Badge } from 'antd'
+import { useNavigate, useParams } from 'react-router-dom'
+import { WifiOutlined, DisconnectOutlined, ReloadOutlined, CloudSyncOutlined } from '@ant-design/icons'
 import { useChatStore, Message } from '../stores/chatStore'
 import { chatApi } from '../services/api'
+import { useWebSocket, WebSocketStatus } from '../hooks/useWebSocket'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useMessageQueue } from '../hooks/useMessageQueue'
+import { MessageList, ChatInput } from '../components/Chat'
 
-const { TextArea } = Input
-const { Text, Paragraph } = Typography
+const { Paragraph } = Typography
 
 const Chat: React.FC = () => {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { currentSession, setCurrentSession, addMessage, isLoading, setLoading } = useChatStore()
-  const [inputValue, setInputValue] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { currentSession, addMessage, isLoading, setLoading } = useChatStore()
+  const [useWebSocketMode, setUseWebSocketMode] = useState(true)
+  const [currentSessionId, setCurrentSessionId] = useState<string>('')
 
+  // 离线检测
+  const { isOnline } = useOnlineStatus()
+
+  // 消息队列（离线时缓存）
+  const {
+    queue: pendingMessages,
+    enqueue,
+    dequeue,
+    remove,
+    size: queueSize,
+    isEmpty: isQueueEmpty
+  } = useMessageQueue()
+
+  // 初始化会话ID
   useEffect(() => {
-    // 如果有 sessionId，加载会话
     if (sessionId) {
+      setCurrentSessionId(sessionId)
       loadSession(sessionId)
+    } else {
+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      setCurrentSessionId(newSessionId)
     }
   }, [sessionId])
 
-  useEffect(() => {
-    // 滚动到最新消息
-    scrollToBottom()
-  }, [currentSession?.messages])
+  // WebSocket 消息处理
+  const handleWebSocketMessage = useCallback((data: any) => {
+    setLoading(false)
 
+    if (data.type === 'message') {
+      const aiMsg: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: data.content,
+        emotion: data.emotion_detected,
+        emotionIntensity: data.emotion_intensity,
+        timestamp: new Date(),
+      }
+      addMessage(aiMsg)
+
+      // 高风险情绪提示
+      if (data.risk_level === 'red' || data.risk_level === 'orange') {
+        Modal.warning({
+          title: '情绪关注',
+          content: (
+            <div>
+              <Paragraph>我们检测到您可能正在经历强烈的情绪。</Paragraph>
+              <Paragraph>如果您感到困扰，请随时查看我们的危机支持页面，或拨打心理援助热线。</Paragraph>
+              <Button type="primary" onClick={() => navigate('/crisis')}>
+                查看危机支持
+              </Button>
+            </div>
+          ),
+        })
+      }
+    }
+  }, [addMessage, setLoading, navigate])
+
+  // WebSocket 连接
+  const {
+    status: wsStatus,
+    send: wsSend,
+    reconnect: wsReconnect
+  } = useWebSocket({
+    sessionId: currentSessionId,
+    onMessage: handleWebSocketMessage,
+    onTyping: () => setLoading(true),
+    onError: (error) => {
+      message.error(error)
+      setUseWebSocketMode(false)
+    },
+    onConnect: () => {
+      setUseWebSocketMode(true)
+      // 连接恢复后，发送队列中的消息
+      processPendingMessages()
+    }
+  })
+
+  // 处理队列中的待发送消息
+  const processPendingMessages = useCallback(() => {
+    if (!isOnline || wsStatus !== 'connected') return
+
+    const processNext = () => {
+      const pendingMsg = dequeue()
+      if (pendingMsg) {
+        wsSend(pendingMsg.content)
+        remove(pendingMsg.id)
+        // 继续处理下一条
+        setTimeout(processNext, 100)
+      }
+    }
+
+    processNext()
+  }, [isOnline, wsStatus, dequeue, wsSend, remove])
+
+  // 加载会话历史
   const loadSession = async (id: string) => {
     try {
       const response = await chatApi.getSession(id)
-      // TODO: 处理加载的会话
+      // TODO: 处理加载的会话消息
     } catch (error) {
-      message.error('加载会话失败')
+      console.error('加载会话失败', error)
     }
   }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  // 发送消息 - WebSocket 模式
+  const handleSendWebSocket = (userMessage: string) => {
+    if (!userMessage.trim()) return
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date(),
+    }
+    addMessage(userMsg)
+    setLoading(true)
+    wsSend(userMessage)
   }
 
-  const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return
+  // 发送消息 - HTTP 降级模式
+  const handleSendHTTP = async (userMessage: string) => {
+    if (!userMessage.trim() || isLoading) return
 
-    const userMessage = inputValue.trim()
-    setInputValue('')
-
-    // 添加用户消息
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -62,7 +161,6 @@ const Chat: React.FC = () => {
         message: userMessage,
       })
 
-      // 添加AI回复
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -73,7 +171,6 @@ const Chat: React.FC = () => {
       }
       addMessage(aiMsg)
 
-      // 如果检测到高风险情绪，显示提示
       if (response.data.emotion_intensity >= 0.8) {
         Modal.warning({
           title: '情绪关注',
@@ -95,112 +192,108 @@ const Chat: React.FC = () => {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+  // 统一发送处理
+  const handleSend = (userMessage: string) => {
+    if (!isOnline) {
+      // 离线时加入队列
+      enqueue(userMessage)
+      message.info('您当前离线，消息将在连接恢复后发送')
+      return
+    }
+
+    if (useWebSocketMode && wsStatus === 'connected') {
+      handleSendWebSocket(userMessage)
+    } else {
+      handleSendHTTP(userMessage)
     }
   }
 
+  // 连接状态指示器
+  const ConnectionStatus = () => {
+    if (!isOnline) {
+      return (
+        <Tag color="error" icon={<DisconnectOutlined />}>
+          离线
+        </Tag>
+      )
+    }
+
+    const statusConfig: Record<WebSocketStatus, { color: string; icon: React.ReactNode; text: string }> = {
+      connecting: { color: 'processing', icon: <ReloadOutlined spin />, text: '连接中' },
+      connected: { color: 'success', icon: <WifiOutlined />, text: '已连接' },
+      disconnected: { color: 'default', icon: <DisconnectOutlined />, text: '未连接' },
+      error: { color: 'error', icon: <DisconnectOutlined />, text: '连接错误' }
+    }
+
+    const config = statusConfig[wsStatus]
+
+    return (
+      <Tag color={config.color} icon={config.icon}>
+        {config.text}
+      </Tag>
+    )
+  }
+
   return (
-    <div style={{ height: 'calc(100vh - 64px - 48px)', display: 'flex', flexDirection: 'column' }}>
-      <Alert
-        message="请注意：这是AI辅助对话，不构成医疗诊断或治疗建议"
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
+    <div style={{
+      height: 'calc(100vh - 64px - 48px)',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* 免责声明和连接状态 */}
+      <Space direction="vertical" style={{ marginBottom: 16, width: '100%' }}>
+        <Alert
+          message="请注意：这是AI辅助对话，不构成医疗诊断或治疗建议"
+          type="info"
+          showIcon
+          style={{ borderRadius: 8 }}
+        />
+        <Space>
+          <ConnectionStatus />
+          {wsStatus === 'error' && isOnline && (
+            <Button size="small" onClick={wsReconnect}>
+              重新连接
+            </Button>
+          )}
+          {!isQueueEmpty && (
+            <Badge count={queueSize} size="small">
+              <Tag color="warning" icon={<CloudSyncOutlined />}>
+                待发送
+              </Tag>
+            </Badge>
+          )}
+        </Space>
+      </Space>
 
       {/* 消息列表 */}
       <Card
         style={{
           flex: 1,
-          overflow: 'auto',
-          marginBottom: 16,
+          overflow: 'hidden',
+          marginBottom: 0,
+          borderRadius: 12
+        }}
+        bodyStyle={{
+          height: '100%',
+          padding: '0 16px',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
-        {currentSession?.messages.length === 0 ? (
-          <Empty
-            description="开始您的对话吧"
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        ) : (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            {currentSession?.messages.map((msg) => (
-              <div
-                key={msg.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                }}
-              >
-                <Space
-                  align="start"
-                  style={{
-                    maxWidth: '80%',
-                    flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-                  }}
-                >
-                  <Avatar
-                    icon={msg.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
-                    style={{
-                      backgroundColor: msg.role === 'user' ? '#1890ff' : '#52c41a',
-                    }}
-                  />
-                  <div>
-                    <Card
-                      size="small"
-                      style={{
-                        background: msg.role === 'user' ? '#e6f7ff' : '#f6ffed',
-                        borderRadius: 12,
-                      }}
-                    >
-                      <Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                        {msg.content}
-                      </Paragraph>
-                      {msg.emotion && (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          检测情绪: {msg.emotion}
-                          {msg.emotionIntensity && ` (${(msg.emotionIntensity * 100).toFixed(0)}%)`}
-                        </Text>
-                      )}
-                    </Card>
-                  </div>
-                </Space>
-              </div>
-            ))}
-            {isLoading && (
-              <div style={{ textAlign: 'center' }}>
-                <Spin tip="AI正在思考..." />
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </Space>
-        )}
+        <MessageList
+          messages={currentSession?.messages || []}
+          isLoading={isLoading}
+          loadingText="AI正在思考..."
+        />
       </Card>
 
       {/* 输入区域 */}
-      <Card>
-        <Space.Compact style={{ width: '100%' }}>
-          <TextArea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="输入您想说的话..."
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            style={{ borderRadius: '8px 0 0 8px' }}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSend}
-            loading={isLoading}
-            style={{ height: 'auto', borderRadius: '0 8px 8px 0' }}
-          >
-            发送
-          </Button>
-        </Space.Compact>
-      </Card>
+      <ChatInput
+        onSend={handleSend}
+        loading={isLoading}
+        disabled={!isOnline}
+        placeholder={isOnline ? '输入您想说的话...' : '您当前离线，消息将在连接恢复后发送'}
+      />
     </div>
   )
 }

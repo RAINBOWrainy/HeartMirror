@@ -1,5 +1,5 @@
-import React from 'react'
-import { Card, Typography, Row, Col, Statistic, Button, Space, Alert } from 'antd'
+import React, { useState } from 'react'
+import { Card, Typography, Row, Col, Button, Space, Alert } from 'antd'
 import {
   MessageOutlined,
   BookOutlined,
@@ -8,12 +8,14 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { OnboardingTour } from '../components/common'
 
 const { Title, Paragraph, Text } = Typography
 
 const Home: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const [showTour, setShowTour] = useState(true)
 
   const features = [
     {
@@ -44,16 +46,22 @@ const Home: React.FC = () => {
 
   return (
     <div>
+      {/* 新手引导 */}
+      <OnboardingTour
+        visible={showTour}
+        onComplete={() => setShowTour(false)}
+      />
+
       <Alert
         message="重要声明"
         description="HeartMirror是一款心理健康自助管理工具，不替代专业临床诊断和治疗。如有严重心理问题，请及时寻求专业医疗帮助。"
         type="warning"
         showIcon
         closable
-        style={{ marginBottom: 24 }}
+        style={{ marginBottom: 24, borderRadius: 12 }}
       />
 
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24, borderRadius: 16 }}>
         <Title level={2} style={{ marginBottom: 8 }}>
           👋 你好，{user?.anonymous_id || '用户'}
         </Title>
@@ -61,9 +69,14 @@ const Home: React.FC = () => {
           欢迎使用HeartMirror心镜，您的AI心理健康自助管理助手。
           今天您感觉如何？让我们一起关注您的心理健康。
         </Paragraph>
-        <Button type="primary" size="large" onClick={() => navigate('/chat')}>
-          开始对话
-        </Button>
+        <Space>
+          <Button type="primary" size="large" onClick={() => navigate('/chat')}>
+            开始对话
+          </Button>
+          <Button size="large" onClick={() => setShowTour(true)}>
+            查看引导
+          </Button>
+        </Space>
       </Card>
 
       <Title level={4}>功能入口</Title>
@@ -72,7 +85,8 @@ const Home: React.FC = () => {
           <Col xs={24} sm={12} md={6} key={index}>
             <Card
               hoverable
-              style={{ height: '100%' }}
+              style={{ height: '100%', borderRadius: 16 }}
+              styles={{ body: { padding: 24 } }}
               onClick={feature.action}
             >
               <Space direction="vertical" align="center" style={{ width: '100%' }}>
@@ -87,7 +101,7 @@ const Home: React.FC = () => {
         ))}
       </Row>
 
-      <Card style={{ marginTop: 24, background: '#f6ffed', borderColor: '#b7eb8f' }}>
+      <Card style={{ marginTop: 24, background: '#f6ffed', borderColor: '#b7eb8f', borderRadius: 16 }}>
         <Title level={5} style={{ margin: 0 }}>💡 今日提示</Title>
         <Paragraph style={{ margin: '8px 0 0 0' }}>
           每天花几分钟关注自己的情绪，是心理健康的第一步。试试记录今天的情绪日记吧！
