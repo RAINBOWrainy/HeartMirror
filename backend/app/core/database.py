@@ -7,9 +7,31 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
+
+def get_database_url():
+    """
+    获取数据库 URL，自动转换格式
+    Railway 提供的格式: postgres:// 或 postgresql://
+    SQLAlchemy asyncpg 需要的格式: postgresql+asyncpg://
+    """
+    url = settings.DATABASE_URL
+
+    if not url:
+        # 如果没有配置数据库 URL，使用 SQLite
+        return "sqlite+aiosqlite:///./heartmirror.db"
+
+    # 转换 Railway 提供的 postgres:// 为 asyncpg 格式
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    return url
+
+
 # 创建异步引擎
 async_engine = create_async_engine(
-    settings.DATABASE_URL,
+    get_database_url(),
     echo=settings.DEBUG,
     pool_pre_ping=True,
     pool_size=5,

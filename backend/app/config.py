@@ -21,11 +21,12 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # Database - PostgreSQL
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/heartmirror"
-    DATABASE_SYNC_URL: str = "postgresql://postgres:postgres@localhost:5432/heartmirror"
+    # 支持 Railway 提供的 postgres:// 或 postgresql:// 格式
+    DATABASE_URL: str = "sqlite+aiosqlite:///./heartmirror.db"
+    DATABASE_SYNC_URL: str = "sqlite:///./heartmirror.db"
 
     # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = ""
 
     # Neo4j
     NEO4J_URI: str = "bolt://localhost:7687"
