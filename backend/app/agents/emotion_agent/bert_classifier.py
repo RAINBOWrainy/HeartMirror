@@ -1,11 +1,24 @@
 """
 Emotion BERT Classifier
 基于中文BERT的情绪分类器
+
+注意：此模块需要 torch 和 transformers 库。
+在生产环境中如果这些库不可用，会降级到简单的情绪分析。
 """
 from typing import Dict, List, Optional, Tuple
-import torch
-from transformers import BertTokenizer, BertForSequenceClassification
-import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
+# 尝试导入 ML 库，如果不可用则使用降级方案
+try:
+    import torch
+    from transformers import BertTokenizer, BertForSequenceClassification
+    import numpy as np
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    logger.warning("torch/transformers not available, using fallback emotion classifier")
 
 
 class EmotionBERTClassifier:
@@ -13,6 +26,7 @@ class EmotionBERTClassifier:
     情绪分类器
 
     使用中文BERT模型进行情绪分类
+    如果 ML 库不可用，使用简单的关键词匹配降级方案
     """
 
     # 默认情绪标签
@@ -26,6 +40,16 @@ class EmotionBERTClassifier:
         "surprise",   # 惊讶
     ]
 
+    # 简单情绪关键词（降级方案）
+    EMOTION_KEYWORDS = {
+        "joy": ["开心", "快乐", "高兴", "幸福", "喜悦", "愉快", "棒", "好", "太好了", "哈哈"],
+        "sadness": ["难过", "伤心", "悲伤", "沮丧", "失落", "痛苦", "哭", "泪"],
+        "anger": ["生气", "愤怒", "恼火", "烦", "讨厌", "可恶", "气愤"],
+        "fear": ["害怕", "恐惧", "担心", "紧张", "不安", "惊恐"],
+        "anxiety": ["焦虑", "烦躁", "忧虑", "压力", "纠结", "不知所措"],
+        "surprise": ["惊讶", "意外", "震惊", "没想到", "居然"],
+    }
+
     def __init__(
         self,
         model_path: Optional[str] = None,
@@ -35,46 +59,81 @@ class EmotionBERTClassifier:
     ):
         """
         初始化分类器
-
-        Args:
-            model_path: 微调模型路径
-            model_name: 预训练模型名称
-            device: 运行设备
-            num_labels: 分类标签数量
         """
-        self.device = torch.device(device)
         self.num_labels = num_labels
         self.labels = self.DEFAULT_LABELS[:num_labels]
+        self.ml_available = ML_AVAILABLE
 
-        # 加载tokenizer
-        self.tokenizer = BertTokenizer.from_pretrained(model_name)
+        if ML_AVAILABLE:
+            self.device = torch.device(device)
+            self.tokenizer = BertTokenizer.from_pretrained(model_name)
 
-        # 加载模型
-        if model_path:
-            self.model = BertForSequenceClassification.from_pretrained(
-                model_path,
-                num_labels=num_labels
-            )
+            if model_path:
+                self.model = BertForSequenceClassification.from_pretrained(
+                    model_path, num_labels=num_labels
+                )
+            else:
+                self.model = BertForSequenceClassification.from_pretrained(
+                    model_name, num_labels=num_labels
+                )
+
+            self.model.to(self.device)
+            self.model.eval()
         else:
-            self.model = BertForSequenceClassification.from_pretrained(
-                model_name,
-                num_labels=num_labels
-            )
+            logger.info("Using fallback emotion classifier (keyword-based)")
 
-        self.model.to(self.device)
-        self.model.eval()
+    def predict(self, text: str) -> Dict:
+        """预测情绪"""
+        if self.ml_available:
+            return self._predict_with_model(text)
+        else:
+            return self._predict_with_keywords(text)
 
-    def preprocess(self, text: str, max_length: int = 128) -> Dict[str, torch.Tensor]:
-        """
-        文本预处理
+    def _predict_with_model(self, text: str) -> Dict:
+        """使用 BERT 模型预测"""
+        inputs = self._preprocess(text)
 
-        Args:
-            text: 输入文本
-            max_length: 最大长度
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            logits = outputs.logits
+            probs = torch.softmax(logits, dim=-1)[0].cpu().numpy()
+            predicted_class = np.argmax(probs)
+            predicted_emotion = self.labels[predicted_class]
+            confidence = probs[predicted_class]
+            intensity = self._calculate_intensity(probs)
+            all_scores = {label: float(prob) for label, prob in zip(self.labels, probs)}
 
-        Returns:
-            模型输入张量
-        """
+            return {
+                "emotion": predicted_emotion,
+                "intensity": intensity,
+                "confidence": float(confidence),
+                "all_scores": all_scores
+            }
+
+    def _predict_with_keywords(self, text: str) -> Dict:
+        """使用关键词匹配预测（降级方案）"""
+        scores = {}
+
+        for emotion in self.labels:
+            keywords = self.EMOTION_KEYWORDS.get(emotion, [])
+            score = sum(1 for kw in keywords if kw in text) / max(len(keywords), 1)
+            scores[emotion] = score
+
+        if all(s == 0 for s in scores.values()):
+            scores["neutral"] = 1.0
+
+        predicted_emotion = max(scores, key=scores.get)
+        confidence = scores[predicted_emotion]
+
+        return {
+            "emotion": predicted_emotion,
+            "intensity": min(confidence * 2, 1.0),
+            "confidence": confidence,
+            "all_scores": scores
+        }
+
+    def _preprocess(self, text: str, max_length: int = 128) -> Dict:
+        """文本预处理"""
         encoding = self.tokenizer(
             text,
             add_special_tokens=True,
@@ -83,99 +142,24 @@ class EmotionBERTClassifier:
             truncation=True,
             return_tensors="pt"
         )
-
         return {
             "input_ids": encoding["input_ids"].to(self.device),
             "attention_mask": encoding["attention_mask"].to(self.device)
         }
 
-    @torch.no_grad()
-    def predict(self, text: str) -> Dict:
-        """
-        预测情绪
-
-        Args:
-            text: 输入文本
-
-        Returns:
-            包含预测结果的字典
-        """
-        inputs = self.preprocess(text)
-
-        outputs = self.model(**inputs)
-        logits = outputs.logits
-
-        # 获取概率分布
-        probs = torch.softmax(logits, dim=-1)[0].cpu().numpy()
-
-        # 获取预测类别
-        predicted_class = np.argmax(probs)
-        predicted_emotion = self.labels[predicted_class]
-        confidence = probs[predicted_class]
-
-        # 计算情绪强度（基于概率分布的熵）
-        intensity = self._calculate_intensity(probs)
-
-        # 所有类别的分数
-        all_scores = {label: float(prob) for label, prob in zip(self.labels, probs)}
-
-        return {
-            "emotion": predicted_emotion,
-            "intensity": intensity,
-            "confidence": float(confidence),
-            "all_scores": all_scores
-        }
-
-    def _calculate_intensity(self, probs: np.ndarray) -> float:
-        """
-        计算情绪强度
-
-        基于概率分布的熵来计算情绪强度
-        熵越低表示模型越确定，情绪越强烈
-
-        Args:
-            probs: 概率分布
-
-        Returns:
-            情绪强度 (0-1)
-        """
-        # 计算归一化熵
+    def _calculate_intensity(self, probs) -> float:
+        """计算情绪强度"""
         max_entropy = np.log(len(probs))
         entropy = -np.sum(probs * np.log(probs + 1e-10))
-        normalized_entropy = entropy / max_entropy
-
-        # 熵越低，强度越高
-        intensity = 1 - normalized_entropy
-
-        return float(intensity)
+        return float(1 - entropy / max_entropy)
 
     def predict_batch(self, texts: List[str]) -> List[Dict]:
-        """
-        批量预测
-
-        Args:
-            texts: 文本列表
-
-        Returns:
-            预测结果列表
-        """
+        """批量预测"""
         return [self.predict(text) for text in texts]
 
-    def fine_tune(
-        self,
-        train_data: List[Tuple[str, int]],
-        epochs: int = 3,
-        batch_size: int = 16,
-        learning_rate: float = 2e-5
-    ):
-        """
-        微调模型
-
-        Args:
-            train_data: 训练数据 [(text, label), ...]
-            epochs: 训练轮数
-            batch_size: 批量大小
-            learning_rate: 学习率
-        """
-        # TODO: 实现微调逻辑
-        pass
+    def fine_tune(self, train_data: List[Tuple[str, int]], epochs: int = 3,
+                  batch_size: int = 16, learning_rate: float = 2e-5):
+        """微调模型"""
+        if not self.ml_available:
+            logger.warning("Fine-tuning not available without ML libraries")
+            return
