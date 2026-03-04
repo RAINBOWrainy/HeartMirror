@@ -41,6 +41,17 @@ def get_database_url():
     return url
 
 
+def get_ssl_context():
+    """
+    创建 SSL 上下文，用于 Render PostgreSQL 的自签名证书
+    """
+    ssl_context = ssl.create_default_context()
+    # 禁用证书验证（Render 使用自签名证书）
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    return ssl_context
+
+
 def get_engine_args():
     """获取引擎参数"""
     url = get_database_url()
@@ -54,9 +65,9 @@ def get_engine_args():
         args["pool_size"] = 5
         args["max_overflow"] = 10
         # Render PostgreSQL 使用自签名证书
-        # asyncpg 需要 ssl=True 或 ssl=SSLContext
+        # 创建不验证证书的 SSL 上下文
         args["connect_args"] = {
-            "ssl": True  # 接受自签名证书
+            "ssl": get_ssl_context()
         }
     else:
         # SQLite 不支持这些参数
