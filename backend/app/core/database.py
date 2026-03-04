@@ -2,10 +2,13 @@
 Database Configuration
 PostgreSQL + SQLAlchemy Async Setup
 """
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def get_database_url():
@@ -18,6 +21,7 @@ def get_database_url():
 
     if not url:
         # 如果没有配置数据库 URL，使用 SQLite
+        logger.info("No DATABASE_URL configured, using SQLite")
         return "sqlite+aiosqlite:///./heartmirror.db"
 
     # 转换 Railway 提供的 postgres:// 为 asyncpg 格式
@@ -26,17 +30,33 @@ def get_database_url():
     elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+    logger.info(f"Database URL scheme: {url.split('://')[0]}")
     return url
 
 
+def get_engine_args():
+    """获取引擎参数"""
+    url = get_database_url()
+    args = {
+        "echo": settings.DEBUG,
+    }
+
+    # PostgreSQL 特定配置
+    if "postgresql" in url:
+        args["pool_pre_ping"] = True
+        args["pool_size"] = 5
+        args["max_overflow"] = 10
+        # Render PostgreSQL 需要 SSL
+        args["connect_args"] = {"ssl": "require"}
+    else:
+        # SQLite 不支持这些参数
+        args["pool_pre_ping"] = False
+
+    return args
+
+
 # 创建异步引擎
-async_engine = create_async_engine(
-    get_database_url(),
-    echo=settings.DEBUG,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-)
+async_engine = create_async_engine(get_database_url(), **get_engine_args())
 
 # 创建异步会话工厂
 async_session_maker = async_sessionmaker(

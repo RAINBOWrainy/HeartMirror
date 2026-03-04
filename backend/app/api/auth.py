@@ -4,6 +4,8 @@ Authentication API Routes
 """
 from datetime import datetime, timezone
 from typing import Annotated
+import logging
+import traceback
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -26,6 +28,7 @@ from app.schemas.user import (
     TokenResponse,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 security = HTTPBearer()
 
@@ -84,29 +87,38 @@ async def register(
     - 创建匿名账号
     - 自动生成匿名ID
     """
-    # 检查匿名ID是否已存在
-    result = await db.execute(
-        select(User).where(User.anonymous_id == user_data.anonymous_id)
-    )
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该匿名ID已被使用",
+    try:
+        # 检查匿名ID是否已存在
+        result = await db.execute(
+            select(User).where(User.anonymous_id == user_data.anonymous_id)
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该匿名ID已被使用",
+            )
+
+        # 创建用户
+        user = User(
+            anonymous_id=user_data.anonymous_id,
+            password_hash=get_password_hash(user_data.password),
+            consent_given=user_data.consent_given,
+            disclaimer_accepted=user_data.disclaimer_accepted,
         )
 
-    # 创建用户
-    user = User(
-        anonymous_id=user_data.anonymous_id,
-        password_hash=get_password_hash(user_data.password),
-        consent_given=user_data.consent_given,
-        disclaimer_accepted=user_data.disclaimer_accepted,
-    )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
 
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
-    return user
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"注册失败: {str(e)}",
+        )
 
 
 @router.post("/login", response_model=TokenResponse)
