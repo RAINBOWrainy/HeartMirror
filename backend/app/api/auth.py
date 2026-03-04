@@ -88,36 +88,46 @@ async def register(
     - 自动生成匿名ID
     """
     try:
+        logger.info(f"Registration attempt for anonymous_id: {user_data.anonymous_id}")
+
         # 检查匿名ID是否已存在
         result = await db.execute(
             select(User).where(User.anonymous_id == user_data.anonymous_id)
         )
         if result.scalar_one_or_none():
+            logger.warning(f"Anonymous ID already exists: {user_data.anonymous_id}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="该匿名ID已被使用",
             )
 
         # 创建用户
+        logger.info("Creating new user...")
+        password_hash = get_password_hash(user_data.password)
+        logger.info("Password hash generated")
+
         user = User(
             anonymous_id=user_data.anonymous_id,
-            password_hash=get_password_hash(user_data.password),
+            password_hash=password_hash,
             consent_given=user_data.consent_given,
             disclaimer_accepted=user_data.disclaimer_accepted,
         )
 
         db.add(user)
+        logger.info("User added to session, committing...")
         await db.commit()
+        logger.info("Commit successful, refreshing user...")
         await db.refresh(user)
+        logger.info(f"User created successfully: {user.id}")
 
         return user
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Registration failed: {e}\n{traceback.format_exc()}")
+        logger.error(f"Registration failed: {type(e).__name__}: {e}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"注册失败: {str(e)}",
+            detail=f"注册失败: {type(e).__name__}: {str(e)}",
         )
 
 

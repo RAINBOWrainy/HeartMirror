@@ -76,8 +76,13 @@ class Base(DeclarativeBase):
 
 async def init_database():
     """初始化数据库 - 创建所有表"""
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("✅ Database tables created successfully")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+        raise
 
 
 async def close_database():
