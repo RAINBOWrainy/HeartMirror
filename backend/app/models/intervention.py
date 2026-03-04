@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     Float,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -55,6 +56,7 @@ class InterventionPlan(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
@@ -174,6 +176,7 @@ class InterventionSession(Base):
 
     plan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("intervention_plans.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )

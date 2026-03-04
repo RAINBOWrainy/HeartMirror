@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -49,6 +50,7 @@ class ChatSession(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
@@ -153,6 +155,7 @@ class ChatMessage(Base):
 
     session_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
