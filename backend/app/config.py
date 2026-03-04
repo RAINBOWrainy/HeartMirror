@@ -81,8 +81,13 @@ class Settings(BaseSettings):
         cors_env = os.environ.get("CORS_ORIGINS", "")
         if cors_env:
             return parse_cors_origins(cors_env)
-        # 默认值
-        return ["http://localhost:5173", "http://localhost:3000"]
+        # 默认值 - 包含 GitHub Pages
+        return [
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "https://rainbowrainy.github.io",
+            "https://heartmirror-demo.vercel.app",
+        ]
 
 
 @lru_cache()

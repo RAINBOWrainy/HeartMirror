@@ -3,8 +3,10 @@ HeartMirror FastAPI Application Entry Point
 """
 from contextlib import asynccontextmanager
 from typing import List
+import logging
+import traceback
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
@@ -16,6 +18,10 @@ from app.core.redis_client import close_redis, init_redis
 
 # 导入API路由
 from app.api import auth, chat, emotion, diary, dashboard, crisis
+
+
+# 配置标准 logging
+logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
