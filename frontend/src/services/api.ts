@@ -31,8 +31,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // 清除当前状态，刷新页面触发自动重新登录
       useAuthStore.getState().logout()
-      window.location.href = '/login'
+      window.location.reload()
     }
     return Promise.reject(error)
   }
