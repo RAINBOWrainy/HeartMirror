@@ -5,8 +5,9 @@ Chat API Routes
 import uuid
 import json
 from typing import Annotated, List, Optional, Dict
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,7 @@ from app.schemas.chat import (
     ChatMessageStream,
 )
 from app.agents.orchestrator import AgentOrchestrator
+from app.core.security import verify_token
 
 router = APIRouter()
 
@@ -282,12 +284,24 @@ async def delete_session(
 async def websocket_endpoint(
     websocket: WebSocket,
     session_id: str,
+    token: Optional[str] = Query(None),
 ):
     """
     WebSocket实时对话端点
 
     提供实时双向通信，支持流式消息传输
+
+    认证方式：通过 query 参数传递 token
+    例如：/ws/{session_id}?token=xxx
     """
+    # 验证 token
+    user_id = None
+    if token:
+        payload = verify_token(token)
+        if payload:
+            user_id = payload.get("sub")
+
+    # 接受连接（即使没有认证也允许连接，但会标记为匿名用户）
     await manager.connect(websocket, session_id)
 
     try:
@@ -303,7 +317,6 @@ async def websocket_endpoint(
             try:
                 message = json.loads(data)
                 user_input = message.get("content", "")
-                user_id = message.get("user_id")
 
                 if not user_input:
                     await websocket.send_json({
@@ -318,10 +331,11 @@ async def websocket_endpoint(
                     "content": ""
                 })
 
-                # 构建会话上下文
+                # 构建会话上下文 - 使用 token 验证的 user_id
                 session_context = {
                     "session_id": session_id,
-                    "user_id": user_id,
+                    "user_id": user_id,  # 使用从 token 获取的 user_id
+                    "authenticated": user_id is not None,
                 }
 
                 # 调用Agent协调器处理消息

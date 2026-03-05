@@ -3,6 +3,7 @@ Emotion API Routes
 情绪接口
 """
 import uuid
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, List, Optional
 
@@ -15,8 +16,26 @@ from app.api.auth import get_current_user
 from app.dependencies import get_db
 from app.models.emotion import EmotionRecord, EmotionType
 from app.models.user import User
+from app.agents.emotion_agent.agent import EmotionAgent
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# 全局情绪识别Agent实例
+_emotion_agent: Optional[EmotionAgent] = None
+
+
+def get_emotion_agent() -> EmotionAgent:
+    """获取情绪识别Agent单例"""
+    global _emotion_agent
+    if _emotion_agent is None:
+        try:
+            _emotion_agent = EmotionAgent()
+            logger.info("EmotionAgent initialized successfully")
+        except Exception as e:
+            logger.warning(f"Failed to initialize EmotionAgent: {e}")
+            _emotion_agent = None
+    return _emotion_agent
 
 
 class EmotionRecordCreate(BaseModel):
@@ -197,12 +216,29 @@ async def analyze_text_emotion(
 
     调用情绪识别Agent分析文本中的情绪
     """
-    # TODO: 调用情绪识别Agent
-    # 这里返回模拟结果
+    try:
+        agent = get_emotion_agent()
+        if agent is not None:
+            result = await agent.process(input_text=text)
+
+            # 从结果中提取情绪信息
+            metadata = result.metadata or {}
+            return {
+                "primary_emotion": result.emotion_detected or "neutral",
+                "intensity": metadata.get("intensity", 0.5),
+                "confidence": metadata.get("confidence", 0.0),
+                "emotion_scores": metadata.get("all_scores", {}),
+                "is_crisis_indicator": metadata.get("is_crisis_indicator", False),
+                "risk_level": result.risk_level or "green",
+            }
+    except Exception as e:
+        logger.warning(f"Emotion analysis failed: {e}")
+
+    # 降级：返回默认结果
     return {
         "primary_emotion": "neutral",
         "intensity": 0.5,
-        "confidence": 0.85,
+        "confidence": 0.0,
         "emotion_scores": {
             "joy": 0.1,
             "sadness": 0.15,
@@ -210,4 +246,6 @@ async def analyze_text_emotion(
             "fear": 0.1,
             "neutral": 0.6,
         },
+        "is_crisis_indicator": False,
+        "risk_level": "green",
     }

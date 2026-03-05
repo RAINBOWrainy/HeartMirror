@@ -36,7 +36,7 @@ interface UseWebSocketReturn {
   reconnect: () => void
 }
 
-const getWebSocketUrl = (sessionId: string): string => {
+const getWebSocketUrl = (sessionId: string, token?: string): string => {
   // 从环境变量获取 API URL
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -44,7 +44,13 @@ const getWebSocketUrl = (sessionId: string): string => {
   const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws'
   const wsHost = apiUrl.replace(/^https?:\/\//, '')
 
-  return `${wsProtocol}://${wsHost}/chat/ws/${sessionId}`
+  // 构建 URL，如果有 token 则添加到 query 参数
+  let url = `${wsProtocol}://${wsHost}/chat/ws/${sessionId}`
+  if (token) {
+    url += `?token=${encodeURIComponent(token)}`
+  }
+
+  return url
 }
 
 export function useWebSocket({
@@ -63,7 +69,7 @@ export function useWebSocket({
   const reconnectCountRef = useRef(0)
   const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const { user } = useAuthStore()
+  const { user, token } = useAuthStore()
 
   // 清理心跳定时器
   const clearHeartbeat = useCallback(() => {
@@ -94,7 +100,7 @@ export function useWebSocket({
 
     setStatus('connecting')
 
-    const wsUrl = getWebSocketUrl(sessionId)
+    const wsUrl = getWebSocketUrl(sessionId, token || undefined)
     const socket = new WebSocket(wsUrl)
     socketRef.current = socket
 
@@ -146,7 +152,7 @@ export function useWebSocket({
         }, reconnectInterval)
       }
     }
-  }, [sessionId, onConnect, onDisconnect, onMessage, onTyping, onError, reconnectAttempts, reconnectInterval, startHeartbeat, clearHeartbeat])
+  }, [sessionId, token, onConnect, onDisconnect, onMessage, onTyping, onError, reconnectAttempts, reconnectInterval, startHeartbeat, clearHeartbeat])
 
   // 发送消息
   const send = useCallback((content: string) => {
