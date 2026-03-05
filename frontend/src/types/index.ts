@@ -48,10 +48,10 @@ export interface ChatSession {
   id: string
   title?: string
   status: 'active' | 'archived' | 'deleted'
-  current_stage: string
-  message_count: number
-  started_at: string
-  last_message_at?: string
+  currentStage: string
+  messageCount: number
+  startedAt: Date
+  lastMessageAt?: Date
   messages: ChatMessage[]
 }
 
@@ -59,9 +59,22 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  emotion_detected?: string
-  emotion_intensity?: number
-  created_at: string
+  emotion?: string
+  emotionIntensity?: number
+  timestamp: Date
+}
+
+// 前端使用的消息类型（与 ChatMessage 兼容）
+export type Message = ChatMessage
+
+// 前端使用的会话类型
+export interface ChatSessionState {
+  id: string
+  title?: string
+  messages: Message[]
+  currentStage: string
+  createdAt: Date
+  lastMessageAt?: Date
 }
 
 // 日记相关类型

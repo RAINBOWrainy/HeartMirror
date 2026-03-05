@@ -5,24 +5,13 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { Message, ChatSessionState } from '../types'
 
-export interface Message {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  emotion?: string
-  emotionIntensity?: number
-  timestamp: Date
-}
+// 重新导出类型以保持向后兼容
+export type { Message, ChatSessionState } from '../types'
 
-export interface ChatSession {
-  id: string
-  title?: string
-  messages: Message[]
-  currentStage: string
-  createdAt: Date
-  lastMessageAt?: Date
-}
+// 导出 ChatSession 类型别名
+export type ChatSession = ChatSessionState
 
 interface ChatState {
   currentSession: ChatSession | null

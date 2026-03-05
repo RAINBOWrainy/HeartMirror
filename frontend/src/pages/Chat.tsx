@@ -4,22 +4,22 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { Card, Alert, message, Modal, Typography, Button, Tag, Space, Badge } from 'antd'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Card, Alert, message, Tag, Space, Badge, Button } from 'antd'
+import { useParams } from 'react-router-dom'
 import { WifiOutlined, DisconnectOutlined, ReloadOutlined, CloudSyncOutlined } from '@ant-design/icons'
-import { useChatStore, Message } from '../stores/chatStore'
+import { useChatStore } from '../stores/chatStore'
+import { Message } from '../types'
 import { chatApi } from '../services/api'
 import { useWebSocket, WebSocketStatus } from '../hooks/useWebSocket'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useMessageQueue } from '../hooks/useMessageQueue'
 import { MessageList, ChatInput } from '../components/Chat'
-
-const { Paragraph } = Typography
+import { useCrisisAlert } from '../components/common/CrisisAlert'
 
 const Chat: React.FC = () => {
   const { sessionId } = useParams()
-  const navigate = useNavigate()
   const { currentSession, addMessage, isLoading, setLoading } = useChatStore()
+  const { showAlert: showCrisisAlert } = useCrisisAlert()
   const [useWebSocketMode, setUseWebSocketMode] = useState(true)
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
 
@@ -63,22 +63,9 @@ const Chat: React.FC = () => {
       addMessage(aiMsg)
 
       // 高风险情绪提示
-      if (data.risk_level === 'red' || data.risk_level === 'orange') {
-        Modal.warning({
-          title: '情绪关注',
-          content: (
-            <div>
-              <Paragraph>我们检测到您可能正在经历强烈的情绪。</Paragraph>
-              <Paragraph>如果您感到困扰，请随时查看我们的危机支持页面，或拨打心理援助热线。</Paragraph>
-              <Button type="primary" onClick={() => navigate('/crisis')}>
-                查看危机支持
-              </Button>
-            </div>
-          ),
-        })
-      }
+      showCrisisAlert({ riskLevel: data.risk_level })
     }
-  }, [addMessage, setLoading, navigate])
+  }, [addMessage, setLoading, showCrisisAlert])
 
   // WebSocket 连接
   const {
@@ -171,20 +158,8 @@ const Chat: React.FC = () => {
       }
       addMessage(aiMsg)
 
-      if (response.data.emotion_intensity >= 0.8) {
-        Modal.warning({
-          title: '情绪关注',
-          content: (
-            <div>
-              <Paragraph>我们检测到您可能正在经历强烈的情绪。</Paragraph>
-              <Paragraph>如果您感到困扰，请随时查看我们的危机支持页面，或拨打心理援助热线。</Paragraph>
-              <Button type="primary" onClick={() => navigate('/crisis')}>
-                查看危机支持
-              </Button>
-            </div>
-          ),
-        })
-      }
+      // 高风险情绪提示
+      showCrisisAlert({ emotionIntensity: response.data.emotion_intensity })
     } catch (error) {
       message.error('发送消息失败，请重试')
     } finally {
