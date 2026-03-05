@@ -42,14 +42,18 @@ const getWebSocketUrl = (sessionId: string, token?: string): string => {
 
   // 转换为 WebSocket URL
   const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws'
-  const wsHost = apiUrl.replace(/^https?:\/\//, '')
+  // 移除协议前缀和 /api 后缀
+  let wsHost = apiUrl.replace(/^https?:\/\//, '')
+  // WebSocket 端点在根路径下，不是 /api 下
+  wsHost = wsHost.replace(/\/api$/, '')
 
   // 构建 URL，如果有 token 则添加到 query 参数
-  let url = `${wsProtocol}://${wsHost}/chat/ws/${sessionId}`
+  let url = `${wsProtocol}://${wsHost}/api/chat/ws/${sessionId}`
   if (token) {
     url += `?token=${encodeURIComponent(token)}`
   }
 
+  console.log('[WebSocket] Connecting to:', url)
   return url
 }
 
