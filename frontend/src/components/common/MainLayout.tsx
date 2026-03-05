@@ -34,7 +34,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [drawerVisible, setDrawerVisible] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout, isGuest, isDevMode } = useAuthStore()
+  const { user, isGuest } = useAuthStore()
   const screens = useBreakpoint()
 
   // 判断是否为移动端
@@ -98,11 +98,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   const handleUserMenuClick = (key: string) => {
     if (key === 'logout') {
-      logout()
-      // 游客模式或开发模式下留在首页
-      if (!isGuest && !isDevMode) {
-        navigate('/login')
-      }
+      // 重新加载页面，创建新的游客会话
+      window.location.reload()
     }
   }
 

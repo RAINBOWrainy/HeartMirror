@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider, Spin } from 'antd'
+import { ConfigProvider, Spin, Result, Button } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import MainLayout from './components/common/MainLayout'
@@ -9,8 +9,6 @@ import Chat from './pages/Chat'
 import Diary from './pages/Diary'
 import Dashboard from './pages/Dashboard'
 import Crisis from './pages/Crisis'
-import Login from './pages/Login'
-import Register from './pages/Register'
 import { useAuthStore } from './stores/authStore'
 import { authApi } from './services/api'
 
@@ -42,8 +40,9 @@ const basename = import.meta.env.BASE_URL || '/HeartMirror/'
 function App() {
   const { isAuthenticated, guestLogin } = useAuthStore()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // 自动游客登录 - 确保用户可以直接访问
+  // 自动游客登录 - 直接进入主界面
   useEffect(() => {
     const autoLogin = async () => {
       if (!isAuthenticated) {
@@ -52,8 +51,9 @@ function App() {
           const { access_token, user } = response.data
           guestLogin(access_token, user)
           console.log('[Auto Login] Guest session created')
-        } catch (error) {
-          console.error('[Auto Login] Failed:', error)
+        } catch (err) {
+          console.error('[Auto Login] Failed:', err)
+          setError('无法连接到服务器，请检查网络连接后刷新页面重试')
         }
       }
       setLoading(false)
@@ -62,54 +62,76 @@ function App() {
     autoLogin()
   }, [isAuthenticated, guestLogin])
 
+  // 重试登录
+  const handleRetry = () => {
+    setError(null)
+    setLoading(true)
+    window.location.reload()
+  }
+
+  // 加载中状态
   if (loading) {
     return (
       <div style={{
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100vh'
+        height: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
       }}>
         <Spin size="large" tip="正在初始化..." />
       </div>
     )
   }
 
+  // 错误状态
+  if (error) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: '#f5f5f5'
+      }}>
+        <Result
+          status="error"
+          title="初始化失败"
+          subTitle={error}
+          extra={[
+            <Button type="primary" key="retry" onClick={handleRetry}>
+              重试
+            </Button>
+          ]}
+        />
+      </div>
+    )
+  }
+
+  // 主应用 - 直接进入
   return (
     <ErrorBoundary>
       <ConfigProvider theme={themeConfig} locale={zhCN}>
         <BrowserRouter basename={basename}>
           <Routes>
-            {/* 登录/注册路由 */}
-            <Route
-              path="/login"
-              element={!isAuthenticated ? <Login /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/register"
-              element={!isAuthenticated ? <Register /> : <Navigate to="/" />}
-            />
-
-            {/* 主应用路由 */}
+            {/* 主应用路由 - 无需登录 */}
             <Route
               path="/"
               element={
-                isAuthenticated ? (
-                  <MainLayout>
-                    <Routes>
-                      <Route index element={<Home />} />
-                      <Route path="chat" element={<Chat />} />
-                      <Route path="chat/:sessionId" element={<Chat />} />
-                      <Route path="diary" element={<Diary />} />
-                      <Route path="dashboard" element={<Dashboard />} />
-                      <Route path="crisis" element={<Crisis />} />
-                    </Routes>
-                  </MainLayout>
-                ) : (
-                  <Navigate to="/login" />
-                )
+                <MainLayout>
+                  <Routes>
+                    <Route index element={<Home />} />
+                    <Route path="chat" element={<Chat />} />
+                    <Route path="chat/:sessionId" element={<Chat />} />
+                    <Route path="diary" element={<Diary />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="crisis" element={<Crisis />} />
+                  </Routes>
+                </MainLayout>
               }
             />
+            {/* 其他所有路径重定向到首页 */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </ConfigProvider>

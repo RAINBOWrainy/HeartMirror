@@ -1,16 +1,14 @@
 import React from 'react'
-import { Alert, Button, Space, Typography } from 'antd'
-import { WarningOutlined, UserAddOutlined } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
+import { Alert, Space, Typography } from 'antd'
+import { InfoCircleOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
 interface GuestModeBannerProps {
   guestExpiresAt?: string
-  onRegister?: () => void
 }
 
-const GuestModeBanner: React.FC<GuestModeBannerProps> = ({ guestExpiresAt, onRegister }) => {
+const GuestModeBanner: React.FC<GuestModeBannerProps> = ({ guestExpiresAt }) => {
   // 计算剩余时间
   const getRemainingTime = () => {
     if (!guestExpiresAt) return '24小时'
@@ -32,27 +30,13 @@ const GuestModeBanner: React.FC<GuestModeBannerProps> = ({ guestExpiresAt, onReg
 
   return (
     <Alert
-      type="warning"
+      type="info"
       showIcon
-      icon={<WarningOutlined />}
+      icon={<InfoCircleOutlined />}
       message={
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Space>
-            <Text strong>游客模式</Text>
-            <Text type="secondary">剩余时间: {getRemainingTime()}</Text>
-          </Space>
-          <Space>
-            <Link to="/register">
-              <Button
-                type="link"
-                size="small"
-                icon={<UserAddOutlined />}
-                style={{ color: '#faad14', padding: 0 }}
-              >
-                注册账号保存数据
-              </Button>
-            </Link>
-          </Space>
+        <Space>
+          <Text strong>欢迎使用心镜</Text>
+          <Text type="secondary">会话有效期: {getRemainingTime()}</Text>
         </Space>
       }
       style={{
