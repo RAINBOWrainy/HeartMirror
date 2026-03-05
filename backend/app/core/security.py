@@ -22,7 +22,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password: str) -> str:
     """生成密码哈希值"""
-    return pwd_context.hash(password)
+    # bcrypt 有 72 字节的限制，截断密码以确保兼容性
+    password_bytes = password.encode('utf-8')[:72]
+    return pwd_context.hash(password_bytes.decode('utf-8'))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
