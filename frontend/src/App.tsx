@@ -182,7 +182,6 @@ function App() {
         )}
         <BrowserRouter basename={basename}>
           <Routes>
-            {/* 主应用路由 - 无需登录 */}
             <Route
               path="/"
               element={
@@ -195,13 +194,12 @@ function App() {
                       <Route path="diary" element={<Diary />} />
                       <Route path="dashboard" element={<Dashboard />} />
                       <Route path="crisis" element={<Crisis />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>
                 </MainLayout>
               }
             />
-            {/* 其他所有路径重定向到首页 */}
-            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </ConfigProvider>
