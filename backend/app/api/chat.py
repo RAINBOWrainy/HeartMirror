@@ -134,6 +134,8 @@ async def get_session(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """获取对话会话详情"""
+    from app.core.security import decrypt_data
+
     result = await db.execute(
         select(ChatSession)
         .where(ChatSession.id == session_id)
@@ -148,7 +150,35 @@ async def get_session(
             detail="会话不存在",
         )
 
-    return session
+    # 构建响应，解密消息内容
+    messages = []
+    for msg in session.messages:
+        content = ""
+        try:
+            content = decrypt_data(msg.encrypted_content)
+        except Exception:
+            content = "[内容解密失败]"
+
+        messages.append({
+            "id": msg.id,
+            "role": msg.role.value,
+            "content": content,
+            "emotion_detected": msg.emotion_detected,
+            "emotion_intensity": msg.emotion_intensity,
+            "agent_name": msg.agent_name,
+            "created_at": msg.created_at,
+        })
+
+    return {
+        "id": session.id,
+        "title": session.title,
+        "status": session.status,
+        "current_stage": session.current_stage,
+        "message_count": session.message_count,
+        "started_at": session.started_at,
+        "last_message_at": session.last_message_at,
+        "messages": messages,
+    }
 
 
 @router.post("/send", response_model=ChatResponse)

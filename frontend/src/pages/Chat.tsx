@@ -108,7 +108,31 @@ const Chat: React.FC = () => {
   const loadSession = async (id: string) => {
     try {
       const response = await chatApi.getSession(id)
-      // TODO: 处理加载的会话消息
+      const sessionData = response.data
+
+      // 将消息加载到当前会话
+      if (sessionData.messages && sessionData.messages.length > 0) {
+        const messages: Message[] = sessionData.messages.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          emotion: msg.emotion_detected,
+          emotionIntensity: msg.emotion_intensity,
+          timestamp: new Date(msg.created_at),
+        }))
+
+        // 更新会话到 store
+        const session = {
+          id: sessionData.id,
+          title: sessionData.title,
+          messages,
+          currentStage: sessionData.current_stage,
+          createdAt: new Date(sessionData.started_at),
+          lastMessageAt: sessionData.last_message_at ? new Date(sessionData.last_message_at) : undefined,
+        }
+
+        useChatStore.getState().setCurrentSession(session)
+      }
     } catch (error) {
       console.error('加载会话失败', error)
     }

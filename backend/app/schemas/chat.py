@@ -22,8 +22,10 @@ class ChatMessageResponse(BaseModel):
     """对话消息响应Schema"""
     id: UUID
     role: str
+    content: str  # 解密后的消息内容
     emotion_detected: Optional[str] = None
     emotion_intensity: Optional[float] = None
+    agent_name: Optional[str] = None
     created_at: datetime
 
     class Config:

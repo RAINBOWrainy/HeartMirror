@@ -27,6 +27,13 @@ class DiaryCreate(BaseModel):
     tags: Optional[List[str]] = None
 
 
+class DiaryUpdate(BaseModel):
+    """更新日记请求"""
+    content: Optional[str] = None
+    mood: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
 class DiaryResponse(BaseModel):
     """日记响应"""
     id: uuid.UUID
@@ -195,3 +202,67 @@ async def delete_diary(
     await db.commit()
 
     return {"message": "日记已删除"}
+
+
+@router.put("/{diary_id}", response_model=DiaryDetailResponse)
+async def update_diary(
+    diary_id: uuid.UUID,
+    data: DiaryUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    更新日记
+
+    - 支持更新内容、心情和标签
+    - 如果更新内容，会重新加密存储
+    """
+    result = await db.execute(
+        select(EmotionRecord)
+        .where(EmotionRecord.id == diary_id)
+        .where(EmotionRecord.user_id == current_user.id)
+        .where(EmotionRecord.is_diary == True)
+    )
+    record = result.scalar_one_or_none()
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="日记不存在",
+        )
+
+    # 更新内容
+    if data.content is not None:
+        record.encrypted_text = encrypt_data(data.content)
+
+    # 更新心情/情绪
+    if data.mood is not None:
+        try:
+            record.primary_emotion = EmotionType(data.mood)
+        except ValueError:
+            pass  # 忽略无效的情绪值
+
+    # 更新标签
+    if data.tags is not None:
+        record.context_tags = data.tags
+
+    await db.commit()
+    await db.refresh(record)
+
+    # 解密内容用于返回
+    content = ""
+    if record.encrypted_text:
+        try:
+            content = decrypt_data(record.encrypted_text)
+        except Exception:
+            content = "[内容解密失败]"
+
+    return DiaryDetailResponse(
+        id=record.id,
+        mood=record.primary_emotion.value,
+        tags=record.context_tags,
+        emotion=record.primary_emotion.value,
+        emotion_intensity=record.intensity,
+        created_at=record.recorded_at,
+        content=content,
+    )

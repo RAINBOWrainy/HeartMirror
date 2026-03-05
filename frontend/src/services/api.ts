@@ -87,6 +87,8 @@ export const diaryApi = {
     api.get('/diary', { params }),
   get: (diaryId: string) =>
     api.get(`/diary/${diaryId}`),
+  update: (diaryId: string, data: { content?: string; mood?: string; tags?: string[] }) =>
+    api.put(`/diary/${diaryId}`, data),
   delete: (diaryId: string) =>
     api.delete(`/diary/${diaryId}`),
 }

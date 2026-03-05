@@ -30,8 +30,11 @@ const moodOptions = [
 
 const Diary: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
   const [selectedDiary, setSelectedDiary] = useState<DiaryItem | null>(null)
+  const [editingDiary, setEditingDiary] = useState<DiaryItem | null>(null)
 
   // 获取日记列表
   const { data: diaries, loading, refresh } = useRequest(() => diaryApi.list())
@@ -49,6 +52,24 @@ const Diary: React.FC = () => {
       },
       onError: () => {
         message.error('创建失败，请重试')
+      },
+    }
+  )
+
+  // 更新日记
+  const { run: updateDiary, loading: updating } = useRequest(
+    (id, values) => diaryApi.update(id, values),
+    {
+      manual: true,
+      onSuccess: () => {
+        message.success('日记更新成功')
+        setIsEditModalOpen(false)
+        editForm.resetFields()
+        setEditingDiary(null)
+        refresh()
+      },
+      onError: () => {
+        message.error('更新失败，请重试')
       },
     }
   )
@@ -88,6 +109,28 @@ const Diary: React.FC = () => {
       mood: values.mood,
       tags: values.tags,
     })
+  }
+
+  // 打开编辑弹窗
+  const handleEdit = (diary: DiaryItem) => {
+    setEditingDiary(diary)
+    editForm.setFieldsValue({
+      mood: diary.mood,
+      tags: diary.tags,
+      content: diary.content,
+    })
+    setIsEditModalOpen(true)
+  }
+
+  // 提交编辑
+  const handleEditSubmit = (values: any) => {
+    if (editingDiary) {
+      updateDiary(editingDiary.id, {
+        content: values.content,
+        mood: values.mood,
+        tags: values.tags,
+      })
+    }
   }
 
   const getMoodLabel = (mood: string) => {
@@ -132,15 +175,28 @@ const Diary: React.FC = () => {
                   hoverable
                   onClick={() => viewDiary(diary.id)}
                   extra={
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(diary.id)
-                      }}
-                    />
+                    <Space>
+                      <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // 先获取详情再编辑
+                          diaryApi.get(diary.id).then(res => {
+                            handleEdit(res.data)
+                          })
+                        }}
+                      />
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(diary.id)
+                        }}
+                      />
+                    </Space>
                   }
                 >
                   <Space>
@@ -222,7 +278,22 @@ const Diary: React.FC = () => {
         title="日记详情"
         open={!!selectedDiary}
         onCancel={() => setSelectedDiary(null)}
-        footer={null}
+        footer={
+          <Space>
+            <Button onClick={() => setSelectedDiary(null)}>关闭</Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                if (selectedDiary) {
+                  setSelectedDiary(null)
+                  handleEdit(selectedDiary)
+                }
+              }}
+            >
+              编辑
+            </Button>
+          </Space>
+        }
       >
         {selectedDiary && (
           <div>
@@ -246,6 +317,68 @@ const Diary: React.FC = () => {
             </Paragraph>
           </div>
         )}
+      </Modal>
+
+      {/* 编辑日记弹窗 */}
+      <Modal
+        title="编辑日记"
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false)
+          setEditingDiary(null)
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit}>
+          <Form.Item
+            name="mood"
+            label="心情"
+            rules={[{ required: true, message: '请选择心情' }]}
+          >
+            <Select placeholder="选择心情">
+              {moodOptions.map((opt) => (
+                <Option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="tags" label="标签">
+            <Select mode="tags" placeholder="添加标签">
+              <Option value="工作">工作</Option>
+              <Option value="学习">学习</Option>
+              <Option value="人际关系">人际关系</Option>
+              <Option value="家庭">家庭</Option>
+              <Option value="健康">健康</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="content"
+            label="日记内容"
+            rules={[{ required: true, message: '请输入日记内容' }]}
+          >
+            <TextArea
+              rows={6}
+              placeholder="记录今天发生了什么，你的感受如何..."
+              showCount
+              maxLength={2000}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Button type="primary" htmlType="submit" loading={updating}>
+                保存修改
+              </Button>
+              <Button onClick={() => {
+                setIsEditModalOpen(false)
+                setEditingDiary(null)
+              }}>
+                取消
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )
