@@ -28,7 +28,7 @@ services:
       - key: CORS_ORIGINS
         value: '["http://localhost:5173","http://localhost:3000","https://rainbowrainy.github.io"]'
       - key: OPENROUTER_API_KEY
-        value: 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
+        sync: false
       - key: OPENROUTER_BASE_URL
         value: https://openrouter.ai/api/v1
       - key: LLM_MODEL
