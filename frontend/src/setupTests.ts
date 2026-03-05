@@ -40,9 +40,21 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 }))
 
 // Mock WebSocket
-global.WebSocket = vi.fn().mockImplementation(() => ({
-  send: vi.fn(),
-  close: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-}))
+class MockWebSocket {
+  static CONNECTING = 0
+  static OPEN = 1
+  static CLOSING = 2
+  static CLOSED = 3
+
+  CONNECTING = 0
+  OPEN = 1
+  CLOSING = 2
+  CLOSED = 3
+
+  send = vi.fn()
+  close = vi.fn()
+  addEventListener = vi.fn()
+  removeEventListener = vi.fn()
+}
+
+global.WebSocket = MockWebSocket as unknown as typeof WebSocket
