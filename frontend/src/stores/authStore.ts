@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 interface User {
   id: string
@@ -15,9 +15,11 @@ interface AuthState {
   user: User | null
   isAuthenticated: boolean
   isGuest: boolean
+  _hasHydrated: boolean
   setAuth: (token: string, user: User) => void
   logout: () => void
   guestLogin: (token: string, user: User) => void
+  setHasHydrated: (state: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -27,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isGuest: false,
+      _hasHydrated: false,
       setAuth: (token, user) =>
         set({
           token,
@@ -48,9 +51,14 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           isGuest: true,
         }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: 'heartmirror-auth',
+      storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
     }
   )
 )

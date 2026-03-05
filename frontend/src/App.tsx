@@ -77,59 +77,49 @@ const isStaticDeployment = window.location.hostname.includes('github.io') ||
                            import.meta.env.VITE_DEMO_MODE === 'true'
 
 function App() {
-  const { isAuthenticated, guestLogin } = useAuthStore()
+  const { isAuthenticated, guestLogin, _hasHydrated } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
 
-  // 自动游客登录 - 直接进入主界面
+  // 等待 zustand persist hydration 完成
   useEffect(() => {
-    const autoLogin = async () => {
-      if (!isAuthenticated) {
-        // 检查是否已有本地会话
-        const storedAuth = localStorage.getItem('heartmirror-auth')
-        if (storedAuth) {
-          setLoading(false)
-          return
-        }
+    if (!_hasHydrated) return
 
-        try {
-          const response = await authApi.guestLogin()
-          const { access_token, user } = response.data
-          guestLogin(access_token, user)
-          console.log('[Auto Login] Guest session created')
-        } catch (err) {
-          console.error('[Auto Login] Failed:', err)
+    const initApp = async () => {
+      // 如果已经认证，直接进入
+      if (isAuthenticated) {
+        setLoading(false)
+        return
+      }
 
-          // 如果是静态部署环境，启用演示模式
-          if (isStaticDeployment) {
-            console.log('[Demo Mode] Enabling demo mode for static deployment')
-            const demoUser = createDemoUser()
-            const demoToken = `demo-token-${Date.now()}`
-            guestLogin(demoToken, demoUser)
-            setIsDemoMode(true)
-            localStorage.setItem('heartmirror-auth', JSON.stringify({
-              state: {
-                token: demoToken,
-                user: demoUser,
-                isAuthenticated: true,
-                isGuest: true
-              }
-            }))
-          } else {
-            // 本地开发环境显示错误
-            setLoading(false)
-            return
-          }
-        }
+      // 静态部署环境：直接启用演示模式
+      if (isStaticDeployment) {
+        console.log('[Demo Mode] Static deployment detected, enabling demo mode')
+        const demoUser = createDemoUser()
+        const demoToken = `demo-token-${Date.now()}`
+        guestLogin(demoToken, demoUser)
+        setIsDemoMode(true)
+        setLoading(false)
+        return
+      }
+
+      // 本地开发环境：尝试连接后端
+      try {
+        const response = await authApi.guestLogin()
+        const { access_token, user } = response.data
+        guestLogin(access_token, user)
+        console.log('[Auto Login] Guest session created')
+      } catch (err) {
+        console.error('[Auto Login] Failed:', err)
       }
       setLoading(false)
     }
 
-    autoLogin()
-  }, [isAuthenticated, guestLogin])
+    initApp()
+  }, [_hasHydrated, isAuthenticated, guestLogin])
 
-  // 加载中状态
-  if (loading) {
+  // Hydration 未完成或加载中
+  if (!_hasHydrated || loading) {
     return (
       <div style={{
         display: 'flex',
