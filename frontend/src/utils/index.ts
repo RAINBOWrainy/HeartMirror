@@ -42,32 +42,49 @@ export function formatRelativeTime(date: string | Date): string {
 }
 
 /**
- * 情绪类型中文映射
+ * 情绪类型中文映射 - 16种情绪类型
  */
 export const emotionLabels: Record<string, string> = {
+  // 基础情绪（Ekman's Basic Emotions）
   joy: '喜悦',
   sadness: '悲伤',
   anger: '愤怒',
   fear: '恐惧',
-  anxiety: '焦虑',
-  neutral: '平静',
-  surprise: '惊讶',
   disgust: '厌恶',
+  surprise: '惊讶',
+  // 扩展情绪
+  anxiety: '焦虑',
+  shame: '羞耻',
+  guilt: '内疚',
+  pride: '自豪',
+  hope: '希望',
+  frustration: '挫败',
   loneliness: '孤独',
-  frustration: '挫败'
+  confusion: '困惑',
+  calm: '平静',
+  neutral: '中性'
 }
 
 /**
  * 情绪颜色映射
  */
 export const emotionColors: Record<string, string> = {
-  joy: '#gold',
-  sadness: '#blue',
-  anger: '#red',
-  fear: '#purple',
-  anxiety: '#orange',
-  neutral: '#green',
-  surprise: '#cyan'
+  joy: 'gold',
+  sadness: 'blue',
+  anger: 'red',
+  fear: 'purple',
+  disgust: 'magenta',
+  surprise: 'cyan',
+  anxiety: 'orange',
+  shame: 'volcano',
+  guilt: 'red',
+  pride: 'gold',
+  hope: 'lime',
+  frustration: 'orange',
+  loneliness: 'geekblue',
+  confusion: 'default',
+  calm: 'green',
+  neutral: 'default'
 }
 
 /**
