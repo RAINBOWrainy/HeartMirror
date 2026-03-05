@@ -135,6 +135,7 @@ const Chat: React.FC = () => {
       }
     } catch (error) {
       console.error('加载会话失败', error)
+      // 静默失败，不影响新会话创建
     }
   }
 

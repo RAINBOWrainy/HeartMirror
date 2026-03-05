@@ -21,7 +21,8 @@ const PageLoader = () => (
     justifyContent: 'center',
     alignItems: 'center',
     height: '100%',
-    minHeight: '400px'
+    minHeight: '400px',
+    background: '#f5f5f5'
   }}>
     <Spin size="large" tip="加载中..." />
   </div>

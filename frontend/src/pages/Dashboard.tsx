@@ -18,7 +18,11 @@ import { StatCard, EmotionChart, TrendChart, RiskIndicator } from '../components
 const { Title, Text } = Typography
 
 const Dashboard: React.FC = () => {
-  const { data: dashboardData, loading } = useRequest(() => dashboardApi.getDashboard())
+  const { data: dashboardData, loading, error } = useRequest(() => dashboardApi.getDashboard(), {
+    onError: (err) => {
+      console.error('获取看板数据失败', err)
+    },
+  })
 
   const overview = dashboardData?.data?.overview || {}
   const interventionStats = dashboardData?.data?.intervention_stats || {}

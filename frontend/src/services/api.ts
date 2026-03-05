@@ -31,9 +31,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // 清除当前状态，刷新页面触发自动重新登录
+      // 检查是否为静态部署环境（GitHub Pages / Vercel）
+      const isStaticDeployment = window.location.hostname.includes('github.io') ||
+                                 window.location.hostname.includes('vercel.app') ||
+                                 import.meta.env.VITE_DEMO_MODE === 'true'
+
+      // 清除当前状态
       useAuthStore.getState().logout()
-      window.location.reload()
+
+      // 静态部署环境下不刷新，让 App.tsx 的 demo mode 处理
+      if (!isStaticDeployment) {
+        window.location.reload()
+      }
     }
     return Promise.reject(error)
   }

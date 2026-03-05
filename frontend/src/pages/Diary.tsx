@@ -37,7 +37,11 @@ const Diary: React.FC = () => {
   const [editingDiary, setEditingDiary] = useState<DiaryItem | null>(null)
 
   // 获取日记列表
-  const { data: diaries, loading, refresh } = useRequest(() => diaryApi.list())
+  const { data: diaries, loading, refresh, error } = useRequest(() => diaryApi.list(), {
+    onError: (err) => {
+      console.error('获取日记列表失败', err)
+    },
+  })
 
   // 创建日记
   const { run: createDiary, loading: creating } = useRequest(
@@ -81,6 +85,10 @@ const Diary: React.FC = () => {
       message.success('删除成功')
       refresh()
     },
+    onError: (err) => {
+      console.error('删除失败', err)
+      message.error('删除失败，请重试')
+    },
   })
 
   // 确认删除
@@ -100,6 +108,10 @@ const Diary: React.FC = () => {
     manual: true,
     onSuccess: (response) => {
       setSelectedDiary(response.data)
+    },
+    onError: (err) => {
+      console.error('获取日记详情失败', err)
+      message.error('获取日记详情失败，请重试')
     },
   })
 
@@ -157,6 +169,13 @@ const Diary: React.FC = () => {
       >
         {loading ? (
           <Text>加载中...</Text>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Paragraph type="secondary">加载失败，请检查网络连接</Paragraph>
+            <Button type="primary" onClick={() => refresh()}>
+              重试
+            </Button>
+          </div>
         ) : diaries?.data?.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <Paragraph type="secondary">还没有日记记录</Paragraph>
@@ -182,9 +201,14 @@ const Diary: React.FC = () => {
                         onClick={(e) => {
                           e.stopPropagation()
                           // 先获取详情再编辑
-                          diaryApi.get(diary.id).then(res => {
-                            handleEdit(res.data)
-                          })
+                          diaryApi.get(diary.id)
+                            .then(res => {
+                              handleEdit(res.data)
+                            })
+                            .catch(err => {
+                              console.error('获取日记详情失败', err)
+                              message.error('获取日记详情失败，请重试')
+                            })
                         }}
                       />
                       <Button
