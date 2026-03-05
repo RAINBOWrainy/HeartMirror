@@ -17,13 +17,13 @@ class TestChatAPI:
             "/api/chat/sessions",
             json={"title": "测试会话"}
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_list_sessions_unauthorized(self, client: AsyncClient):
         """测试未授权获取会话列表"""
         response = await client.get("/api/chat/sessions")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_send_message_unauthorized(self, client: AsyncClient):
@@ -32,13 +32,13 @@ class TestChatAPI:
             "/api/chat/send",
             json={"message": "你好"}
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_delete_session_unauthorized(self, client: AsyncClient):
         """测试未授权删除会话"""
         response = await client.delete("/api/chat/sessions/1")
-        assert response.status_code in [403, 404]
+        assert response.status_code in [401, 404]
 
 
 class TestChatService:

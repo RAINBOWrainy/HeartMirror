@@ -6,7 +6,8 @@ from typing import List, Union
 import json
 import os
 
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def parse_cors_origins(value: str) -> List[str]:
@@ -26,6 +27,13 @@ def parse_cors_origins(value: str) -> List[str]:
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     # Application
     APP_NAME: str = "HeartMirror"
@@ -69,25 +77,20 @@ class Settings(BaseSettings):
     # Crisis Support
     CRISIS_HOTLINE: str = "400-161-9995"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    # CORS - 支持从环境变量读取
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://rainbowrainy.github.io",
+        "https://heartmirror-demo.vercel.app",
+    ]
 
-    @property
-    def CORS_ORIGINS(self) -> List[str]:
-        """获取 CORS 源列表"""
-        # 从环境变量读取
-        cors_env = os.environ.get("CORS_ORIGINS", "")
-        if cors_env:
-            return parse_cors_origins(cors_env)
-        # 默认值 - 包含 GitHub Pages
-        return [
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "https://rainbowrainy.github.io",
-            "https://heartmirror-demo.vercel.app",
-        ]
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors(cls, v):
+        if isinstance(v, str):
+            return parse_cors_origins(v)
+        return v
 
 
 @lru_cache()

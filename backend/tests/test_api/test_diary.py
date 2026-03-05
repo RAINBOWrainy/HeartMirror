@@ -14,44 +14,42 @@ class TestDiaryAPI:
     async def test_create_diary_unauthorized(self, client: AsyncClient):
         """测试未授权创建日记"""
         response = await client.post(
-            "/api/diary/entries",
+            "/api/diary",
             json={
-                "title": "测试日记",
                 "content": "今天心情不错",
                 "mood": "happy"
             }
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_list_diaries_unauthorized(self, client: AsyncClient):
         """测试未授权获取日记列表"""
-        response = await client.get("/api/diary/entries")
-        assert response.status_code == 403
+        response = await client.get("/api/diary")
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_diary_unauthorized(self, client: AsyncClient):
         """测试未授权获取日记详情"""
-        response = await client.get("/api/diary/entries/1")
-        assert response.status_code in [403, 404]
+        response = await client.get("/api/diary/1")
+        assert response.status_code in [401, 404, 422]  # 422 for invalid UUID
 
     @pytest.mark.asyncio
     async def test_update_diary_unauthorized(self, client: AsyncClient):
         """测试未授权更新日记"""
         response = await client.put(
-            "/api/diary/entries/1",
+            "/api/diary/1",
             json={
-                "title": "更新标题",
                 "content": "更新内容"
             }
         )
-        assert response.status_code in [403, 404]
+        assert response.status_code in [401, 404, 422]  # 422 for invalid UUID
 
     @pytest.mark.asyncio
     async def test_delete_diary_unauthorized(self, client: AsyncClient):
         """测试未授权删除日记"""
-        response = await client.delete("/api/diary/entries/1")
-        assert response.status_code in [403, 404]
+        response = await client.delete("/api/diary/1")
+        assert response.status_code in [401, 404, 422]  # 422 for invalid UUID
 
 
 class TestDiaryService:

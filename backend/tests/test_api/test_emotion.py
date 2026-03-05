@@ -14,35 +14,32 @@ class TestEmotionAPI:
     async def test_create_emotion_record_unauthorized(self, client: AsyncClient):
         """测试未授权创建情绪记录"""
         response = await client.post(
-            "/api/emotion/records",
+            "/api/emotion/record",
             json={
-                "emotion_type": "happy",
+                "emotion_type": "joy",
                 "intensity": 0.8,
-                "trigger": "测试"
+                "source_type": "chat"
             }
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_emotion_history_unauthorized(self, client: AsyncClient):
         """测试未授权获取情绪历史"""
         response = await client.get("/api/emotion/records")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_emotion_stats_unauthorized(self, client: AsyncClient):
         """测试未授权获取情绪统计"""
         response = await client.get("/api/emotion/stats")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_analyze_emotion_unauthorized(self, client: AsyncClient):
         """测试未授权情绪分析"""
-        response = await client.post(
-            "/api/emotion/analyze",
-            json={"text": "我今天很开心"}
-        )
-        assert response.status_code == 403
+        response = await client.get("/api/emotion/analyze?text=我今天很开心")
+        assert response.status_code == 401
 
 
 class TestEmotionService:

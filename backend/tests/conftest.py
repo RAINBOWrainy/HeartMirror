@@ -5,7 +5,7 @@ Pytest Configuration
 import asyncio
 import pytest
 from typing import AsyncGenerator
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 
 @pytest.fixture(scope="session")
@@ -18,9 +18,10 @@ def event_loop():
 
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
-    """创建测试客户端"""
+    """创建测试客户端（用于不需要数据库的测试）"""
     from app.main import app
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
 
