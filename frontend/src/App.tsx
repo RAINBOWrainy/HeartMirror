@@ -183,17 +183,17 @@ function App() {
         <BrowserRouter basename={basename}>
           <Routes>
             <Route
-              path="/"
+              path="/*"
               element={
                 <MainLayout>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
-                      <Route index element={<Home />} />
-                      <Route path="chat" element={<Chat />} />
-                      <Route path="chat/:sessionId" element={<Chat />} />
-                      <Route path="diary" element={<Diary />} />
-                      <Route path="dashboard" element={<Dashboard />} />
-                      <Route path="crisis" element={<Crisis />} />
+                      <Route path="/" element={<Home />} />
+                      <Route path="/chat" element={<Chat />} />
+                      <Route path="/chat/:sessionId" element={<Chat />} />
+                      <Route path="/diary" element={<Diary />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/crisis" element={<Crisis />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>
