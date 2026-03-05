@@ -33,15 +33,24 @@ class EmotionAgent(BaseAgent):
         self.classifier = None
         self.model_path = model_path
 
-        # 情绪标签映射
+        # 情绪标签映射 - 16种情绪类型
         self.emotion_labels = {
             0: "joy",        # 喜悦
             1: "sadness",    # 悲伤
             2: "anger",      # 愤怒
             3: "fear",       # 恐惧
-            4: "anxiety",    # 焦虑
-            5: "neutral",    # 中性
-            6: "surprise",   # 惊讶
+            4: "disgust",    # 厌恶
+            5: "surprise",   # 惊讶
+            6: "anxiety",    # 焦虑
+            7: "shame",      # 羞耻
+            8: "guilt",      # 内疚
+            9: "pride",      # 自豪
+            10: "hope",      # 希望
+            11: "frustration", # 挫败
+            12: "loneliness", # 孤独
+            13: "confusion", # 困惑
+            14: "calm",      # 平静
+            15: "neutral",   # 中性
         }
 
     def load_model(self, model_path: Optional[str] = None):
@@ -62,7 +71,7 @@ class EmotionAgent(BaseAgent):
     def default_system_prompt(self) -> str:
         return """你是一个专业的情绪识别助手。
 你的任务是分析用户文本中的情绪状态，识别主要情绪和情绪强度。
-你需要关注以下情绪类型：喜悦、悲伤、愤怒、恐惧、焦虑、中性、惊讶。
+你需要关注以下16种情绪类型：喜悦、悲伤、愤怒、恐惧、厌恶、惊讶、焦虑、羞耻、内疚、自豪、希望、挫败、孤独、困惑、平静、中性。
 请以专业、同理心的方式进行分析。"""
 
     async def process(
@@ -133,7 +142,7 @@ class EmotionAgent(BaseAgent):
         Returns:
             是否为危机指标
         """
-        crisis_emotions = {"fear", "anger", "anxiety"}
+        crisis_emotions = {"fear", "anger", "anxiety", "shame", "guilt", "loneliness"}
         return emotion in crisis_emotions and intensity >= 0.8
 
     def _get_risk_level(self, emotion: str, intensity: float) -> str:
@@ -147,7 +156,10 @@ class EmotionAgent(BaseAgent):
         Returns:
             风险等级 (green/yellow/orange/red)
         """
-        negative_emotions = {"sadness", "anger", "fear", "anxiety"}
+        negative_emotions = {
+            "sadness", "anger", "fear", "anxiety",
+            "shame", "guilt", "frustration", "loneliness"
+        }
 
         if emotion not in negative_emotions:
             return "green"
@@ -185,9 +197,18 @@ class EmotionAgent(BaseAgent):
             "sadness": "悲伤",
             "anger": "愤怒",
             "fear": "恐惧",
+            "disgust": "厌恶",
+            "surprise": "惊讶",
             "anxiety": "焦虑",
-            "neutral": "平静",
-            "surprise": "惊讶"
+            "shame": "羞耻",
+            "guilt": "内疚",
+            "pride": "自豪",
+            "hope": "希望",
+            "frustration": "挫败",
+            "loneliness": "孤独",
+            "confusion": "困惑",
+            "calm": "平静",
+            "neutral": "中性"
         }
 
         intensity_desc = "轻微" if intensity < 0.3 else "中等" if intensity < 0.6 else "强烈"
