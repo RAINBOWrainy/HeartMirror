@@ -1,16 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider, Spin, Result, Button } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import MainLayout from './components/common/MainLayout'
-import Home from './pages/Home'
-import Chat from './pages/Chat'
-import Diary from './pages/Diary'
-import Dashboard from './pages/Dashboard'
-import Crisis from './pages/Crisis'
 import { useAuthStore } from './stores/authStore'
 import { authApi } from './services/api'
+
+// 路由懒加载 - 代码分割优化
+const Home = lazy(() => import('./pages/Home'))
+const Chat = lazy(() => import('./pages/Chat'))
+const Diary = lazy(() => import('./pages/Diary'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Crisis = lazy(() => import('./pages/Crisis'))
+
+// 加载组件
+const PageLoader = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    minHeight: '400px'
+  }}>
+    <Spin size="large" tip="加载中..." />
+  </div>
+)
 
 // 主题配置
 const themeConfig = {
@@ -119,14 +134,16 @@ function App() {
               path="/"
               element={
                 <MainLayout>
-                  <Routes>
-                    <Route index element={<Home />} />
-                    <Route path="chat" element={<Chat />} />
-                    <Route path="chat/:sessionId" element={<Chat />} />
-                    <Route path="diary" element={<Diary />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="crisis" element={<Crisis />} />
-                  </Routes>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route index element={<Home />} />
+                      <Route path="chat" element={<Chat />} />
+                      <Route path="chat/:sessionId" element={<Chat />} />
+                      <Route path="diary" element={<Diary />} />
+                      <Route path="dashboard" element={<Dashboard />} />
+                      <Route path="crisis" element={<Crisis />} />
+                    </Routes>
+                  </Suspense>
                 </MainLayout>
               }
             />

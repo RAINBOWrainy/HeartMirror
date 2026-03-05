@@ -5,8 +5,10 @@ from functools import lru_cache
 from typing import List, Union
 import json
 import os
+import secrets
+import warnings
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +25,15 @@ def parse_cors_origins(value: str) -> List[str]:
     except json.JSONDecodeError:
         # 如果不是 JSON，按逗号分割
         return [origin.strip() for origin in value.split(",")]
+
+
+# 不安全的默认密钥列表
+INSECURE_KEYS = {
+    "your-secret-key-change-in-production",
+    "your-jwt-secret-key-change-in-production",
+    "heartmirror-jwt-secret-key-2024-production",
+    "",
+}
 
 
 class Settings(BaseSettings):
@@ -77,6 +88,10 @@ class Settings(BaseSettings):
     # Crisis Support
     CRISIS_HOTLINE: str = "400-161-9995"
 
+    # Rate Limiting
+    RATE_LIMIT_REQUESTS: int = 100  # 请求数
+    RATE_LIMIT_PERIOD: int = 60  # 秒
+
     # CORS - 支持从环境变量读取
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
@@ -91,6 +106,62 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return parse_cors_origins(v)
         return v
+
+    @model_validator(mode="after")
+    def validate_security_settings(self):
+        """验证安全配置"""
+        is_production = self.APP_ENV == "production"
+
+        # 检查 JWT 密钥
+        if self.JWT_SECRET_KEY in INSECURE_KEYS:
+            if is_production:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be set to a secure random value in production! "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+            else:
+                warnings.warn(
+                    "WARNING: Using insecure default JWT_SECRET_KEY. "
+                    "Set a secure key for production!",
+                    UserWarning
+                )
+
+        # 检查 SECRET_KEY
+        if self.SECRET_KEY in INSECURE_KEYS:
+            if is_production:
+                raise ValueError(
+                    "SECRET_KEY must be set to a secure random value in production!"
+                )
+            else:
+                warnings.warn(
+                    "WARNING: Using insecure default SECRET_KEY. "
+                    "Set a secure key for production!",
+                    UserWarning
+                )
+
+        # 检查加密密钥
+        if not self.ENCRYPTION_KEY or len(self.ENCRYPTION_KEY) < 32:
+            if is_production:
+                raise ValueError(
+                    "ENCRYPTION_KEY must be at least 32 characters in production!"
+                )
+            else:
+                warnings.warn(
+                    "WARNING: ENCRYPTION_KEY is not set or too short. "
+                    "Sensitive data will not be properly encrypted!",
+                    UserWarning
+                )
+
+        return self
+
+    @property
+    def is_production(self) -> bool:
+        """是否为生产环境"""
+        return self.APP_ENV == "production"
+
+    def generate_secure_key(self) -> str:
+        """生成安全的随机密钥"""
+        return secrets.token_urlsafe(32)
 
 
 @lru_cache()
