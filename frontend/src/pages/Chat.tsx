@@ -16,26 +16,11 @@ import { useMessageQueue } from '../hooks/useMessageQueue'
 import { MessageList, ChatInput } from '../components/Chat'
 import { useCrisisAlert } from '../components/common/CrisisAlert'
 
-// 检测是否为演示模式
-const isDemoMode = window.location.hostname.includes('github.io') ||
-                   window.location.hostname.includes('vercel.app') ||
-                   import.meta.env.VITE_DEMO_MODE === 'true'
-
-// 演示模式的模拟AI回复
-const demoResponses = [
-  "我理解您的感受，能和我多说说吗？",
-  "听起来您最近经历了很多，您愿意分享一下具体发生了什么吗？",
-  "我能感受到您现在的情绪，这很正常。您有什么想倾诉的吗？",
-  "感谢您愿意和我分享。您觉得是什么让您有这样的感受呢？",
-  "我在这里倾听您的声音。您能描述一下当时的情况吗？",
-  "每个人的情绪都是独特的，您的感受很重要。能多告诉我一些吗？"
-]
-
 const Chat: React.FC = () => {
   const { sessionId } = useParams()
   const { currentSession, addMessage, isLoading, setLoading } = useChatStore()
   const { showAlert: showCrisisAlert } = useCrisisAlert()
-  const [useWebSocketMode, setUseWebSocketMode] = useState(!isDemoMode)
+  const [useWebSocketMode, setUseWebSocketMode] = useState(true)
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
 
   // 离线检测
@@ -55,10 +40,7 @@ const Chat: React.FC = () => {
   useEffect(() => {
     if (sessionId) {
       setCurrentSessionId(sessionId)
-      // 演示模式下不加载会话
-      if (!isDemoMode) {
-        loadSession(sessionId)
-      }
+      loadSession(sessionId)
     } else {
       const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       setCurrentSessionId(newSessionId)
@@ -85,7 +67,7 @@ const Chat: React.FC = () => {
     }
   }, [addMessage, setLoading, showCrisisAlert])
 
-  // WebSocket 连接 - 仅在非演示模式下启用
+  // WebSocket 连接
   const {
     status: wsStatus,
     send: wsSend,
@@ -95,10 +77,7 @@ const Chat: React.FC = () => {
     onMessage: handleWebSocketMessage,
     onTyping: () => setLoading(true),
     onError: (error) => {
-      // 演示模式下不显示错误
-      if (!isDemoMode) {
-        message.error(error)
-      }
+      message.error(error)
       setUseWebSocketMode(false)
     },
     onConnect: () => {
@@ -125,8 +104,6 @@ const Chat: React.FC = () => {
 
   // 加载会话历史
   const loadSession = async (id: string) => {
-    if (isDemoMode) return // 演示模式不加载
-
     try {
       const response = await chatApi.getSession(id)
       const sessionData = response.data
@@ -155,34 +132,6 @@ const Chat: React.FC = () => {
     } catch (error) {
       console.error('加载会话失败', error)
     }
-  }
-
-  // 发送消息 - 演示模式
-  const handleSendDemo = async (userMessage: string) => {
-    if (!userMessage.trim()) return
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date(),
-    }
-    addMessage(userMsg)
-    setLoading(true)
-
-    // 模拟AI思考延迟
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000))
-
-    const aiMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: demoResponses[Math.floor(Math.random() * demoResponses.length)],
-      emotion: 'neutral',
-      emotionIntensity: 0.5,
-      timestamp: new Date(),
-    }
-    addMessage(aiMsg)
-    setLoading(false)
   }
 
   // 发送消息 - WebSocket 模式
@@ -239,12 +188,6 @@ const Chat: React.FC = () => {
 
   // 统一发送处理
   const handleSend = (userMessage: string) => {
-    // 演示模式使用模拟回复
-    if (isDemoMode) {
-      handleSendDemo(userMessage)
-      return
-    }
-
     if (!isOnline) {
       enqueue(userMessage)
       message.info('您当前离线，消息将在连接恢复后发送')
@@ -260,15 +203,6 @@ const Chat: React.FC = () => {
 
   // 连接状态指示器
   const ConnectionStatus = () => {
-    // 演示模式显示特殊状态
-    if (isDemoMode) {
-      return (
-        <Tag color="processing" icon={<WifiOutlined />}>
-          演示模式
-        </Tag>
-      )
-    }
-
     if (!isOnline) {
       return (
         <Tag color="error" icon={<DisconnectOutlined />}>
@@ -302,14 +236,14 @@ const Chat: React.FC = () => {
       {/* 免责声明和连接状态 */}
       <Space direction="vertical" style={{ marginBottom: 16, width: '100%' }}>
         <Alert
-          message={isDemoMode ? "演示模式：AI回复为模拟内容" : "请注意：这是AI辅助对话，不构成医疗诊断或治疗建议"}
-          type={isDemoMode ? "info" : "info"}
+          message="请注意：这是AI辅助对话，不构成医疗诊断或治疗建议"
+          type="info"
           showIcon
           style={{ borderRadius: 8 }}
         />
         <Space>
           <ConnectionStatus />
-          {!isDemoMode && wsStatus === 'error' && isOnline && (
+          {wsStatus === 'error' && isOnline && (
             <Button size="small" onClick={wsReconnect}>
               重新连接
             </Button>
@@ -350,8 +284,8 @@ const Chat: React.FC = () => {
       <ChatInput
         onSend={handleSend}
         loading={isLoading}
-        disabled={!isOnline && !isDemoMode}
-        placeholder={isDemoMode ? '输入您想说的话...' : (isOnline ? '输入您想说的话...' : '您当前离线，消息将在连接恢复后发送')}
+        disabled={!isOnline}
+        placeholder={isOnline ? '输入您想说的话...' : '您当前离线，消息将在连接恢复后发送'}
       />
     </div>
   )

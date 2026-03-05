@@ -1,6 +1,6 @@
 import { useEffect, useState, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider, Spin, Result, Button, Alert } from 'antd'
+import { ConfigProvider, Spin, Result, Button } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import MainLayout from './components/common/MainLayout'
@@ -53,33 +53,10 @@ const themeConfig = {
 // GitHub Pages basename配置
 const basename = import.meta.env.BASE_URL || '/HeartMirror/'
 
-// 演示模式 - 生成模拟用户
-function createDemoUser() {
-  const adjectives = ['快乐', '温暖', '阳光', '星空', '晨曦', '清风']
-  const nouns = ['小鹿', '飞鸟', '流星', '微风', '云朵', '蝴蝶']
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)]
-  const noun = nouns[Math.floor(Math.random() * nouns.length)]
-  const num = Math.floor(Math.random() * 1000)
-
-  return {
-    id: `demo-${Date.now()}`,
-    anonymous_id: `${adj}${noun}${num}`,
-    risk_level: 'green',
-    created_at: new Date().toISOString(),
-    is_guest: true,
-    guest_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-  }
-}
-
-// 检测是否为静态部署环境（GitHub Pages）
-const isStaticDeployment = window.location.hostname.includes('github.io') ||
-                           window.location.hostname.includes('vercel.app') ||
-                           import.meta.env.VITE_DEMO_MODE === 'true'
-
 function App() {
   const { isAuthenticated, guestLogin, _hasHydrated } = useAuthStore()
   const [loading, setLoading] = useState(true)
-  const [isDemoMode, setIsDemoMode] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // 等待 zustand persist hydration 完成
   useEffect(() => {
@@ -92,25 +69,15 @@ function App() {
         return
       }
 
-      // 静态部署环境：直接启用演示模式
-      if (isStaticDeployment) {
-        console.log('[Demo Mode] Static deployment detected, enabling demo mode')
-        const demoUser = createDemoUser()
-        const demoToken = `demo-token-${Date.now()}`
-        guestLogin(demoToken, demoUser)
-        setIsDemoMode(true)
-        setLoading(false)
-        return
-      }
-
-      // 本地开发环境：尝试连接后端
+      // 尝试连接后端创建游客会话
       try {
         const response = await authApi.guestLogin()
         const { access_token, user } = response.data
         guestLogin(access_token, user)
         console.log('[Auto Login] Guest session created')
-      } catch (err) {
+      } catch (err: any) {
         console.error('[Auto Login] Failed:', err)
+        setError(err.message || '无法连接到后端服务器')
       }
       setLoading(false)
     }
@@ -133,8 +100,8 @@ function App() {
     )
   }
 
-  // 本地开发环境且未认证时显示错误
-  if (!isAuthenticated && !isStaticDeployment) {
+  // 未认证时显示错误
+  if (!isAuthenticated || error) {
     return (
       <div style={{
         display: 'flex',
@@ -146,18 +113,10 @@ function App() {
         <Result
           status="error"
           title="无法连接到后端服务器"
-          subTitle="请确保后端服务正在运行（cd backend && python -m uvicorn app.main:app --reload）"
+          subTitle={error || '请确保后端服务正在运行'}
           extra={[
             <Button type="primary" key="retry" onClick={() => window.location.reload()}>
               重试
-            </Button>,
-            <Button key="demo" onClick={() => {
-              const demoUser = createDemoUser()
-              const demoToken = `demo-token-${Date.now()}`
-              guestLogin(demoToken, demoUser)
-              setIsDemoMode(true)
-            }}>
-              进入演示模式
             </Button>
           ]}
         />
@@ -165,21 +124,10 @@ function App() {
     )
   }
 
-  // 主应用 - 直接进入
+  // 主应用
   return (
     <ErrorBoundary>
       <ConfigProvider theme={themeConfig} locale={zhCN}>
-        {/* 演示模式提示 */}
-        {isDemoMode && (
-          <Alert
-            message="演示模式"
-            description="当前为演示模式，数据仅保存在本地浏览器中。如需完整功能，请部署后端服务。"
-            type="info"
-            showIcon
-            closable
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}
-          />
-        )}
         <BrowserRouter basename={basename}>
           <Routes>
             <Route

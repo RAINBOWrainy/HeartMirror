@@ -99,6 +99,9 @@ async def init_database():
     """初始化数据库 - 创建所有表"""
     try:
         async with async_engine.begin() as conn:
+            # 强制重建所有表以确保schema与模型同步
+            # 注意：这会清空数据
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         logger.info("✅ Database tables created successfully")
     except Exception as e:
