@@ -102,7 +102,27 @@ class TestLLMService:
         with patch.object(service, 'generate', AsyncMock(side_effect=Exception("API错误"))):
             result = await service.analyze_emotion("测试文本")
             assert result["primary_emotion"] == "neutral"
-            assert "LLM分析失败" in result["reasoning"]
+            # 新的降级逻辑会返回智能降级消息
+            assert "降级" in result["reasoning"] or "检测到关键词" in result["reasoning"]
+
+    @pytest.mark.asyncio
+    async def test_analyze_emotion_fallback_with_keywords(self):
+        """测试情绪分析失败时关键词降级"""
+        service = LLMService()
+
+        with patch.object(service, 'generate', AsyncMock(side_effect=Exception("API错误"))):
+            # 测试疲惫关键词降级
+            result = await service.analyze_emotion("我好累啊")
+            assert result["primary_emotion"] == "frustration"
+            assert "疲惫" in result["reasoning"] or "累" in result["reasoning"]
+
+            # 测试负面情绪关键词降级
+            result = await service.analyze_emotion("我很难过")
+            assert result["primary_emotion"] == "sadness"
+
+            # 测试正面情绪关键词降级
+            result = await service.analyze_emotion("我很开心")
+            assert result["primary_emotion"] == "joy"
 
     @pytest.mark.asyncio
     async def test_generate_questionnaire_question(self):
