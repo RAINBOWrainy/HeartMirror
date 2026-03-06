@@ -101,7 +101,7 @@ class TestLLMService:
 
         with patch.object(service, 'generate', AsyncMock(side_effect=Exception("API错误"))):
             result = await service.analyze_emotion("测试文本")
-            assert result["primary_emotion"] == "平静"
+            assert result["primary_emotion"] == "neutral"
             assert "LLM分析失败" in result["reasoning"]
 
     @pytest.mark.asyncio
