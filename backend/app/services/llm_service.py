@@ -162,27 +162,53 @@ class LLMService:
 
     async def analyze_emotion(
         self,
-        text: str
+        text: str,
+        context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        分析文本情绪（LLM辅助）
+        分析文本情绪（LLM深度分析）
+
+        采用共情式分析，不仅识别字面情绪，还理解隐含情绪
 
         Args:
             text: 待分析文本
+            context: 上下文信息（包含对话历史等）
 
         Returns:
             情绪分析结果
         """
-        system_prompt = """你是一个专业的情绪分析助手。请分析用户文本中的情绪状态。
+        system_prompt = """你是一位善于共情的情绪分析专家。请从用户的话语中理解他们真实的情绪状态。
+
+分析要点：
+1. 用户字面表达的情绪
+2. 用户隐含的情绪（如"我好累"可能暗示沮丧、挫败或无助）
+3. 情绪的强度和紧迫程度
+4. 结合对话背景理解上下文
+
 请以JSON格式返回结果，包含以下字段：
-- primary_emotion: 主要情绪（喜悦/悲伤/愤怒/恐惧/焦虑/平静/惊讶）
-- intensity: 情绪强度（0-1之间的数值）
+- primary_emotion: 主要情绪（从以下选择：joy/sadness/anger/fear/anxiety/frustration/loneliness/shame/guilt/pride/hope/surprise/confusion/calm/neutral）
+- intensity: 情绪强度（0-1之间的数值，0.1为轻微，0.5为中等，0.9为强烈）
+- confidence: 分析置信度（0-1之间的数值）
 - secondary_emotions: 次要情绪列表
 - reasoning: 简短的分析理由
+- suggested_tone: 建议的回应语调（温暖/关切/鼓励/倾听/陪伴）
 
 只返回JSON，不要有其他内容。"""
 
-        prompt = f"请分析以下文本的情绪：\n\n{text}"
+        # 构建分析提示
+        prompt_parts = [f"请分析以下用户表达的情绪：\n\n用户说："{text}""]
+
+        # 添加上下文信息
+        if context:
+            if context.get("conversation_history"):
+                recent = context["conversation_history"][-3:]
+                history_str = "\n".join([f"{h.get('role', 'user')}: {h.get('content', '')}" for h in recent])
+                prompt_parts.append(f"\n[对话背景]\n{history_str}")
+
+            if context.get("previous_emotion"):
+                prompt_parts.append(f"\n[之前检测的情绪] {context['previous_emotion']}")
+
+        prompt = "\n".join(prompt_parts)
 
         try:
             result = await self.generate(
@@ -203,15 +229,27 @@ class LLMService:
             if result.endswith("```"):
                 result = result[:-3]
 
-            return json.loads(result)
+            parsed = json.loads(result)
+
+            # 确保返回格式一致
+            return {
+                "primary_emotion": parsed.get("primary_emotion", "neutral"),
+                "intensity": parsed.get("intensity", 0.5),
+                "confidence": parsed.get("confidence", 0.5),
+                "secondary_emotions": parsed.get("secondary_emotions", []),
+                "reasoning": parsed.get("reasoning", ""),
+                "suggested_tone": parsed.get("suggested_tone", "温暖")
+            }
 
         except Exception as e:
             # 降级返回默认结果
             return {
-                "primary_emotion": "平静",
+                "primary_emotion": "neutral",
                 "intensity": 0.5,
+                "confidence": 0.3,
                 "secondary_emotions": [],
-                "reasoning": f"LLM分析失败，使用默认结果: {str(e)}"
+                "reasoning": f"LLM分析失败，使用默认结果: {str(e)}",
+                "suggested_tone": "温暖"
             }
 
     async def generate_questionnaire_question(

@@ -1,11 +1,12 @@
 """
 Risk Assessment Agent
-风险量化与分层Agent
+风险量化与分层Agent - 使用温暖关切的表达方式
 """
 from typing import Any, Dict, Optional
 from enum import Enum
 
 from app.agents.base_agent import BaseAgent, AgentResponse
+from app.core.persona import HeartMirrorPersona
 
 
 class RiskLevel(str, Enum):
@@ -20,7 +21,8 @@ class RiskAgent(BaseAgent):
     """
     风险量化Agent
 
-    基于多维度评估用户心理健康风险
+    基于多维度评估用户心理健康风险，
+    使用关切温暖的语调与用户交流
     """
 
     def __init__(self, **kwargs):
@@ -29,17 +31,23 @@ class RiskAgent(BaseAgent):
 
     @property
     def default_system_prompt(self) -> str:
-        return """你是一个专业的心理健康风险评估助手。
-你的任务是综合多维度信息评估用户的心理健康风险等级。
-你需要考虑：情绪状态、行为表现、认知功能、社交状况等因素。
-请谨慎评估，对高风险情况给予特别关注。"""
+        return HeartMirrorPersona.BASE_PERSONA
 
     async def process(
         self,
         input_text: str,
         context: Optional[Dict[str, Any]] = None
     ) -> AgentResponse:
-        """处理用户输入，评估风险"""
+        """
+        处理用户输入，评估风险
+
+        Args:
+            input_text: 用户输入
+            context: 上下文信息
+
+        Returns:
+            包含风险评估结果和关切响应的AgentResponse
+        """
         context = context or {}
 
         # 收集风险因素
@@ -54,8 +62,8 @@ class RiskAgent(BaseAgent):
             context=context
         )
 
-        # 生成评估结果
-        content = self._generate_assessment(risk_level, context)
+        # 生成关切式响应（而非机械化输出）
+        content = self._generate_caring_response(risk_level, context)
 
         return AgentResponse(
             content=content,
@@ -72,11 +80,21 @@ class RiskAgent(BaseAgent):
         intensity: float,
         context: Dict
     ) -> RiskLevel:
-        """计算风险等级"""
+        """
+        计算风险等级
+
+        Args:
+            emotion_type: 情绪类型
+            intensity: 情绪强度
+            context: 上下文信息
+
+        Returns:
+            风险等级
+        """
         score = 0.0
 
         # 情绪因素
-        negative_emotions = {"sadness", "anger", "fear", "anxiety"}
+        negative_emotions = {"sadness", "anger", "fear", "anxiety", "frustration", "loneliness"}
         if emotion_type in negative_emotions:
             score += intensity * 0.4
 
@@ -96,6 +114,14 @@ class RiskAgent(BaseAgent):
         if self_harm:
             score += 0.3
 
+        # 危机指标检测
+        crisis_keywords = ["死", "不想活", "活着没意思", "结束生命", "自杀"]
+        input_lower = context.get("input_text", "").lower()
+        for keyword in crisis_keywords:
+            if keyword in input_lower:
+                score += 0.3
+                break
+
         # 确定风险等级
         if score >= 0.7:
             return RiskLevel.RED
@@ -106,17 +132,43 @@ class RiskAgent(BaseAgent):
         else:
             return RiskLevel.GREEN
 
-    def _generate_assessment(
+    def _generate_caring_response(
         self,
         risk_level: RiskLevel,
         context: Dict
     ) -> str:
-        """生成评估结果"""
-        level_desc = {
-            RiskLevel.GREEN: "当前风险较低",
-            RiskLevel.YELLOW: "存在一定风险，建议关注",
-            RiskLevel.ORANGE: "存在较高风险，建议寻求专业帮助",
-            RiskLevel.RED: "存在高风险，强烈建议立即寻求专业帮助"
-        }
+        """
+        生成关切式响应
 
-        return f"风险评估结果：{level_desc.get(risk_level, '未知')}"
+        不再输出机械化风险评估结果，而是用温暖的语调表达关心
+
+        Args:
+            risk_level: 风险等级
+            context: 上下文信息
+
+        Returns:
+            关切式响应文本
+        """
+        emotion = context.get("emotion", {})
+        emotion_type = emotion.get("emotion", "")
+
+        # 高风险情况：提供危机资源
+        if risk_level == RiskLevel.RED:
+            return self._generate_crisis_response(emotion_type)
+
+        # 使用统一人格系统获取关切响应
+        return HeartMirrorPersona.get_risk_concern(risk_level.value)
+
+    def _generate_crisis_response(self, emotion_type: str) -> str:
+        """
+        生成危机响应
+
+        当检测到高风险时，提供温暖的支持和危机资源
+
+        Args:
+            emotion_type: 情绪类型
+
+        Returns:
+            危机响应文本
+        """
+        return HeartMirrorPersona.CRISIS_RESPONSE
