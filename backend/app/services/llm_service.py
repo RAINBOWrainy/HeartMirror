@@ -196,7 +196,7 @@ class LLMService:
 只返回JSON，不要有其他内容。"""
 
         # 构建分析提示
-        prompt_parts = [f"请分析以下用户表达的情绪：\n\n用户说："{text}""]
+        prompt_parts = [f'请分析以下用户表达的情绪：\n\n用户说："{text}"']
 
         # 添加上下文信息
         if context:

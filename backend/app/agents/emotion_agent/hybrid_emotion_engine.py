@@ -245,7 +245,7 @@ class HybridEmotionEngine:
 }"""
 
         # 构建上下文提示
-        context_parts = [f"用户说："{text}""]
+        context_parts = [f'用户说："{text}"']
 
         # 添加关键词分析参考
         if keyword_result.get("matched_keywords"):
