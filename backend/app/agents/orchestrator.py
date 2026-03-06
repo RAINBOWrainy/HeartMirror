@@ -31,6 +31,14 @@ class ConversationStage(str, Enum):
     CLOSING = "closing"
 
 
+class ConversationMode(str, Enum):
+    """对话模式"""
+    CASUAL = "casual"              # 日常聊天模式
+    ASSESSMENT = "assessment"      # 评估模式
+    INTERVENTION = "intervention"  # 干预模式
+    CRISIS = "crisis"             # 危机模式
+
+
 class AgentOrchestrator:
     """
     Agent协调器 - 增强版
@@ -58,6 +66,9 @@ class AgentOrchestrator:
         # 新增：用户信息缓存
         self._user_info: Dict[str, Any] = {}
 
+        # 新增：对话模式（默认日常聊天）
+        self.mode = ConversationMode.CASUAL
+
         # 初始化所有Agent
         self._initialize_agents()
 
@@ -68,13 +79,96 @@ class AgentOrchestrator:
         self.agents["risk"] = RiskAgent()
         self.agents["intervention"] = InterventionAgent()
 
+    def _determine_mode(self, user_input: str) -> ConversationMode:
+        """
+        智能判断对话模式
+
+        判断依据：
+        1. 危机信号（最高优先级）
+        2. 评估触发信号
+        3. 日常聊天信号
+
+        Args:
+            user_input: 用户输入
+
+        Returns:
+            对话模式
+        """
+        # 危机信号（最高优先级）
+        crisis_keywords = ["自杀", "不想活", "活着没意思", "结束生命", "伤害自己"]
+        if any(kw in user_input for kw in crisis_keywords):
+            return ConversationMode.CRISIS
+
+        # 评估触发信号
+        assessment_signals = [
+            "心情不好", "难过", "伤心", "郁闷", "不开心",
+            "焦虑", "紧张", "害怕", "睡不着", "失眠",
+            "累", "疲惫", "孤独", "寂寞", "没意思",
+            "压力", "帮帮我", "不知道该怎么办"
+        ]
+        assessment_score = sum(1 for sig in assessment_signals if sig in user_input)
+
+        # 日常聊天信号
+        casual_signals = ["哈哈", "嘿嘿", "好玩", "有趣", "推荐", "好看", "吃", "玩", "周末", "天气"]
+        casual_score = sum(1 for sig in casual_signals if sig in user_input)
+
+        # 判断逻辑
+        if assessment_score >= 2:
+            return ConversationMode.ASSESSMENT
+        elif casual_score >= 2 and assessment_score == 0:
+            return ConversationMode.CASUAL
+        elif self.mode == ConversationMode.ASSESSMENT:
+            # 如果已经在评估模式，保持评估模式
+            return ConversationMode.ASSESSMENT
+        else:
+            return ConversationMode.CASUAL
+
+    async def _handle_casual_mode(self, user_input: str) -> Dict[str, Any]:
+        """
+        处理日常聊天模式
+
+        Args:
+            user_input: 用户输入
+
+        Returns:
+            响应结果
+        """
+        system_prompt = f"""{HeartMirrorPersona.BASE_PERSONA}
+
+你现在是在和朋友轻松聊天。保持自然、轻松的语气。
+- 不要主动问评估类问题
+- 可以分享一些有趣的想法
+- 如果用户提到负面情绪，先表示理解
+- 回复简洁温暖，不要过长"""
+
+        try:
+            response = await self.llm.generate(
+                prompt=user_input,
+                system_prompt=system_prompt,
+                temperature=0.8,
+                max_tokens=300
+            )
+        except Exception:
+            # 降级响应
+            import random
+            responses = HeartMirrorPersona.CASUAL_RESPONSES.get("small_talk", ["嗯，我懂"])
+            response = random.choice(responses) if isinstance(responses, list) else "嗯，我懂"
+
+        return {
+            "response": response,
+            "stage": self.current_stage.value,
+            "mode": self.mode.value,
+            "emotion_detected": None,
+            "risk_level": "green"
+        }
+
     async def process_message(
         self,
         user_input: str,
         session_context: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """
-        处理用户消息
+        处理用户消息（支持模式切换）
 
         Args:
             user_input: 用户输入
@@ -92,6 +186,39 @@ class AgentOrchestrator:
         # 记录用户消息
         self._add_to_history("user", user_input)
 
+        # 判断对话模式
+        new_mode = self._determine_mode(user_input)
+        if new_mode != self.mode:
+            self.mode = new_mode
+
+        # 根据模式分发处理
+        if self.mode == ConversationMode.CRISIS:
+            result = await self._handle_crisis_mode(user_input)
+        elif self.mode == ConversationMode.CASUAL:
+            result = await self._handle_casual_mode(user_input)
+        elif self.mode == ConversationMode.ASSESSMENT:
+            # 评估模式使用原有阶段流程
+            result = await self._handle_assessment_flow(user_input)
+        else:
+            result = await self._handle_casual_mode(user_input)
+
+        # 记录助手回复
+        self._add_to_history("assistant", result.get("response", ""))
+
+        return result
+
+    async def _handle_crisis_mode(self, user_input: str) -> Dict[str, Any]:
+        """处理危机模式"""
+        return {
+            "response": HeartMirrorPersona.CRISIS_RESPONSE,
+            "stage": ConversationStage.CLOSING.value,
+            "mode": self.mode.value,
+            "emotion_detected": None,
+            "risk_level": "red"
+        }
+
+    async def _handle_assessment_flow(self, user_input: str) -> Dict[str, Any]:
+        """处理评估模式流程"""
         # 根据当前阶段选择处理流程
         if self.current_stage == ConversationStage.GREETING:
             result = await self._handle_greeting(user_input)
@@ -141,11 +268,12 @@ class AgentOrchestrator:
         """
         self.current_stage = ConversationStage.EMOTION_ASSESSMENT
 
-        # 使用统一人格系统的问候
+        # 使用统一人格系统的问候（自然、无身份声明）
         greetings = [
-            "你好呀！我是心语，一个愿意倾听的朋友。今天感觉怎么样？",
-            "嗨！很高兴见到你。最近过得好吗？有什么想聊聊的吗？",
-            "你好！我是心语，随时准备听你说话。今天心情如何？"
+            "嗨！今天怎么样？",
+            "来啦～最近有什么新鲜事吗？",
+            "嘿，刚好有空，聊两句？",
+            "你好呀，今天心情如何？"
         ]
 
         response = random.choice(greetings)

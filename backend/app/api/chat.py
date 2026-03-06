@@ -29,8 +29,60 @@ from app.core.security import verify_token
 
 router = APIRouter()
 
-# 全局Orchestrator实例缓存
-_orchestrators: Dict[str, AgentOrchestrator] = {}
+# 带过期和清理机制的Orchestrator缓存
+from datetime import datetime, timedelta
+import asyncio
+
+
+class OrchestratorCache:
+    """带过期和清理机制的Orchestrator缓存"""
+
+    def __init__(self, max_size: int = 100, ttl_minutes: int = 30):
+        self._cache: Dict[str, Dict] = {}
+        self._max_size = max_size
+        self._ttl = timedelta(minutes=ttl_minutes)
+        self._lock = asyncio.Lock()
+
+    async def get(self, session_id: str) -> "AgentOrchestrator":
+        """获取或创建Orchestrator"""
+        async with self._lock:
+            if session_id in self._cache:
+                self._cache[session_id]["last_access"] = datetime.now()
+                return self._cache[session_id]["orchestrator"]
+
+            orchestrator = AgentOrchestrator()
+            self._cache[session_id] = {
+                "orchestrator": orchestrator,
+                "last_access": datetime.now()
+            }
+
+            if len(self._cache) > self._max_size:
+                await self._cleanup()
+
+            return orchestrator
+
+    async def _cleanup(self):
+        """清理过期缓存"""
+        now = datetime.now()
+        expired = [
+            sid for sid, data in self._cache.items()
+            if now - data["last_access"] > self._ttl
+        ]
+        for sid in expired:
+            if hasattr(self._cache[sid]["orchestrator"], 'reset'):
+                self._cache[sid]["orchestrator"].reset()
+            del self._cache[sid]
+
+    async def remove(self, session_id: str):
+        """主动移除指定会话"""
+        async with self._lock:
+            if session_id in self._cache:
+                if hasattr(self._cache[session_id]["orchestrator"], 'reset'):
+                    self._cache[session_id]["orchestrator"].reset()
+                del self._cache[session_id]
+
+
+_orchestrator_cache = OrchestratorCache(max_size=100, ttl_minutes=30)
 
 # WebSocket连接管理器
 class ConnectionManager:
@@ -225,11 +277,9 @@ async def send_message(
     )
     db.add(user_message)
 
-    # 获取或创建Orchestrator实例
+    # 获取或创建Orchestrator实例（使用缓存）
     session_key = str(session.id)
-    if session_key not in _orchestrators:
-        _orchestrators[session_key] = AgentOrchestrator()
-    orchestrator = _orchestrators[session_key]
+    orchestrator = await _orchestrator_cache.get(session_key)
 
     # 构建会话上下文
     session_context = {
@@ -307,6 +357,9 @@ async def delete_session(
     session.status = "deleted"
     await db.commit()
 
+    # 清理会话缓存
+    await _orchestrator_cache.remove(str(session_id))
+
     return {"message": "会话已删除"}
 
 
@@ -335,10 +388,8 @@ async def websocket_endpoint(
     await manager.connect(websocket, session_id)
 
     try:
-        # 获取或创建Orchestrator实例
-        if session_id not in _orchestrators:
-            _orchestrators[session_id] = AgentOrchestrator()
-        orchestrator = _orchestrators[session_id]
+        # 获取或创建Orchestrator实例（使用缓存）
+        orchestrator = await _orchestrator_cache.get(session_id)
 
         while True:
             # 接收消息

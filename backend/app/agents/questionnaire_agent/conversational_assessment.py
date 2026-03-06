@@ -74,9 +74,9 @@ class ConversationalAssessmentEngine:
                 "半夜会醒吗？醒了还能睡着吗？"
             ],
             "severity_indicators": {
-                "mild": ["偶尔睡不好", "入睡有点慢"],
-                "moderate": ["经常失眠", "半夜经常醒"],
-                "severe": ["整晚睡不着", "凌晨就醒了再也睡不着"]
+                "mild": ["偶尔睡不好", "入睡有点慢", "睡不好"],
+                "moderate": ["经常失眠", "半夜经常醒", "失眠", "睡不着", "睡不醒"],
+                "severe": ["整晚睡不着", "凌晨就醒了再也睡不着", "严重失眠", "彻夜难眠"]
             }
         },
         "fatigue": {
@@ -369,7 +369,7 @@ class ConversationalAssessmentEngine:
 
     def _detect_symptom_signals(self, text: str) -> Dict[str, str]:
         """
-        从用户回复中检测症状信号
+        从用户回复中检测症状信号（增强版：支持否定词检测）
 
         Args:
             text: 用户回复文本
@@ -378,6 +378,18 @@ class ConversationalAssessmentEngine:
             检测到的症状及其严重程度
         """
         detected = {}
+
+        # 否定词列表
+        negation_words = ["不", "没", "无", "不会", "没有", "不是", "不再", "别"]
+
+        def has_negation(text: str, keyword: str) -> bool:
+            """检查关键词前是否有否定词"""
+            idx = text.find(keyword)
+            if idx == -1:
+                return False
+            # 检查关键词前5个字符内是否有否定词
+            prefix = text[max(0, idx-5):idx]
+            return any(neg in prefix for neg in negation_words)
 
         # 检测PHQ-9相关症状
         for symptom_id, symptom_data in self.PHQ9_CONVERSATIONAL.items():
@@ -388,29 +400,33 @@ class ConversationalAssessmentEngine:
                 if severity in indicators:
                     for indicator in indicators[severity]:
                         if indicator in text:
+                            # 检查是否有否定词
+                            if has_negation(text, indicator):
+                                continue  # 跳过被否定的情况
                             detected[symptom_id] = severity
                             break
                     if symptom_id in detected:
                         break
 
-        # 检测GAD-7相关症状
-        for symptom_id, symptom_data in self.GAD7_CONVERSATIONAL.items():
-            # 简化的关键词检测
-            keywords = {
-                "nervousness": ["紧张", "不安", "焦虑", "揪心"],
-                "worry_control": ["停不下来", "控制不住", "一直想"],
-                "excessive_worry": ["担心很多", "各种担心", "操心"],
-                "relaxation": ["放松不下来", "紧绷", "休息不好"],
-                "restlessness": ["坐不住", "动来动去", "不安定"],
-                "irritability": ["烦躁", "易怒", "脾气大"],
-                "fear": ["害怕", "恐惧", "预感"]
-            }
+        # 检测GAD-7相关症状（增强版）
+        gad7_keywords = {
+            "nervousness": ["紧张", "不安", "焦虑", "揪心"],
+            "worry_control": ["停不下来", "控制不住", "一直想"],
+            "excessive_worry": ["担心很多", "各种担心", "操心"],
+            "relaxation": ["放松不下来", "紧绷", "休息不好"],
+            "restlessness": ["坐不住", "动来动去", "不安定"],
+            "irritability": ["烦躁", "易怒", "脾气大"],
+            "fear": ["害怕", "恐惧", "预感"]
+        }
 
-            if symptom_id in keywords:
-                for keyword in keywords[symptom_id]:
-                    if keyword in text:
-                        detected[symptom_id] = "moderate"
-                        break
+        for symptom_id, keywords in gad7_keywords.items():
+            for keyword in keywords:
+                if keyword in text:
+                    # 检查是否有否定词
+                    if has_negation(text, keyword):
+                        continue
+                    detected[symptom_id] = "moderate"
+                    break
 
         return detected
 

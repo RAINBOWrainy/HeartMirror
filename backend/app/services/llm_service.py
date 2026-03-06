@@ -242,13 +242,56 @@ class LLMService:
             }
 
         except Exception as e:
-            # 降级返回默认结果
+            # 智能降级：基于关键词的简单情绪检测
+            negative_words = ["难过", "伤心", "不开心", "烦", "累", "压力", "焦虑", "紧张", "害怕", "孤独"]
+            positive_words = ["开心", "高兴", "好", "不错", "棒", "幸福", "快乐"]
+            frustration_words = ["累", "疲惫", "无力", "没劲", "心累", "崩溃"]
+
+            text_lower = text.lower()
+
+            # 检测挫败/疲惫情绪（优先级较高）
+            for word in frustration_words:
+                if word in text_lower:
+                    return {
+                        "primary_emotion": "frustration",
+                        "intensity": 0.6,
+                        "confidence": 0.5,
+                        "secondary_emotions": [],
+                        "reasoning": f"检测到关键词'{word}'，可能存在疲惫或挫败感",
+                        "suggested_tone": "关切"
+                    }
+
+            # 检测负面情绪
+            for word in negative_words:
+                if word in text_lower:
+                    return {
+                        "primary_emotion": "sadness",
+                        "intensity": 0.5,
+                        "confidence": 0.4,
+                        "secondary_emotions": [],
+                        "reasoning": f"检测到关键词'{word}'",
+                        "suggested_tone": "关切"
+                    }
+
+            # 检测正面情绪
+            for word in positive_words:
+                if word in text_lower:
+                    return {
+                        "primary_emotion": "joy",
+                        "intensity": 0.5,
+                        "confidence": 0.4,
+                        "secondary_emotions": [],
+                        "reasoning": f"检测到关键词'{word}'",
+                        "suggested_tone": "温暖"
+                    }
+
+            # 默认中性
             return {
                 "primary_emotion": "neutral",
-                "intensity": 0.5,
-                "confidence": 0.3,
+                "intensity": 0.3,
+                "confidence": 0.2,
                 "secondary_emotions": [],
-                "reasoning": f"LLM分析失败，使用默认结果: {str(e)}",
+                "reasoning": "降级分析，未检测到明显情绪",
                 "suggested_tone": "温暖"
             }
 
