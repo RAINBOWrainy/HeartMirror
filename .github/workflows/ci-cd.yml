@@ -108,3 +108,20 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # ===== 触发 Render 部署 =====
+  deploy-render:
+    name: Trigger Render Deployment
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "✅ Render deployment triggered"
+          else
+            echo "⚠️ RENDER_DEPLOY_HOOK_URL not configured, skipping"
+          fi

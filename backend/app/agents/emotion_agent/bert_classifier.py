@@ -4,9 +4,12 @@ Emotion BERT Classifier
 
 注意：此模块需要 torch 和 transformers 库。
 在生产环境中如果这些库不可用，会降级到简单的情绪分析。
+
+支持从 ModelScope 或 Hugging Face 加载模型。
 """
 from typing import Dict, List, Optional, Tuple
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,9 @@ try:
 except ImportError:
     ML_AVAILABLE = False
     logger.warning("torch/transformers not available, using fallback emotion classifier")
+
+# ModelScope 模型缓存路径
+MODELSCOPE_CACHE = os.path.expanduser("~/.cache/modelscope/hub/models/tiansz/bert-base-chinese")
 
 
 class EmotionBERTClassifier:
@@ -134,6 +140,12 @@ class EmotionBERTClassifier:
     ):
         """
         初始化分类器
+
+        Args:
+            model_path: 自定义模型路径
+            model_name: 模型名称（用于Hugging Face）
+            device: 运行设备 (cpu/cuda)
+            num_labels: 分类标签数量
         """
         self.num_labels = num_labels
         self.labels = self.DEFAULT_LABELS[:num_labels]
@@ -141,19 +153,32 @@ class EmotionBERTClassifier:
 
         if ML_AVAILABLE:
             self.device = torch.device(device)
-            self.tokenizer = BertTokenizer.from_pretrained(model_name)
 
-            if model_path:
+            # 优先使用 ModelScope 缓存的模型
+            actual_model_path = model_path
+            if actual_model_path is None and os.path.exists(MODELSCOPE_CACHE):
+                # 检查 ModelScope 缓存是否有完整的模型文件
+                safetensors_path = os.path.join(MODELSCOPE_CACHE, "model.safetensors")
+                if os.path.exists(safetensors_path):
+                    actual_model_path = MODELSCOPE_CACHE
+                    logger.info(f"Using ModelScope cached model: {MODELSCOPE_CACHE}")
+
+            if actual_model_path:
+                logger.info(f"Loading tokenizer from: {actual_model_path}")
+                self.tokenizer = BertTokenizer.from_pretrained(actual_model_path)
                 self.model = BertForSequenceClassification.from_pretrained(
-                    model_path, num_labels=num_labels
+                    actual_model_path, num_labels=num_labels
                 )
             else:
+                logger.info(f"Loading model from Hugging Face: {model_name}")
+                self.tokenizer = BertTokenizer.from_pretrained(model_name)
                 self.model = BertForSequenceClassification.from_pretrained(
                     model_name, num_labels=num_labels
                 )
 
             self.model.to(self.device)
             self.model.eval()
+            logger.info("BERT classifier initialized successfully")
         else:
             logger.info("Using fallback emotion classifier (keyword-based)")
 

@@ -12,6 +12,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements-prod.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -26,7 +27,7 @@ services:
       - key: ENCRYPTION_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: '["http://localhost:5173","http://localhost:3000","https://rainbowrainy.github.io"]'
+        value: '["http://localhost:5173","http://localhost:3000","https://rainbowrainy.github.io","https://heartmirror-demo.vercel.app"]'
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_BASE_URL
@@ -36,6 +37,8 @@ services:
       - key: APP_ENV
         value: production
       - key: DEBUG
+        value: false
+      - key: USE_BERT_MODEL
         value: false
 
 databases:
