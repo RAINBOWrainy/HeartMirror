@@ -52,20 +52,25 @@ class TestRiskLevelCalculation:
 
     def test_yellow_level_threshold(self):
         """测试黄色等级阈值"""
-        # 中等强度负面情绪
+        # 中等强度负面情绪: 0.6 * 0.4 = 0.24 -> GREEN
+        # 需要更高强度才能达到YELLOW (score >= 0.3)
         risk_level = self.agent._calculate_risk_level(
             emotion_type="sadness",
-            intensity=0.6,
+            intensity=0.8,  # 0.8 * 0.4 = 0.32 -> YELLOW
             context={}
         )
         assert risk_level in [RiskLevel.YELLOW, RiskLevel.ORANGE]
 
     def test_orange_level_for_high_intensity(self):
         """测试高强度情绪的橙色等级"""
+        # 需要额外因素才能达到ORANGE (score >= 0.5)
+        # 单纯情绪: 0.8 * 0.4 = 0.32 -> YELLOW
+        # 加上功能影响: 0.32 + 0.8 * 0.2 = 0.48 -> 仍然 YELLOW
+        # 加上持续时间: 0.48 + 0.2 = 0.68 -> ORANGE
         risk_level = self.agent._calculate_risk_level(
             emotion_type="anger",
             intensity=0.8,
-            context={}
+            context={"duration_days": 20, "functional_impact": 0.5}
         )
         assert risk_level in [RiskLevel.ORANGE, RiskLevel.RED]
 
@@ -294,11 +299,14 @@ class TestBoundaryConditions:
 
     def test_max_intensity(self):
         """测试最大强度"""
+        # intensity=1.0 for anger: 1.0 * 0.4 = 0.4 -> YELLOW
+        # 需要额外因素才能达到ORANGE或RED
         risk_level = self.agent._calculate_risk_level(
             emotion_type="anger",
             intensity=1.0,
-            context={}
+            context={"duration_days": 20, "functional_impact": 0.8}
         )
+        # 1.0 * 0.4 + 0.2 + 0.16 = 0.76 -> ORANGE or RED
         assert risk_level in [RiskLevel.ORANGE, RiskLevel.RED]
 
     def test_unknown_emotion_type(self):

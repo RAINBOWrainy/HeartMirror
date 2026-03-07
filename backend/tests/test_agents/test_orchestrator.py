@@ -121,10 +121,20 @@ class TestConversationHistory:
         for i in range(25):
             self.orchestrator._add_to_history("user", f"消息{i}")
 
-        # 应该只保留最近20条
-        assert len(self.orchestrator.conversation_history) == 20
+        # _max_history=20 表示20轮对话（每轮2条消息），所以限制是40条
+        # 添加25条消息，应该在限制内
+        assert len(self.orchestrator.conversation_history) == 25
         # 最新的消息应该保留
         assert "消息24" in self.orchestrator.conversation_history[-1]["content"]
+
+        # 添加超过40条消息
+        for i in range(25, 50):
+            self.orchestrator._add_to_history("user", f"消息{i}")
+
+        # 应该只保留最近40条（_max_history * 2）
+        assert len(self.orchestrator.conversation_history) == 40
+        # 最新的消息应该保留
+        assert "消息49" in self.orchestrator.conversation_history[-1]["content"]
 
 
 class TestStageManagement:

@@ -10,7 +10,7 @@ import os
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.database import async_engine, Base, init_database
+from app.core.database import db_manager, Base, init_database
 
 
 async def create_tables():

@@ -1,7 +1,7 @@
 """
 Core Module Initialization
 """
-from app.core.database import Base, async_engine, async_session_maker, get_db
+from app.core.database import Base, db_manager, get_db
 from app.core.security import (
     create_access_token,
     decrypt_data,
@@ -13,8 +13,7 @@ from app.core.security import (
 
 __all__ = [
     "Base",
-    "async_engine",
-    "async_session_maker",
+    "db_manager",
     "get_db",
     "create_access_token",
     "decrypt_data",
@@ -23,3 +22,12 @@ __all__ = [
     "verify_password",
     "verify_token",
 ]
+
+
+def __getattr__(name):
+    """向后兼容 - 延迟加载 async_engine 和 async_session_maker"""
+    if name == "async_engine":
+        return db_manager.engine
+    if name == "async_session_maker":
+        return db_manager.session_maker
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

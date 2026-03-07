@@ -93,6 +93,19 @@ class RiskAgent(BaseAgent):
         """
         score = 0.0
 
+        # 危机指标检测 - 优先检测，直接返回RED
+        crisis_keywords = ["死", "不想活", "活着没意思", "结束生命", "自杀"]
+        input_lower = context.get("input_text", "").lower()
+        for keyword in crisis_keywords:
+            if keyword in input_lower:
+                # 危机关键词直接返回高风险
+                return RiskLevel.RED
+
+        # 自伤想法
+        self_harm = context.get("self_harm_thoughts", False)
+        if self_harm:
+            return RiskLevel.RED
+
         # 情绪因素
         negative_emotions = {"sadness", "anger", "fear", "anxiety", "frustration", "loneliness"}
         if emotion_type in negative_emotions:
@@ -108,19 +121,6 @@ class RiskAgent(BaseAgent):
         # 功能影响
         functional_impact = context.get("functional_impact", 0)
         score += functional_impact * 0.2
-
-        # 自伤想法
-        self_harm = context.get("self_harm_thoughts", False)
-        if self_harm:
-            score += 0.3
-
-        # 危机指标检测
-        crisis_keywords = ["死", "不想活", "活着没意思", "结束生命", "自杀"]
-        input_lower = context.get("input_text", "").lower()
-        for keyword in crisis_keywords:
-            if keyword in input_lower:
-                score += 0.3
-                break
 
         # 确定风险等级
         if score >= 0.7:
