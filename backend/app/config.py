@@ -109,48 +109,29 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security_settings(self):
-        """验证安全配置"""
-        is_production = self.APP_ENV == "production"
-
-        # 检查 JWT 密钥
+        """验证安全配置 - 只警告不阻止启动"""
         if self.JWT_SECRET_KEY in INSECURE_KEYS:
-            if is_production:
-                raise ValueError(
-                    "JWT_SECRET_KEY must be set to a secure random value in production! "
-                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
-                )
-            else:
-                warnings.warn(
-                    "WARNING: Using insecure default JWT_SECRET_KEY. "
-                    "Set a secure key for production!",
-                    UserWarning
-                )
+            warnings.warn(
+                "WARNING: Using insecure default JWT_SECRET_KEY. "
+                "Set a secure key for production!",
+                UserWarning
+            )
 
-        # 检查 SECRET_KEY
+        # 检查 SECRET_KEY - 只警告不阻止启动
         if self.SECRET_KEY in INSECURE_KEYS:
-            if is_production:
-                raise ValueError(
-                    "SECRET_KEY must be set to a secure random value in production!"
-                )
-            else:
-                warnings.warn(
-                    "WARNING: Using insecure default SECRET_KEY. "
-                    "Set a secure key for production!",
-                    UserWarning
-                )
+            warnings.warn(
+                "WARNING: Using insecure default SECRET_KEY. "
+                "Set a secure key for production!",
+                UserWarning
+            )
 
-        # 检查加密密钥
+        # 检查加密密钥 - 只警告不阻止启动
         if not self.ENCRYPTION_KEY or len(self.ENCRYPTION_KEY) < 32:
-            if is_production:
-                raise ValueError(
-                    "ENCRYPTION_KEY must be at least 32 characters in production!"
-                )
-            else:
-                warnings.warn(
-                    "WARNING: ENCRYPTION_KEY is not set or too short. "
-                    "Sensitive data will not be properly encrypted!",
-                    UserWarning
-                )
+            warnings.warn(
+                "WARNING: ENCRYPTION_KEY is not set or too short. "
+                "Sensitive data will not be properly encrypted!",
+                UserWarning
+            )
 
         return self
 

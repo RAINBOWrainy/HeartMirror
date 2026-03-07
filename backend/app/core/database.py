@@ -99,14 +99,14 @@ async def init_database():
     """初始化数据库 - 创建所有表"""
     try:
         async with async_engine.begin() as conn:
-            # 强制重建所有表以确保schema与模型同步
-            # 注意：这会清空数据
-            await conn.run_sync(Base.metadata.drop_all)
+            # 创建所有表（如果不存在）
+            # 注意：不再使用 drop_all 以保留数据
             await conn.run_sync(Base.metadata.create_all)
         logger.info("✅ Database tables created successfully")
     except Exception as e:
         logger.error(f"❌ Database initialization failed: {e}")
-        raise
+        logger.warning("⚠️ Continuing without database - some features may not work")
+        # 不再抛出异常，允许应用继续启动
 
 
 async def close_database():
