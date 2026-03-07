@@ -3,13 +3,14 @@ Base Agent Class
 LangChain Agent基类，所有Agent的父类
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
-
-from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from pydantic import BaseModel
+
+# 延迟导入langchain，避免启动时加载重型依赖
+# 这些类型只在类型检查时使用
+if TYPE_CHECKING:
+    from langchain_core.language_models import BaseChatModel
+    from langchain_core.prompts import ChatPromptTemplate
 
 
 class AgentResponse(BaseModel):
@@ -30,7 +31,7 @@ class BaseAgent(ABC):
     def __init__(
         self,
         name: str,
-        llm: Optional[BaseChatModel] = None,
+        llm: Optional["BaseChatModel"] = None,
         system_prompt: Optional[str] = None,
         **kwargs
     ):
@@ -56,7 +57,7 @@ class BaseAgent(ABC):
         self,
         template: str,
         input_variables: List[str]
-    ) -> ChatPromptTemplate:
+    ) -> "ChatPromptTemplate":
         """
         创建提示词模板
 
@@ -67,12 +68,13 @@ class BaseAgent(ABC):
         Returns:
             ChatPromptTemplate实例
         """
+        from langchain_core.prompts import ChatPromptTemplate
         return ChatPromptTemplate.from_messages([
             ("system", self.system_prompt),
             ("human", template)
         ])
 
-    def build_chain(self, prompt: ChatPromptTemplate):
+    def build_chain(self, prompt: "ChatPromptTemplate"):
         """
         构建处理链
 
@@ -84,6 +86,7 @@ class BaseAgent(ABC):
         """
         if self.llm is None:
             raise ValueError("LLM未初始化")
+        from langchain_core.output_parsers import StrOutputParser
         return prompt | self.llm | StrOutputParser()
 
     @abstractmethod

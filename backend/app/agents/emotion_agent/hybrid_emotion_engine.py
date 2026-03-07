@@ -11,7 +11,8 @@ from typing import Dict, List, Optional, Any
 import logging
 import json
 
-from app.services.llm_service import get_llm_service
+# 延迟导入LLM服务，避免启动时加载重型依赖
+# from app.services.llm_service import get_llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,15 @@ class HybridEmotionEngine:
             bert_classifier: 可选的BERT分类器实例
         """
         self.bert_classifier = bert_classifier
-        self.llm_service = get_llm_service()
+        self._llm_service = None  # 延迟加载
+
+    @property
+    def llm_service(self):
+        """延迟加载LLM服务"""
+        if self._llm_service is None:
+            from app.services.llm_service import get_llm_service
+            self._llm_service = get_llm_service()
+        return self._llm_service
 
     def _keyword_analysis(self, text: str) -> Dict[str, Any]:
         """

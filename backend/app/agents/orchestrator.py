@@ -13,11 +13,13 @@ from enum import Enum
 import random
 
 from app.agents.base_agent import BaseAgent, AgentResponse
-from app.agents.emotion_agent import EmotionAgent
-from app.agents.questionnaire_agent import QuestionnaireAgent
-from app.agents.risk_agent import RiskAgent
-from app.agents.intervention_agent import InterventionAgent
-from app.services.llm_service import get_llm_service
+# 延迟导入所有Agent，避免启动时加载重型依赖
+# from app.agents.emotion_agent import EmotionAgent
+# from app.agents.questionnaire_agent import QuestionnaireAgent
+# from app.agents.risk_agent import RiskAgent
+# from app.agents.intervention_agent import InterventionAgent
+# 延迟导入LLM服务，避免启动时加载重型依赖
+# from app.services.llm_service import get_llm_service
 from app.core.persona import HeartMirrorPersona
 
 
@@ -54,7 +56,7 @@ class AgentOrchestrator:
         Args:
             llm: 语言模型实例
         """
-        self.llm = llm or get_llm_service()
+        self._llm = llm  # 可能为None，延迟加载
         self.agents: Dict[str, BaseAgent] = {}
         self.current_stage = ConversationStage.GREETING
         self.context: Dict[str, Any] = {}
@@ -72,12 +74,35 @@ class AgentOrchestrator:
         # 初始化所有Agent
         self._initialize_agents()
 
+    @property
+    def llm(self):
+        """延迟加载LLM服务"""
+        if self._llm is None:
+            from app.services.llm_service import get_llm_service
+            self._llm = get_llm_service()
+        return self._llm
+
     def _initialize_agents(self):
-        """初始化所有Agent"""
-        self.agents["emotion"] = EmotionAgent()
-        self.agents["questionnaire"] = QuestionnaireAgent()
-        self.agents["risk"] = RiskAgent()
-        self.agents["intervention"] = InterventionAgent()
+        """初始化所有Agent（延迟加载）"""
+        # Agents will be loaded on first use
+        pass
+
+    def _get_agent(self, agent_name: str) -> BaseAgent:
+        """获取或创建Agent实例（延迟加载）"""
+        if agent_name not in self.agents or self.agents[agent_name] is None:
+            if agent_name == "emotion":
+                from app.agents.emotion_agent.agent import EmotionAgent
+                self.agents[agent_name] = EmotionAgent()
+            elif agent_name == "questionnaire":
+                from app.agents.questionnaire_agent import QuestionnaireAgent
+                self.agents[agent_name] = QuestionnaireAgent()
+            elif agent_name == "risk":
+                from app.agents.risk_agent import RiskAgent
+                self.agents[agent_name] = RiskAgent()
+            elif agent_name == "intervention":
+                from app.agents.intervention_agent import InterventionAgent
+                self.agents[agent_name] = InterventionAgent()
+        return self.agents[agent_name]
 
     def _determine_mode(self, user_input: str) -> ConversationMode:
         """
@@ -162,7 +187,7 @@ class AgentOrchestrator:
             响应结果
         """
         # 新增：先进行情绪检测
-        emotion_agent = self.agents["emotion"]
+        emotion_agent = self._get_agent("emotion")
         emotion_result = await emotion_agent.process(user_input, self.context)
 
         emotion_detected = emotion_result.emotion_detected
@@ -508,7 +533,7 @@ class AgentOrchestrator:
 
         使用混合情绪识别引擎
         """
-        emotion_agent = self.agents["emotion"]
+        emotion_agent = self._get_agent("emotion")
 
         # 情绪识别
         emotion_result = await emotion_agent.process(user_input, self.context)
@@ -548,7 +573,7 @@ class AgentOrchestrator:
 
         使用对话式评估
         """
-        questionnaire_agent = self.agents["questionnaire"]
+        questionnaire_agent = self._get_agent("questionnaire")
 
         # 传递完整上下文
         result = await questionnaire_agent.process(user_input, self.context)
@@ -576,7 +601,7 @@ class AgentOrchestrator:
 
         使用关切的表达方式
         """
-        risk_agent = self.agents["risk"]
+        risk_agent = self._get_agent("risk")
 
         # 构建完整上下文
         risk_context = {
@@ -610,7 +635,7 @@ class AgentOrchestrator:
 
         使用温暖友好的推荐方式
         """
-        intervention_agent = self.agents["intervention"]
+        intervention_agent = self._get_agent("intervention")
 
         result = await intervention_agent.process(user_input, self.context)
 

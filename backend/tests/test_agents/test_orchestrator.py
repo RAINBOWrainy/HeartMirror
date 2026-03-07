@@ -19,8 +19,15 @@ class TestAgentOrchestratorInitialization:
         assert orchestrator.current_stage == ConversationStage.GREETING
 
     def test_agents_initialization(self):
-        """测试所有Agent初始化"""
+        """测试所有Agent初始化（延迟加载）"""
         orchestrator = AgentOrchestrator()
+        # Agents are now lazy-loaded, so they won't be in the dict initially
+        # But they should be available via _get_agent
+        assert orchestrator._get_agent("emotion") is not None
+        assert orchestrator._get_agent("questionnaire") is not None
+        assert orchestrator._get_agent("risk") is not None
+        assert orchestrator._get_agent("intervention") is not None
+        # After accessing, they should be in the agents dict
         assert "emotion" in orchestrator.agents
         assert "questionnaire" in orchestrator.agents
         assert "risk" in orchestrator.agents

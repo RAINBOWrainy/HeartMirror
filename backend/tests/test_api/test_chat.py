@@ -68,11 +68,13 @@ class TestChatService:
         """测试协调器初始化"""
         from app.agents.orchestrator import AgentOrchestrator
         orchestrator = AgentOrchestrator()
+        # LLM is lazy-loaded, accessing it triggers loading
         assert orchestrator.llm is not None
-        assert "emotion" in orchestrator.agents
-        assert "questionnaire" in orchestrator.agents
-        assert "risk" in orchestrator.agents
-        assert "intervention" in orchestrator.agents
+        # Agents are now lazy-loaded via _get_agent
+        assert orchestrator._get_agent("emotion") is not None
+        assert orchestrator._get_agent("questionnaire") is not None
+        assert orchestrator._get_agent("risk") is not None
+        assert orchestrator._get_agent("intervention") is not None
 
 
 class TestWebSocketManager:
