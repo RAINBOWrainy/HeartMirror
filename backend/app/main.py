@@ -29,35 +29,17 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    应用生命周期管理
+    应用生命周期管理 - 快速启动模式
     """
-    import asyncio
-
-    # 启动时
+    # 启动时 - 快速启动，不等待任何服务
     logger.info(f"🚀 Starting {settings.APP_NAME}...")
     logger.info(f"📝 Environment: {settings.APP_ENV}")
+    logger.info("⚡ Fast startup mode - services will initialize on demand")
 
-    # 初始化数据库 - 带超时保护
-    try:
-        await asyncio.wait_for(init_database(), timeout=30)
-        logger.info("✅ Database initialized")
-    except asyncio.TimeoutError:
-        logger.error("❌ Database initialization timed out")
-    except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
-
-    # 初始化Redis - 带超时保护
-    try:
-        await asyncio.wait_for(init_redis(), timeout=10)
-        logger.info("✅ Redis connected")
-    except asyncio.TimeoutError:
-        logger.warning("⚠️ Redis connection timed out")
-    except Exception as e:
-        logger.warning(f"⚠️ Redis connection failed: {e}")
-
-    # 跳过RAG初始化以加速启动（按需加载）
-    # RAG会在首次使用时自动初始化
-    logger.info("⚡ Skipping RAG initialization for faster startup (will initialize on demand)")
+    # 不在启动时初始化任何服务，让它们按需初始化
+    # 数据库会在首次请求时自动创建表
+    # Redis会在首次使用时连接
+    # RAG会在首次使用时初始化
 
     yield
 
