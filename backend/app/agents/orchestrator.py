@@ -194,8 +194,15 @@ class AgentOrchestrator:
             emotion_context += "\n请在回复中自然地表达对这个情绪的理解和关心，用简短温暖的话语。"
             emotion_context += "\n不要机械化地说明你检测到了情绪，而是通过共情式回应来表达理解。"
 
+        # 添加用户记忆上下文
+        memory_context = ""
+        if self._user_info.get("has_memory") and self._user_info.get("memory_summary"):
+            memory_context = f"\n\n{self._user_info['memory_summary']}"
+            memory_context += "\n请根据用户背景提供更个性化的回应，但不要直接提及这些背景信息。"
+
         system_prompt = f"""{HeartMirrorPersona.BASE_PERSONA}
 {emotion_context}
+{memory_context}
 
 你现在是在和朋友轻松聊天。保持自然、轻松的语气。
 - 不要主动问评估类问题
@@ -245,6 +252,16 @@ class AgentOrchestrator:
         """
         # 更新上下文
         self.context.update(session_context or {})
+
+        # 加载用户记忆上下文
+        if session_context and "user_memory" in session_context:
+            user_memory = session_context["user_memory"]
+            self.context["user_memory"] = user_memory
+
+            # 生成用户背景摘要用于LLM提示
+            if user_memory.get("emotion_patterns", {}).get("dominant_emotions"):
+                self._user_info["has_memory"] = True
+                self._user_info["memory_summary"] = self._generate_memory_summary(user_memory)
 
         # 添加对话历史到上下文
         self.context["conversation_history"] = self.conversation_history
@@ -329,6 +346,136 @@ class AgentOrchestrator:
         # 保持历史记录在限制内
         if len(self.conversation_history) > self._max_history * 2:
             self.conversation_history = self.conversation_history[-self._max_history * 2:]
+
+    def _generate_memory_summary(self, user_memory: Dict) -> str:
+        """
+        根据用户记忆生成摘要文本
+
+        Args:
+            user_memory: 用户记忆数据
+
+        Returns:
+            摘要文本，用于LLM提示
+        """
+        parts = []
+
+        # 添加昵称
+        if user_memory.get("nickname"):
+            parts.append(f"用户昵称: {user_memory['nickname']}")
+
+        # 添加情绪模式
+        emotion_patterns = user_memory.get("emotion_patterns", {})
+        if emotion_patterns.get("dominant_emotions"):
+            top_emotions = emotion_patterns["dominant_emotions"][:3]
+            emotion_names = {
+                "joy": "开心", "sadness": "难过", "anger": "生气",
+                "fear": "害怕", "anxiety": "焦虑", "frustration": "疲惫",
+                "loneliness": "孤独", "calm": "平静", "neutral": "平静"
+            }
+            emotion_list = [
+                f"{emotion_names.get(e['emotion'], e['emotion'])}({e['count']}次)"
+                for e in top_emotions
+            ]
+            parts.append(f"最近常见情绪: {', '.join(emotion_list)}")
+
+        # 添加情绪趋势
+        trend = emotion_patterns.get("trend")
+        if trend == "increasing":
+            parts.append("情绪强度有上升趋势")
+        elif trend == "decreasing":
+            parts.append("情绪强度有下降趋势")
+
+        # 添加上下文关键词
+        keywords = user_memory.get("context_keywords", [])[:5]
+        if keywords:
+            keyword_list = [k["keyword"] for k in keywords]
+            parts.append(f"常聊话题: {', '.join(keyword_list)}")
+
+        # 添加有效干预
+        effective = user_memory.get("effective_interventions", [])
+        if effective:
+            intervention_names = {
+                "cbt": "认知行为练习", "mindfulness": "正念冥想",
+                "breathing": "呼吸练习", "exercise": "运动",
+                "social": "社交活动", "self_care": "自我关怀"
+            }
+            types = list(set([
+                intervention_names.get(e["type"], e["type"])
+                for e in effective[:3]
+                if e.get("type")
+            ]))
+            if types:
+                parts.append(f"有效的干预: {', '.join(types)}")
+
+        if parts:
+            return "[用户背景] " + " | ".join(parts)
+        else:
+            return ""
+
+    def _generate_memory_summary(self, user_memory: Dict) -> str:
+        """
+        根据用户记忆生成摘要文本
+
+        Args:
+            user_memory: 用户记忆数据
+
+        Returns:
+            摘要文本，用于LLM提示
+        """
+        parts = []
+
+        # 添加昵称
+        if user_memory.get("nickname"):
+            parts.append(f"用户昵称: {user_memory['nickname']}")
+
+        # 添加情绪模式
+        emotion_patterns = user_memory.get("emotion_patterns", {})
+        if emotion_patterns.get("dominant_emotions"):
+            top_emotions = emotion_patterns["dominant_emotions"][:3]
+            emotion_names = {
+                "joy": "开心", "sadness": "难过", "anger": "生气",
+                "fear": "害怕", "anxiety": "焦虑", "frustration": "疲惫",
+                "loneliness": "孤独", "calm": "平静", "neutral": "平静"
+            }
+            emotion_list = [
+                f"{emotion_names.get(e['emotion'], e['emotion'])}({e['count']}次)"
+                for e in top_emotions
+            ]
+            parts.append(f"最近常见情绪: {', '.join(emotion_list)}")
+
+        # 添加情绪趋势
+        trend = emotion_patterns.get("trend")
+        if trend == "increasing":
+            parts.append("情绪强度有上升趋势")
+        elif trend == "decreasing":
+            parts.append("情绪强度有下降趋势")
+
+        # 添加上下文关键词
+        keywords = user_memory.get("context_keywords", [])[:5]
+        if keywords:
+            keyword_list = [k["keyword"] for k in keywords]
+            parts.append(f"常聊话题: {', '.join(keyword_list)}")
+
+        # 添加有效干预
+        effective = user_memory.get("effective_interventions", [])
+        if effective:
+            intervention_names = {
+                "cbt": "认知行为练习", "mindfulness": "正念冥想",
+                "breathing": "呼吸练习", "exercise": "运动",
+                "social": "社交活动", "self_care": "自我关怀"
+            }
+            types = list(set([
+                intervention_names.get(e["type"], e["type"])
+                for e in effective[:3]
+                if e.get("type")
+            ]))
+            if types:
+                parts.append(f"有效的干预: {', '.join(types)}")
+
+        if parts:
+            return "[用户背景] " + " | ".join(parts)
+        else:
+            return ""
 
     async def _handle_greeting(self, user_input: str) -> Dict:
         """

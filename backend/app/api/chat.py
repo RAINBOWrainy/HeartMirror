@@ -26,6 +26,7 @@ from app.schemas.chat import (
 )
 from app.agents.orchestrator import AgentOrchestrator
 from app.core.security import verify_token
+from app.services.user_memory_service import UserMemoryService
 
 router = APIRouter()
 
@@ -281,11 +282,16 @@ async def send_message(
     session_key = str(session.id)
     orchestrator = await _orchestrator_cache.get(session_key)
 
+    # 加载用户记忆上下文
+    memory_service = UserMemoryService(db)
+    user_memory = await memory_service.get_user_context(current_user.id)
+
     # 构建会话上下文
     session_context = {
         "session_id": str(session.id),
         "user_id": str(current_user.id),
         "message_count": session.message_count,
+        "user_memory": user_memory,  # 添加用户记忆
     }
 
     # 调用Agent协调器处理消息
