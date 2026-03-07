@@ -35,9 +35,11 @@ jobs:
         working-directory: frontend
         run: npm run test
 
-      - name: Build project
+      - name: Build project for GitHub Pages
         working-directory: frontend
-        run: npm run build
+        run: |
+          cp .env.github .env.production.local
+          npm run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

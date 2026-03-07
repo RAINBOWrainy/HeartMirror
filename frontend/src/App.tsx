@@ -52,8 +52,8 @@ const themeConfig = {
   }
 }
 
-// GitHub Pages basename配置
-const basename = import.meta.env.BASE_URL || '/HeartMirror/'
+// HashRouter 不需要 basename 配置
+// BrowserRouter 需要时使用: import.meta.env.BASE_URL
 
 function App() {
   const { isAuthenticated, guestLogin, _hasHydrated } = useAuthStore()
