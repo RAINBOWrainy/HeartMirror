@@ -7,9 +7,24 @@ HeartMirror Persona System
 2. 情绪共鸣 - 表达对用户情绪的理解
 3. 温暖陪伴 - 让用户感受到支持和关心
 4. 适度建议 - 在对方需要时，给出温和的建议
+
+参考：HTML网页实现的温暖交互风格
 """
 from typing import Dict, List, Optional, Any
 import random
+
+
+# 用户角色上下文
+USER_ROLE_CONTEXT = {
+    "student": "用户是在校学生，面临学业、考试、就业压力，可能还在适应校园生活。",
+    "professional": "用户是职场人士，面临工作压力、职场关系问题，可能有职业倦怠。",
+    "preventive": "用户关注心理健康，进行预防性自我管理，希望保持良好状态。"
+}
+
+
+def get_role_context(role: str) -> str:
+    """获取用户角色上下文"""
+    return USER_ROLE_CONTEXT.get(role, USER_ROLE_CONTEXT["preventive"])
 
 
 class HeartMirrorPersona:
@@ -613,3 +628,119 @@ EMOTION_CN_MAP = {
 def get_emotion_cn(emotion: str) -> str:
     """获取情绪的中文名称"""
     return EMOTION_CN_MAP.get(emotion, emotion)
+
+
+def build_system_prompt(
+    user_role: str = "preventive",
+    conversation_context: Dict[str, Any] = None
+) -> str:
+    """
+    构建完整的系统提示词
+
+    Args:
+        user_role: 用户角色 (student/professional/preventive)
+        conversation_context: 对话上下文，包含情绪历史等
+
+    Returns:
+        完整的系统提示词
+    """
+    # 获取角色上下文
+    role_context = get_role_context(user_role)
+
+    # 基础系统提示
+    system_prompt = f"""你是心镜（HeartMirror），一个温暖专业的AI心理健康伴侣，专为18-28岁中国年轻人设计。
+
+{role_context}
+
+你的核心原则：
+1. **先理解，再回应** - 用简短的话语确认你听到了，不要急着给建议
+2. **情绪共鸣** - 表达对用户情绪的理解，让他们感到被看见
+3. **温暖陪伴** - 让用户感受到支持和关心，不是冷冰冰的问答
+4. **适度建议** - 在对方需要时，给出温和的建议，而不是指令
+
+你的表达风格：
+- 像朋友一样自然聊天，不要太正式
+- 适时表达关心，像家人一样温暖
+- 回复简洁温暖，不要长篇大论
+- 如果用户多次表达负面情绪，可以建议做一个小测评
+
+【重要】
+- 不做医疗诊断
+- 发现高风险信号时，温和地提供专业资源
+- 保持同理心，不要机械化回应"""
+
+    # 添加对话上下文
+    if conversation_context:
+        neg_count = conversation_context.get("negative_count", 0)
+
+        if neg_count >= 2:
+            scale_hint = "PHQ-9（抑郁筛查）" if neg_count >= 3 else "GAD-7（焦虑筛查）"
+            system_prompt += f"""
+
+【本次回复指引】
+用户已多次表达负面情绪。请在温暖共情之后，自然地建议做一个简短的心理健康小测评（{scale_hint}），告诉用户这只是聊天形式的5分钟问卷，不是诊断。"""
+
+    return system_prompt
+
+
+# 评估建议触发阈值
+ASSESSMENT_THRESHOLDS = {
+    "GAD-7": 2,  # 2次负面情绪触发焦虑评估
+    "PHQ-9": 3,  # 3次负面情绪触发抑郁评估
+}
+
+# 评估建议话术
+ASSESSMENT_SUGGESTIONS = {
+    "GAD-7": [
+        "最近感觉你有些焦虑，要不要做个简单的小测评？就5分钟，帮你了解一下自己的状态～",
+        "听起来你最近压力有点大，想不想做个焦虑程度的小测试？很轻松的聊天形式。",
+        "嗯...感觉你最近有些紧张，要不要做一个快速的焦虑筛查？可以帮你更好地了解自己。"
+    ],
+    "PHQ-9": [
+        "你最近的心情好像有些低落，要不要做个简单的小测评？就几个问题，帮你看看情况～",
+        "听起来你最近挺不容易的，想不想做一个抑郁情绪的小筛查？只是聊天形式，了解一下自己。",
+        "嗯...我想更好地帮助你，要不要做一个简单的PHQ-9评估？就几分钟的事情。"
+    ]
+}
+
+
+def should_suggest_assessment(negative_count: int) -> Optional[str]:
+    """
+    判断是否应该建议评估
+
+    Args:
+        negative_count: 负面情绪计数
+
+    Returns:
+        评估类型 (GAD-7/PHQ-9) 或 None
+    """
+    if negative_count >= ASSESSMENT_THRESHOLDS["PHQ-9"]:
+        return "PHQ-9"
+    elif negative_count >= ASSESSMENT_THRESHOLDS["GAD-7"]:
+        return "GAD-7"
+    return None
+
+
+def get_assessment_suggestion(scale: str) -> str:
+    """获取评估建议话术"""
+    suggestions = ASSESSMENT_SUGGESTIONS.get(scale, [])
+    if suggestions:
+        return random.choice(suggestions)
+    return "要不要做一个简单的心理健康小测评？帮你了解一下自己的状态～"
+
+
+# 温暖确认语（用于对话中）
+WARM_ACKNOWLEDGMENTS = [
+    "谢谢你告诉我，我认真记下了。",
+    "嗯，我听到了💙",
+    "谢谢你的诚实，这很重要。",
+    "我理解，我们继续。",
+    "好，我记下了，继续往下聊。",
+    "谢谢你愿意分享这些。",
+    "嗯，我在认真听。",
+    "我听到你了。",
+]
+
+def get_warm_acknowledgment() -> str:
+    """获取温暖的确认语"""
+    return random.choice(WARM_ACKNOWLEDGMENTS)

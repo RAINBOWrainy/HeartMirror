@@ -184,14 +184,16 @@ def _is_api_route(path: str) -> bool:
     """检查是否为API路由"""
     api_prefixes = [
         "api/", "docs", "redoc", "health", "openapi.json",
-        "favicon.ico", "robots.txt"
+        "favicon.ico", "robots.txt", "assets/"
     ]
     return any(path.startswith(prefix) or path == prefix.rstrip("/") for prefix in api_prefixes)
 
 
 # 挂载静态资源目录（如果存在）
-if os.path.exists(os.path.join(FRONTEND_STATIC_DIR, "assets")):
-    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_STATIC_DIR, "assets")), name="assets")
+assets_dir = os.path.join(FRONTEND_STATIC_DIR, "assets")
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    logger.info(f"✅ Static assets mounted from: {assets_dir}")
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
@@ -201,12 +203,15 @@ async def serve_spa(request: Request, full_path: str):
 
     对于非API路由，返回index.html让前端路由处理
     这解决了SPA应用在页面刷新时404的问题
+
+    HashRouter (#/path) 不会触发服务器请求
+    BrowserRouter (/path) 需要此fallback返回index.html
     """
     # 如果是API路由，跳过（让FastAPI返回404）
     if _is_api_route(full_path):
         return JSONResponse(
             status_code=404,
-            content={"detail": "Not Found"}
+            content={"detail": "API endpoint not found"}
         )
 
     # 检查是否请求静态文件（如图片、CSS等）
@@ -217,13 +222,18 @@ async def serve_spa(request: Request, full_path: str):
     # 返回index.html让前端路由处理
     index_path = os.path.join(FRONTEND_STATIC_DIR, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        # 对于HTML请求，添加缓存控制
+        response = FileResponse(index_path)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
 
     # 如果前端未构建，返回提示信息
+    logger.warning(f"Frontend not built. Static dir: {FRONTEND_STATIC_DIR}")
     return JSONResponse(
         status_code=503,
         content={
             "message": "Frontend not built. Please run 'npm run build' in the frontend directory.",
+            "static_dir": FRONTEND_STATIC_DIR,
             "docs": "/docs"
         }
     )

@@ -42,8 +42,8 @@ services:
         value: production
       - key: DEBUG
         value: false
-      - key: USE_BERT_MODEL
-        value: false
+      - key: EMOTION_MODEL_MODE
+        value: lightweight  # 使用轻量级情绪模型（~100MB）
       - key: RENDER
         value: true
 

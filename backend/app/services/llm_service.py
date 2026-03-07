@@ -1,15 +1,25 @@
 """
 LLM Service
 大语言模型服务层 - OpenRouter集成
+
+特性：
+- 自动重试机制（指数退避）
+- 备用模型切换
+- 详细错误日志
+- 智能降级处理
 """
 from typing import Optional, List, Dict, Any
 import asyncio
+import logging
 from functools import lru_cache
 
-from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
+from openai import OpenAI, APIError, APIConnectionError, RateLimitError, APITimeoutError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.config import settings
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 
 class LLMService:
@@ -17,7 +27,20 @@ class LLMService:
     大语言模型服务
 
     使用OpenRouter API调用GLM-4.5-Air模型
+
+    特性：
+    - 自动重试（指数退避）
+    - 备用模型切换
+    - 详细错误日志
     """
+
+    # 备用模型列表（按优先级排序）
+    FALLBACK_MODELS = [
+        "deepseek/deepseek-chat:free",
+        "google/gemma-2-9b-it:free",
+        "meta-llama/llama-3-8b-instruct:free",
+        "qwen/qwen-2-7b-instruct:free",
+    ]
 
     def __init__(
         self,
@@ -36,8 +59,12 @@ class LLMService:
         self.api_key = api_key or settings.OPENROUTER_API_KEY
         self.base_url = base_url or settings.OPENROUTER_BASE_URL
         self.model = model or settings.LLM_MODEL
+        self._current_model = self.model  # 当前使用的模型
+        self._fallback_index = 0  # 当前备用模型索引
 
         self._client: Optional[OpenAI] = None
+
+        logger.info(f"LLM Service initialized with model: {self.model}")
 
     @property
     def client(self) -> OpenAI:
@@ -46,6 +73,7 @@ class LLMService:
             self._client = OpenAI(
                 base_url=self.base_url,
                 api_key=self.api_key,
+                timeout=60.0,  # 设置超时
                 default_headers={
                     "HTTP-Referer": "https://heartmirror.app",
                     "X-Title": "HeartMirror"
@@ -53,9 +81,30 @@ class LLMService:
             )
         return self._client
 
+    def _switch_to_fallback_model(self) -> bool:
+        """
+        切换到备用模型
+
+        Returns:
+            bool: 是否成功切换
+        """
+        if self._fallback_index < len(self.FALLBACK_MODELS):
+            old_model = self._current_model
+            self._current_model = self.FALLBACK_MODELS[self._fallback_index]
+            self._fallback_index += 1
+            logger.warning(f"Switching model: {old_model} -> {self._current_model}")
+            return True
+        return False
+
+    def _reset_model(self):
+        """重置为主模型"""
+        self._current_model = self.model
+        self._fallback_index = 0
+
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=10)
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((APIConnectionError, APITimeoutError, RateLimitError))
     )
     def _call_api(
         self,
@@ -74,13 +123,71 @@ class LLMService:
         Returns:
             生成的文本
         """
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-        return response.choices[0].message.content
+        try:
+            response = self.client.chat.completions.create(
+                model=self._current_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            # 成功后重置模型
+            self._reset_model()
+            return response.choices[0].message.content
+
+        except RateLimitError as e:
+            logger.warning(f"Rate limit hit for model {self._current_model}: {e}")
+            if self._switch_to_fallback_model():
+                # 使用新模型重试
+                return self._call_api(messages, temperature, max_tokens)
+            raise
+
+        except APIConnectionError as e:
+            logger.error(f"Connection error: {e}")
+            raise
+
+        except APIError as e:
+            logger.error(f"API error: {e}")
+            if "model" in str(e).lower() and self._switch_to_fallback_model():
+                return self._call_api(messages, temperature, max_tokens)
+            raise
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            # 返回一个友好的错误消息而不是抛出异常
+            return f"抱歉，我现在遇到了一些技术问题，请稍后再试。"
+
+    async def test_connection(self) -> Dict[str, Any]:
+        """
+        测试API连接
+
+        Returns:
+            Dict with connection status and details
+        """
+        result = {
+            "connected": False,
+            "model": self._current_model,
+            "error": None,
+            "response_time": None
+        }
+
+        try:
+            import time
+            start = time.time()
+
+            response = await self.generate(
+                prompt="你好",
+                system_prompt="请简单回复",
+                max_tokens=20
+            )
+
+            result["response_time"] = round(time.time() - start, 2)
+            result["connected"] = True
+            result["response"] = response[:100]
+
+        except Exception as e:
+            result["error"] = str(e)
+
+        return result
 
     async def generate(
         self,

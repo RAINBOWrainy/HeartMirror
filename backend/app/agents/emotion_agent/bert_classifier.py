@@ -2,6 +2,11 @@
 Emotion BERT Classifier
 基于中文BERT的情绪分类器
 
+支持三种模式：
+1. 轻量级模型（~100MB）- 首次部署推荐
+2. 完整BERT模型（~400MB）- 可选，需手动启用
+3. 关键词匹配（无需下载）- 降级方案
+
 注意：此模块需要 torch 和 transformers 库。
 在生产环境中如果这些库不可用，会降级到简单的情绪分析。
 
@@ -16,7 +21,7 @@ logger = logging.getLogger(__name__)
 # 尝试导入 ML 库，如果不可用则使用降级方案
 try:
     import torch
-    from transformers import BertTokenizer, BertForSequenceClassification
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
     import numpy as np
     ML_AVAILABLE = True
 except ImportError:
@@ -26,6 +31,13 @@ except ImportError:
 # ModelScope 模型缓存路径
 MODELSCOPE_CACHE = os.path.expanduser("~/.cache/modelscope/hub/models/tiansz/bert-base-chinese")
 
+# 轻量级模型配置（~100MB，适合首次部署）
+LIGHTWEIGHT_MODELS = {
+    "chinese_sentiment": "uer/roberta-base-finetuned-chinese-sentiment",  # ~100MB
+    "distilbert_sentiment": "lxyuan/distilbert-base-uncased-distilled-sentiment",  # ~65MB
+    "twitter_sentiment": "cardiffnlp/twitter-roberta-base-sentiment",  # ~50MB
+}
+
 
 class EmotionBERTClassifier:
     """
@@ -33,6 +45,11 @@ class EmotionBERTClassifier:
 
     使用中文BERT模型进行情绪分类
     如果 ML 库不可用，使用简单的关键词匹配降级方案
+
+    支持三种模式：
+    - lightweight: 轻量级模型（~100MB），首次部署推荐
+    - full: 完整BERT模型（~400MB），需要更多资源
+    - keyword: 纯关键词匹配，无需下载模型
     """
 
     # 默认情绪标签 - 16种情绪类型
@@ -54,6 +71,13 @@ class EmotionBERTClassifier:
         "calm",       # 平静
         "neutral",    # 中性
     ]
+
+    # 轻量级模型的情绪标签映射（3分类：positive/negative/neutral）
+    SENTIMENT_LABEL_MAP = {
+        "positive": "joy",
+        "negative": "sadness",
+        "neutral": "neutral"
+    }
 
     # 扩展情绪关键词库（降级方案）- 16种情绪，更全面覆盖
     EMOTION_KEYWORDS = {
@@ -136,7 +160,8 @@ class EmotionBERTClassifier:
         model_path: Optional[str] = None,
         model_name: str = "bert-base-chinese",
         device: str = "cpu",
-        num_labels: int = 16
+        num_labels: int = 16,
+        mode: str = "lightweight"  # lightweight, full, keyword
     ):
         """
         初始化分类器
@@ -146,39 +171,60 @@ class EmotionBERTClassifier:
             model_name: 模型名称（用于Hugging Face）
             device: 运行设备 (cpu/cuda)
             num_labels: 分类标签数量
+            mode: 模型模式
+                - lightweight: 轻量级模型（~100MB），首次部署推荐
+                - full: 完整BERT模型（~400MB）
+                - keyword: 纯关键词匹配
         """
         self.num_labels = num_labels
         self.labels = self.DEFAULT_LABELS[:num_labels]
         self.ml_available = ML_AVAILABLE
+        self.mode = mode
+        self._model_loaded = False
+
+        logger.info(f"Initializing EmotionBERTClassifier with mode: {mode}")
+
+        # 关键词模式：不加载模型
+        if mode == "keyword":
+            logger.info("Using keyword-only mode (no model download)")
+            self.ml_available = False
+            return
 
         if ML_AVAILABLE:
             self.device = torch.device(device)
 
-            # 优先使用 ModelScope 缓存的模型
-            actual_model_path = model_path
-            if actual_model_path is None and os.path.exists(MODELSCOPE_CACHE):
-                # 检查 ModelScope 缓存是否有完整的模型文件
-                safetensors_path = os.path.join(MODELSCOPE_CACHE, "model.safetensors")
-                if os.path.exists(safetensors_path):
-                    actual_model_path = MODELSCOPE_CACHE
-                    logger.info(f"Using ModelScope cached model: {MODELSCOPE_CACHE}")
-
-            if actual_model_path:
-                logger.info(f"Loading tokenizer from: {actual_model_path}")
-                self.tokenizer = BertTokenizer.from_pretrained(actual_model_path)
-                self.model = BertForSequenceClassification.from_pretrained(
-                    actual_model_path, num_labels=num_labels
-                )
+            # 根据模式选择模型
+            if mode == "lightweight":
+                # 使用轻量级中文情感模型
+                actual_model_name = LIGHTWEIGHT_MODELS["chinese_sentiment"]
+                logger.info(f"Loading lightweight model: {actual_model_name}")
+                self._is_lightweight = True
             else:
-                logger.info(f"Loading model from Hugging Face: {model_name}")
-                self.tokenizer = BertTokenizer.from_pretrained(model_name)
-                self.model = BertForSequenceClassification.from_pretrained(
-                    model_name, num_labels=num_labels
-                )
+                # 优先使用 ModelScope 缓存的模型
+                actual_model_path = model_path
+                if actual_model_path is None and os.path.exists(MODELSCOPE_CACHE):
+                    safetensors_path = os.path.join(MODELSCOPE_CACHE, "model.safetensors")
+                    if os.path.exists(safetensors_path):
+                        actual_model_path = MODELSCOPE_CACHE
+                        logger.info(f"Using ModelScope cached model: {MODELSCOPE_CACHE}")
 
-            self.model.to(self.device)
-            self.model.eval()
-            logger.info("BERT classifier initialized successfully")
+                if actual_model_path:
+                    actual_model_name = actual_model_path
+                else:
+                    actual_model_name = model_name
+                self._is_lightweight = False
+
+            try:
+                logger.info(f"Loading model from: {actual_model_name}")
+                self.tokenizer = AutoTokenizer.from_pretrained(actual_model_name)
+                self.model = AutoModelForSequenceClassification.from_pretrained(actual_model_name)
+                self.model.to(self.device)
+                self.model.eval()
+                self._model_loaded = True
+                logger.info("Model loaded successfully")
+            except Exception as e:
+                logger.warning(f"Failed to load model: {e}, falling back to keyword mode")
+                self.ml_available = False
         else:
             logger.info("Using fallback emotion classifier (keyword-based)")
 
@@ -190,23 +236,44 @@ class EmotionBERTClassifier:
             return self._predict_with_keywords(text)
 
     def _predict_with_model(self, text: str) -> Dict:
-        """使用 BERT 模型预测"""
+        """使用模型预测"""
         inputs = self._preprocess(text)
 
         with torch.no_grad():
             outputs = self.model(**inputs)
             logits = outputs.logits
             probs = torch.softmax(logits, dim=-1)[0].cpu().numpy()
-            predicted_class = np.argmax(probs)
-            predicted_emotion = self.labels[predicted_class]
-            confidence = probs[predicted_class]
+            predicted_class = int(np.argmax(probs))
+
+            # 对于轻量级模型（3分类），映射到16种情绪
+            if self._is_lightweight:
+                sentiment_labels = ["negative", "neutral", "positive"]  # 典型的3分类顺序
+                sentiment = sentiment_labels[predicted_class]
+                predicted_emotion = self.SENTIMENT_LABEL_MAP.get(sentiment, "neutral")
+                confidence = float(probs[predicted_class])
+
+                # 使用关键词分析来细化情绪类型
+                keyword_result = self._predict_with_keywords(text)
+                if keyword_result["emotion"] != "neutral" and confidence > 0.5:
+                    predicted_emotion = keyword_result["emotion"]
+
+                all_scores = {
+                    "sentiment": sentiment,
+                    "emotion": predicted_emotion,
+                    "confidence": confidence
+                }
+            else:
+                # 完整BERT模型（16分类）
+                predicted_emotion = self.labels[predicted_class]
+                confidence = float(probs[predicted_class])
+                all_scores = {label: float(prob) for label, prob in zip(self.labels, probs)}
+
             intensity = self._calculate_intensity(probs)
-            all_scores = {label: float(prob) for label, prob in zip(self.labels, probs)}
 
             return {
                 "emotion": predicted_emotion,
                 "intensity": intensity,
-                "confidence": float(confidence),
+                "confidence": confidence,
                 "all_scores": all_scores
             }
 
