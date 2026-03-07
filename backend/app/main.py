@@ -138,10 +138,10 @@ async def health_check():
     }
 
 
-# 根路径
-@app.get("/", tags=["系统"])
-async def root():
-    """根路径"""
+# API信息端点（供开发者使用）
+@app.get("/api/info", tags=["系统"])
+async def api_info():
+    """API信息"""
     return {
         "message": f"Welcome to {settings.APP_NAME}",
         "docs": "/docs",

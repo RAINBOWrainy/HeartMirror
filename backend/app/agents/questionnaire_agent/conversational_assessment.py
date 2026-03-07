@@ -317,6 +317,110 @@ class ConversationalAssessmentEngine:
         self.current_area: Optional[str] = None
         self.assessment_scores: Dict[str, int] = {}
         self.conversation_flow: List[str] = []
+        # 新增：用于风险评估的数据
+        self.duration_days: int = 0
+        self.functional_impact: float = 0.0
+        self.self_harm_thoughts: bool = False
+
+    def calculate_phq9_score(self) -> Dict[str, Any]:
+        """
+        计算PHQ-9临床评分
+
+        Returns:
+            包含总分和严重程度的字典
+        """
+        # 症状严重程度到分数的映射
+        severity_to_score = {
+            "mild": 1,
+            "moderate": 2,
+            "severe": 3
+        }
+
+        total_score = 0
+        for symptom_id, data in self.assessed_items.items():
+            if symptom_id in self.PHQ9_CONVERSATIONAL:
+                severity = data.get("severity", "mild")
+                total_score += severity_to_score.get(severity, 0)
+
+        # PHQ-9评分解释
+        if total_score <= 4:
+            severity_level = "none"
+            interpretation = "无明显抑郁症状"
+        elif total_score <= 9:
+            severity_level = "mild"
+            interpretation = "轻度抑郁"
+        elif total_score <= 14:
+            severity_level = "moderate"
+            interpretation = "中度抑郁"
+        elif total_score <= 19:
+            severity_level = "moderately_severe"
+            interpretation = "中重度抑郁"
+        else:
+            severity_level = "severe"
+            interpretation = "重度抑郁"
+
+        return {
+            "total_score": total_score,
+            "max_score": 27,
+            "severity_level": severity_level,
+            "interpretation": interpretation
+        }
+
+    def calculate_gad7_score(self) -> Dict[str, Any]:
+        """
+        计算GAD-7临床评分
+
+        Returns:
+            包含总分和严重程度的字典
+        """
+        severity_to_score = {
+            "mild": 1,
+            "moderate": 2,
+            "severe": 3
+        }
+
+        total_score = 0
+        for symptom_id, data in self.assessed_items.items():
+            if symptom_id in self.GAD7_CONVERSATIONAL:
+                severity = data.get("severity", "mild")
+                total_score += severity_to_score.get(severity, 0)
+
+        # GAD-7评分解释
+        if total_score <= 4:
+            severity_level = "none"
+            interpretation = "无明显焦虑症状"
+        elif total_score <= 9:
+            severity_level = "mild"
+            interpretation = "轻度焦虑"
+        elif total_score <= 14:
+            severity_level = "moderate"
+            interpretation = "中度焦虑"
+        else:
+            severity_level = "severe"
+            interpretation = "重度焦虑"
+
+        return {
+            "total_score": total_score,
+            "max_score": 21,
+            "severity_level": severity_level,
+            "interpretation": interpretation
+        }
+
+    def get_risk_assessment_data(self) -> Dict[str, Any]:
+        """
+        获取风险评估所需的数据
+
+        Returns:
+            风险评估数据
+        """
+        return {
+            "duration_days": self.duration_days,
+            "functional_impact": self.functional_impact,
+            "self_harm_thoughts": self.self_harm_thoughts,
+            "phq9_score": self.calculate_phq9_score(),
+            "gad7_score": self.calculate_gad7_score(),
+            "detected_symptoms": list(self.assessed_items.keys())
+        }
 
     def get_next_question(
         self,
@@ -345,6 +449,13 @@ class ConversationalAssessmentEngine:
                         "assessed": True
                     }
 
+            # 检测持续时间
+            self._detect_duration(user_response)
+
+            # 检测危机指标
+            if "suicidal_ideation" in detected:
+                self.self_harm_thoughts = True
+
         # 确定下一个评估领域
         next_area = self._select_next_area()
 
@@ -353,7 +464,8 @@ class ConversationalAssessmentEngine:
             return {
                 "type": "summary",
                 "content": self._generate_summary(),
-                "assessment_complete": True
+                "assessment_complete": True,
+                "risk_data": self.get_risk_assessment_data()
             }
 
         # 获取该领域的问题
@@ -429,6 +541,59 @@ class ConversationalAssessmentEngine:
                     break
 
         return detected
+
+    def _detect_duration(self, text: str) -> None:
+        """
+        从用户回复中检测症状持续时间
+
+        Args:
+            text: 用户回复文本
+        """
+        import re
+
+        # 时间表达式的正则模式
+        duration_patterns = [
+            # 周数
+            (r'(\d+)\s*周', 7),
+            (r'(\d+)\s*个星期', 7),
+            # 天数
+            (r'(\d+)\s*天', 1),
+            (r'(\d+)\s*日', 1),
+            # 月数
+            (r'(\d+)\s*个月', 30),
+            (r'(\d+)\s*月', 30),
+            # 特殊表达
+            (r'一两周', 10),
+            (r'大半个月', 20),
+            (r'半个多月', 20),
+        ]
+
+        for pattern, multiplier in duration_patterns:
+            match = re.search(pattern, text)
+            if match:
+                try:
+                    number = int(match.group(1)) if match.group(1) else 1
+                    days = number * multiplier
+                    # 更新为更大的值（如果已检测到）
+                    if days > self.duration_days:
+                        self.duration_days = days
+                except (ValueError, IndexError):
+                    pass
+
+        # 特殊关键词检测
+        duration_keywords = {
+            "好几天": 5,
+            "十几天": 15,
+            "几十天": 30,
+            "很久": 30,
+            "一直": 30,
+            "最近": 7,
+            "这阵子": 14,
+        }
+
+        for keyword, days in duration_keywords.items():
+            if keyword in text and days > self.duration_days:
+                self.duration_days = days
 
     def _select_next_area(self) -> Optional[str]:
         """
