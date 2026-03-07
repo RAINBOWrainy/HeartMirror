@@ -31,34 +31,33 @@ async def lifespan(app: FastAPI):
     """
     应用生命周期管理
     """
+    import asyncio
+
     # 启动时
     logger.info(f"🚀 Starting {settings.APP_NAME}...")
     logger.info(f"📝 Environment: {settings.APP_ENV}")
 
-    # 初始化数据库
+    # 初始化数据库 - 带超时保护
     try:
-        await init_database()
+        await asyncio.wait_for(init_database(), timeout=30)
         logger.info("✅ Database initialized")
+    except asyncio.TimeoutError:
+        logger.error("❌ Database initialization timed out")
     except Exception as e:
         logger.error(f"❌ Database initialization failed: {e}")
 
-    # 初始化Redis
+    # 初始化Redis - 带超时保护
     try:
-        await init_redis()
+        await asyncio.wait_for(init_redis(), timeout=10)
         logger.info("✅ Redis connected")
+    except asyncio.TimeoutError:
+        logger.warning("⚠️ Redis connection timed out")
     except Exception as e:
         logger.warning(f"⚠️ Redis connection failed: {e}")
 
-    # 初始化RAG知识库
-    try:
-        from app.agents.questionnaire_agent.rag_engine import RAGEngine
-        rag_engine = RAGEngine()
-        await rag_engine.initialize_knowledge_base()
-        logger.info("✅ RAG Knowledge Base initialized")
-    except ImportError as e:
-        logger.warning(f"⚠️ RAG module not available: {e}")
-    except Exception as e:
-        logger.warning(f"⚠️ RAG initialization failed: {e}")
+    # 跳过RAG初始化以加速启动（按需加载）
+    # RAG会在首次使用时自动初始化
+    logger.info("⚡ Skipping RAG initialization for faster startup (will initialize on demand)")
 
     yield
 

@@ -4,6 +4,7 @@ PostgreSQL + SQLAlchemy Async Setup
 """
 import logging
 import ssl
+import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -67,7 +68,8 @@ def get_engine_args():
         # Render PostgreSQL 使用自签名证书
         # 创建不验证证书的 SSL 上下文
         args["connect_args"] = {
-            "ssl": get_ssl_context()
+            "ssl": get_ssl_context(),
+            "timeout": 10,  # 连接超时10秒
         }
     else:
         # SQLite 不支持这些参数
@@ -98,15 +100,19 @@ class Base(DeclarativeBase):
 async def init_database():
     """初始化数据库 - 创建所有表"""
     try:
-        async with async_engine.begin() as conn:
-            # 创建所有表（如果不存在）
-            # 注意：不再使用 drop_all 以保留数据
-            await conn.run_sync(Base.metadata.create_all)
+        # 添加超时保护，最多等待30秒
+        async with asyncio.timeout(30):
+            async with async_engine.begin() as conn:
+                # 创建所有表（如果不存在）
+                # 注意：不再使用 drop_all 以保留数据
+                await conn.run_sync(Base.metadata.create_all)
         logger.info("✅ Database tables created successfully")
+    except asyncio.TimeoutError:
+        logger.error("❌ Database initialization timed out after 30 seconds")
+        logger.warning("⚠️ Continuing without database - some features may not work")
     except Exception as e:
         logger.error(f"❌ Database initialization failed: {e}")
         logger.warning("⚠️ Continuing without database - some features may not work")
-        # 不再抛出异常，允许应用继续启动
 
 
 async def close_database():
