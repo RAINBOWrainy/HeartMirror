@@ -1,6 +1,6 @@
+# HeartMirror Backend Dockerfile for Render
 FROM python:3.11-slim
 
-# Force rebuild - v2
 WORKDIR /app
 
 # Install system dependencies
@@ -18,11 +18,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ ./backend/
 
+# Copy frontend build (if exists from Render build)
+COPY backend/app/static/ ./static/ 2>/dev/null || true
+
 # Set working directory to backend
 WORKDIR /app/backend
 
-# Expose port (Railway sets PORT env var)
+# Expose port (Render sets PORT env var)
 EXPOSE 8000
 
-# Start the application using shell to resolve $PORT
+# Start the application
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

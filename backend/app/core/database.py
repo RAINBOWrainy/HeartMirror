@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def get_database_url():
     """
     获取数据库 URL，自动转换格式
-    Railway 提供的格式: postgres:// 或 postgresql://
+    Render 提供的格式: postgres:// 或 postgresql://
     SQLAlchemy asyncpg 需要的格式: postgresql+asyncpg://
     """
     url = settings.DATABASE_URL
@@ -25,7 +25,7 @@ def get_database_url():
         logger.info("No DATABASE_URL configured, using SQLite")
         return "sqlite+aiosqlite:///./heartmirror.db"
 
-    # 转换 Railway 提供的 postgres:// 为 asyncpg 格式
+    # 转换 Render 提供的 postgres:// 为 asyncpg 格式
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif url.startswith("postgresql://"):
