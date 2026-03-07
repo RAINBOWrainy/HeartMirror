@@ -15,7 +15,7 @@ class TestLLMService:
         service = LLMService()
         # API key 可以为空（在 CI 环境中）
         assert service.base_url == "https://openrouter.ai/api/v1"
-        assert service.model == "z-ai/glm-4.5-air:free"
+        assert service.model == "arcee-ai/trinity-large-preview:free"
 
     def test_init_with_custom_params(self):
         """测试使用自定义参数初始化"""

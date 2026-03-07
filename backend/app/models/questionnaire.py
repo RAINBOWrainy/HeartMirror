@@ -59,9 +59,9 @@ class QuestionnaireSession(Base):
         index=True
     )
 
-    # 问卷类型
-    questionnaire_type: Mapped[QuestionnaireType] = mapped_column(
-        Enum(QuestionnaireType),
+    # 问卷类型 - 使用String而非Enum避免PostgreSQL enum兼容问题
+    questionnaire_type: Mapped[str] = mapped_column(
+        String(20),
         nullable=False
     )
 
@@ -139,7 +139,7 @@ class QuestionnaireSession(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<QuestionnaireSession {self.questionnaire_type.value} completed={self.is_completed}>"
+        return f"<QuestionnaireSession {self.questionnaire_type} completed={self.is_completed}>"
 
 
 class QuestionnaireAnswer(Base):

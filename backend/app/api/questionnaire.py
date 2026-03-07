@@ -27,7 +27,7 @@ QUESTIONNAIRE_DEFINITIONS = {
     "phq9": {
         "name": "PHQ-9 抑郁筛查量表",
         "description": "用于筛查抑郁症状的专业量表，共9道题",
-        "type": QuestionnaireType.PHQ9,
+        "type": "phq9",
         "questions": [
             "过去两周内，你对做事情是否缺乏兴趣或乐趣？",
             "过去两周内，你是否感到情绪低落、沮丧或绝望？",
@@ -56,7 +56,7 @@ QUESTIONNAIRE_DEFINITIONS = {
     "gad7": {
         "name": "GAD-7 焦虑筛查量表",
         "description": "用于筛查焦虑症状的专业量表，共7道题",
-        "type": QuestionnaireType.GAD7,
+        "type": "gad7",
         "questions": [
             "过去两周内，你是否感到紧张、焦虑或坐立不安？",
             "过去两周内，你是否无法控制或停止担忧？",
@@ -82,7 +82,7 @@ QUESTIONNAIRE_DEFINITIONS = {
     "dass21": {
         "name": "DASS-21 抑郁焦虑压力量表",
         "description": "综合评估抑郁、焦虑和压力症状的量表，共21道题",
-        "type": QuestionnaireType.DASS21,
+        "type": "dass21",
         "questions": [
             # 抑郁维度 (D)
             "过去一周内，我感到情绪低落",

@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     # OpenRouter LLM API
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-    LLM_MODEL: str = "z-ai/glm-4.5-air:free"
+    LLM_MODEL: str = "arcee-ai/trinity-large-preview:free"
 
     # LangChain
     LANGCHAIN_TRACING_V2: bool = False

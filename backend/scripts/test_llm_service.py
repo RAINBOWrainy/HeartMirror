@@ -116,7 +116,7 @@ async def main():
     """运行所有测试"""
     print("\n" + "=" * 60)
     print("OpenRouter LLM服务测试")
-    print("模型: z-ai/glm-4.5-air:free")
+    print("模型: arcee-ai/trinity-large-preview:free")
     print("=" * 60)
 
     results = []
