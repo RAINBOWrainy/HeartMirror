@@ -104,7 +104,7 @@ class LLMService:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type((APIConnectionError, APITimeoutError, RateLimitError))
+        retry=retry_if_exception_type(Exception)
     )
     def _call_api(
         self,
@@ -153,8 +153,9 @@ class LLMService:
 
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            # 返回一个友好的错误消息而不是抛出异常
-            return f"抱歉，我现在遇到了一些技术问题，请稍后再试。"
+            # 对于未知错误，抛出异常让重试机制处理
+            # 如果重试耗尽，上层调用者会处理
+            raise
 
     async def test_connection(self) -> Dict[str, Any]:
         """
