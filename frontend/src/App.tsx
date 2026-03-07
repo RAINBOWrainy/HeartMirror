@@ -1,5 +1,5 @@
 import { useEffect, useState, Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider, Spin, Result, Button } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import ErrorBoundary from './components/common/ErrorBoundary'
@@ -130,7 +130,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ConfigProvider theme={themeConfig} locale={zhCN}>
-        <BrowserRouter basename={basename}>
+        <HashRouter>
           <Routes>
             <Route
               path="/*"
@@ -153,7 +153,7 @@ function App() {
               }
             />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </ConfigProvider>
     </ErrorBoundary>
   )

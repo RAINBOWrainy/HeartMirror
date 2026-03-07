@@ -102,3 +102,6 @@ poetry.lock
 
 # Local development
 docker-compose.override.yml
+
+# Tauri/Rust build
+src-tauri/target/
