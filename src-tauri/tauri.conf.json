@@ -36,7 +36,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "category": "Healthcare",
+    "category": "Healthcare and Fitness",
     "shortDescription": "AI心理健康自助管理系统",
     "longDescription": "HeartMirror是一款闭环循证AI心理健康自助管理系统，面向18-28岁学生与年轻职场人群，提供情绪识别、风险评估、干预推荐等功能。",
     "windows": {
