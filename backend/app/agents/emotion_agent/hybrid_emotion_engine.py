@@ -517,17 +517,23 @@ _hybrid_engine: Optional[HybridEmotionEngine] = None
 
 
 def get_hybrid_engine(bert_classifier=None) -> HybridEmotionEngine:
-    """获取混合情绪识别引擎单例（自动加载BERT分类器）"""
+    """获取混合情绪识别引擎单例（根据配置决定是否加载BERT）"""
     global _hybrid_engine
     if _hybrid_engine is None:
-        # 如果没有传入 bert_classifier，尝试自动加载
-        if bert_classifier is None:
+        import os
+        mode = os.getenv("EMOTION_MODEL_MODE", "keyword")
+
+        # 只在非 keyword 模式下尝试加载 BERT 分类器
+        if bert_classifier is None and mode != "keyword":
             try:
                 from app.agents.emotion_agent.bert_classifier import EmotionBERTClassifier
-                bert_classifier = EmotionBERTClassifier()
-                logger.info("BERT classifier loaded successfully")
+                bert_classifier = EmotionBERTClassifier(mode=mode)
+                logger.info(f"BERT classifier loaded successfully in {mode} mode")
             except Exception as e:
                 logger.warning(f"Failed to load BERT classifier: {e}, using keyword-only mode")
                 bert_classifier = None
+        else:
+            logger.info(f"Using keyword-only emotion detection (mode={mode})")
+
         _hybrid_engine = HybridEmotionEngine(bert_classifier=bert_classifier)
     return _hybrid_engine

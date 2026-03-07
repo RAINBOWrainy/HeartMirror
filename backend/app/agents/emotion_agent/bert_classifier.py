@@ -161,7 +161,7 @@ class EmotionBERTClassifier:
         model_name: str = "bert-base-chinese",
         device: str = "cpu",
         num_labels: int = 16,
-        mode: str = "lightweight"  # lightweight, full, keyword
+        mode: Optional[str] = None  # 从环境变量读取
     ):
         """
         初始化分类器
@@ -179,6 +179,11 @@ class EmotionBERTClassifier:
         self.num_labels = num_labels
         self.labels = self.DEFAULT_LABELS[:num_labels]
         self.ml_available = ML_AVAILABLE
+
+        # 从环境变量读取模式配置
+        if mode is None:
+            mode = os.getenv("EMOTION_MODEL_MODE", "keyword")
+
         self.mode = mode
         self._model_loaded = False
 

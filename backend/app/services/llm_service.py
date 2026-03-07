@@ -190,12 +190,23 @@ class LLMService:
 
         return result
 
+    def _get_fallback_response(self, context: str = "general") -> str:
+        """获取降级响应"""
+        fallbacks = {
+            "general": "我听到了你的分享，感谢你愿意和我交流。能再多说一些吗？",
+            "emotion": "我能感受到你现在的心情，这一定不容易。想和我聊聊吗？",
+            "crisis": "如果你现在感觉很难受，请记住你并不孤单。全国心理援助热线：400-161-9995。",
+            "chat": "嗯，我在听。继续说吧，我想了解更多。"
+        }
+        return fallbacks.get(context, fallbacks["general"])
+
     async def generate(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
-        max_tokens: int = 2000
+        max_tokens: int = 2000,
+        fallback_response: Optional[str] = None
     ) -> str:
         """
         生成文本响应
@@ -205,6 +216,7 @@ class LLMService:
             system_prompt: 系统提示词
             temperature: 温度参数
             max_tokens: 最大token数
+            fallback_response: 降级响应（可选）
 
         Returns:
             生成的文本
@@ -216,14 +228,31 @@ class LLMService:
 
         messages.append({"role": "user", "content": prompt})
 
-        # 在线程池中运行同步API调用
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: self._call_api(messages, temperature, max_tokens)
-        )
-
-        return result
+        try:
+            # 使用 asyncio.to_thread 替代 get_event_loop（Python 3.9+）
+            result = await asyncio.to_thread(
+                self._call_api, messages, temperature, max_tokens
+            )
+            return result
+        except RuntimeError:
+            # 如果没有运行的事件循环，尝试备用方案
+            try:
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: self._call_api(messages, temperature, max_tokens)
+                )
+                return result
+            except Exception as e:
+                logger.error(f"Failed to get event loop: {e}")
+                if fallback_response:
+                    return fallback_response
+                raise
+        except Exception as e:
+            logger.error(f"LLM generate failed: {e}")
+            if fallback_response:
+                return fallback_response
+            raise
 
     async def generate_with_history(
         self,
@@ -231,7 +260,8 @@ class LLMService:
         history: List[Dict[str, str]],
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
-        max_tokens: int = 2000
+        max_tokens: int = 2000,
+        fallback_response: Optional[str] = None
     ) -> str:
         """
         带对话历史的生成
@@ -242,6 +272,7 @@ class LLMService:
             system_prompt: 系统提示词
             temperature: 温度参数
             max_tokens: 最大token数
+            fallback_response: 降级响应（可选）
 
         Returns:
             生成的文本
@@ -260,13 +291,16 @@ class LLMService:
 
         messages.append({"role": "user", "content": prompt})
 
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: self._call_api(messages, temperature, max_tokens)
-        )
-
-        return result
+        try:
+            result = await asyncio.to_thread(
+                self._call_api, messages, temperature, max_tokens
+            )
+            return result
+        except Exception as e:
+            logger.error(f"generate_with_history failed: {e}")
+            if fallback_response:
+                return fallback_response
+            raise
 
     async def analyze_emotion(
         self,
@@ -492,7 +526,7 @@ class LLMService:
         risk_level: str = "green"
     ) -> str:
         """
-        生成对话响应
+        生成对话响应（带降级机制）
 
         Args:
             user_input: 用户输入
@@ -530,13 +564,20 @@ class LLMService:
 
         messages.append({"role": "user", "content": f"{context_info}\n用户说：{user_input}"})
 
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: self._call_api(messages, temperature=0.7, max_tokens=500)
-        )
-
-        return result
+        try:
+            result = await asyncio.to_thread(
+                self._call_api, messages, 0.7, 500
+            )
+            return result
+        except Exception as e:
+            logger.error(f"generate_chat_response failed: {e}")
+            # 智能降级：根据风险等级返回不同响应
+            if risk_level in ["orange", "red"]:
+                return self._get_fallback_response("crisis")
+            elif emotion_detected and emotion_detected not in ["neutral", "calm"]:
+                return self._get_fallback_response("emotion")
+            else:
+                return self._get_fallback_response("chat")
 
 
 # 全局单例

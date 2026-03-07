@@ -43,7 +43,7 @@ services:
       - key: DEBUG
         value: false
       - key: EMOTION_MODEL_MODE
-        value: lightweight  # 使用轻量级情绪模型（~100MB）
+        value: keyword  # 使用关键词模式，避免模型下载阻塞启动
       - key: RENDER
         value: true
 

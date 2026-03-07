@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_MODEL: str = "arcee-ai/trinity-large-preview:free"
 
+    # Emotion Detection Model Mode
+    # Options: keyword (fast, no download), lightweight (~100MB), full (~400MB)
+    EMOTION_MODEL_MODE: str = "keyword"
+
     # LangChain
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_API_KEY: str = ""
