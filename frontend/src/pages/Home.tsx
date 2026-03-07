@@ -6,11 +6,6 @@ import {
   DashboardOutlined,
   SafetyOutlined,
   HeartOutlined,
-  SmileOutlined,
-  MehOutlined,
-  FrownOutlined,
-  ThunderboltOutlined,
-  SleepOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
