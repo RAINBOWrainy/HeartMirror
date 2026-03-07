@@ -13,6 +13,8 @@ const Chat = lazy(() => import('./pages/Chat'))
 const Diary = lazy(() => import('./pages/Diary'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Crisis = lazy(() => import('./pages/Crisis'))
+const Intervention = lazy(() => import('./pages/Intervention'))
+const Questionnaire = lazy(() => import('./pages/Questionnaire'))
 
 // 加载组件
 const PageLoader = () => (
@@ -140,6 +142,8 @@ function App() {
                       <Route path="/chat" element={<Chat />} />
                       <Route path="/chat/:sessionId" element={<Chat />} />
                       <Route path="/diary" element={<Diary />} />
+                      <Route path="/questionnaire" element={<Questionnaire />} />
+                      <Route path="/intervention" element={<Intervention />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/crisis" element={<Crisis />} />
                       <Route path="*" element={<Navigate to="/" replace />} />

@@ -10,6 +10,7 @@ import {
   BookOutlined,
   ThunderboltOutlined,
   TrophyOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { useRequest } from 'ahooks'
 import { dashboardApi } from '../services/api'
@@ -26,6 +27,7 @@ const Dashboard: React.FC = () => {
 
   const overview = dashboardData?.data?.overview || {}
   const interventionStats = dashboardData?.data?.intervention_stats || {}
+  const questionnaireStats = dashboardData?.data?.questionnaire_stats || {}
 
   return (
     <div>
@@ -33,7 +35,7 @@ const Dashboard: React.FC = () => {
 
       {/* 概览卡片 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={6} lg={4}>
           <StatCard
             title="对话次数"
             value={overview.total_sessions || 0}
@@ -41,7 +43,7 @@ const Dashboard: React.FC = () => {
             loading={loading}
           />
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={6} lg={5}>
           <StatCard
             title="日记数量"
             value={overview.total_diaries || 0}
@@ -49,7 +51,7 @@ const Dashboard: React.FC = () => {
             loading={loading}
           />
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={6} lg={5}>
           <StatCard
             title="干预完成"
             value={overview.total_interventions || 0}
@@ -57,7 +59,15 @@ const Dashboard: React.FC = () => {
             loading={loading}
           />
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={6} lg={5}>
+          <StatCard
+            title="评估次数"
+            value={questionnaireStats.total_sessions || 0}
+            prefix={<FileTextOutlined />}
+            loading={loading}
+          />
+        </Col>
+        <Col xs={24} sm={12} md={6} lg={5}>
           <StatCard
             title="连续打卡"
             value={overview.current_streak || 0}
@@ -117,6 +127,46 @@ const Dashboard: React.FC = () => {
               <Text>
                 已完成：{interventionStats.completed || 0}
               </Text>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* 评估统计 */}
+      <Card
+        style={{ marginTop: 16, borderRadius: 12 }}
+        title="评估统计"
+      >
+        <Row gutter={16} align="middle">
+          <Col xs={24} sm={12} style={{ textAlign: 'center' }}>
+            <Progress
+              type="circle"
+              percent={questionnaireStats.total_sessions > 0 ? 100 : 0}
+              format={() => `${questionnaireStats.completed_sessions || 0}/${questionnaireStats.total_sessions || 0} 已完成`}
+              strokeColor={{
+                '0%': '#722ed1',
+                '100%': '#b37feb'
+              }}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Space direction="vertical" size="middle">
+              <Text>
+                总评估次数：{questionnaireStats.total_sessions || 0}
+              </Text>
+              <Text>
+                已完成：{questionnaireStats.completed_sessions || 0}
+              </Text>
+              {questionnaireStats.latest_phq9_score !== undefined && questionnaireStats.latest_phq9_score !== null && (
+                <Text>
+                  最近PHQ-9得分：{questionnaireStats.latest_phq9_score}
+                </Text>
+              )}
+              {questionnaireStats.latest_gad7_score !== undefined && questionnaireStats.latest_gad7_score !== null && (
+                <Text>
+                  最近GAD-7得分：{questionnaireStats.latest_gad7_score}
+                </Text>
+              )}
             </Space>
           </Col>
         </Row>

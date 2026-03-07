@@ -61,7 +61,7 @@ class AgentOrchestrator:
         self.conversation_history: List[Dict[str, str]] = []
 
         # 新增：对话记忆管理
-        self._max_history = 10
+        self._max_history = 20  # 增加上下文窗口，保留更多对话历史
 
         # 新增：用户信息缓存
         self._user_info: Dict[str, Any] = {}
@@ -123,9 +123,37 @@ class AgentOrchestrator:
         else:
             return ConversationMode.CASUAL
 
+    def _get_mode_transition(
+        self,
+        from_mode: ConversationMode,
+        to_mode: ConversationMode,
+        user_input: str = None
+    ) -> Optional[str]:
+        """
+        获取模式切换过渡语
+
+        确保对话自然流畅，不突兀。
+
+        Args:
+            from_mode: 当前模式
+            to_mode: 目标模式
+            user_input: 用户输入（可选，用于上下文选择）
+
+        Returns:
+            过渡语文本，如果不需要过渡则返回None
+        """
+        # 使用统一人格系统的过渡语
+        return HeartMirrorPersona.get_mode_transition(
+            from_mode.value,
+            to_mode.value,
+            user_input
+        )
+
     async def _handle_casual_mode(self, user_input: str) -> Dict[str, Any]:
         """
-        处理日常聊天模式
+        处理日常聊天模式 - 增强版：包含情绪检测
+
+        改进：即使日常聊天也进行情绪检测，让AI能够理解用户情绪并作出共情回应
 
         Args:
             user_input: 用户输入
@@ -133,12 +161,46 @@ class AgentOrchestrator:
         Returns:
             响应结果
         """
+        # 新增：先进行情绪检测
+        emotion_agent = self.agents["emotion"]
+        emotion_result = await emotion_agent.process(user_input, self.context)
+
+        emotion_detected = emotion_result.emotion_detected
+        emotion_intensity = emotion_result.metadata.get("intensity", 0.5)
+        emotion_confidence = emotion_result.metadata.get("confidence", 0.5)
+
+        # 更新上下文中的情绪信息
+        self.context["emotion"] = {
+            "emotion": emotion_detected,
+            "intensity": emotion_intensity,
+            "confidence": emotion_confidence
+        }
+
+        # 更新用户信息缓存
+        self._user_info["primary_emotion"] = emotion_detected
+
+        # 构建包含情绪上下文的系统提示
+        emotion_context = ""
+        if emotion_detected and emotion_detected != "neutral":
+            emotion_cn = {
+                "joy": "开心", "sadness": "难过", "anger": "生气",
+                "fear": "害怕", "anxiety": "焦虑", "frustration": "疲惫/累",
+                "loneliness": "孤独", "calm": "平静", "shame": "尴尬",
+                "guilt": "内疚", "pride": "自豪", "hope": "充满希望",
+                "surprise": "惊讶", "confusion": "困惑"
+            }
+            emotion_name = emotion_cn.get(emotion_detected, emotion_detected)
+            emotion_context = f"\n\n[用户当前情绪: {emotion_name}，强度: {emotion_intensity:.1f}/1.0]"
+            emotion_context += "\n请在回复中自然地表达对这个情绪的理解和关心，用简短温暖的话语。"
+            emotion_context += "\n不要机械化地说明你检测到了情绪，而是通过共情式回应来表达理解。"
+
         system_prompt = f"""{HeartMirrorPersona.BASE_PERSONA}
+{emotion_context}
 
 你现在是在和朋友轻松聊天。保持自然、轻松的语气。
 - 不要主动问评估类问题
 - 可以分享一些有趣的想法
-- 如果用户提到负面情绪，先表示理解
+- 如果用户提到负面情绪，先表示理解和关心
 - 回复简洁温暖，不要过长"""
 
         try:
@@ -149,17 +211,21 @@ class AgentOrchestrator:
                 max_tokens=300
             )
         except Exception:
-            # 降级响应
-            import random
-            responses = HeartMirrorPersona.CASUAL_RESPONSES.get("small_talk", ["嗯，我懂"])
-            response = random.choice(responses) if isinstance(responses, list) else "嗯，我懂"
+            # 降级响应：使用情绪确认模板
+            if emotion_detected and emotion_detected != "neutral":
+                response = HeartMirrorPersona.get_emotion_acknowledge(emotion_detected)
+            else:
+                import random
+                responses = HeartMirrorPersona.CASUAL_RESPONSES.get("small_talk", ["嗯，我懂"])
+                response = random.choice(responses) if isinstance(responses, list) else "嗯，我懂"
 
         return {
             "response": response,
             "stage": self.current_stage.value,
             "mode": self.mode.value,
-            "emotion_detected": None,
-            "risk_level": "green"
+            "emotion_detected": emotion_detected,  # 现在返回实际检测到的情绪
+            "emotion_intensity": emotion_intensity,
+            "risk_level": emotion_result.risk_level
         }
 
     async def process_message(
@@ -188,7 +254,11 @@ class AgentOrchestrator:
 
         # 判断对话模式
         new_mode = self._determine_mode(user_input)
+
+        # 生成模式切换过渡语
+        mode_transition = None
         if new_mode != self.mode:
+            mode_transition = self._get_mode_transition(self.mode, new_mode, user_input)
             self.mode = new_mode
 
         # 根据模式分发处理

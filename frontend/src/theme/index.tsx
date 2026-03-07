@@ -1,27 +1,59 @@
 /**
  * App Theme Configuration
- * 应用主题配置
+ * 应用主题配置 - 温暖友好风格
  */
 
 import React from 'react'
 import { ConfigProvider, theme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 
+// 品牌色彩系统 - 温暖友好
+export const brandColors = {
+  // 主色调 - 温暖紫色系
+  primary: '#7C3AED',
+  primaryLight: '#A78BFA',
+  primaryDark: '#5B21B6',
+  // 辅助色
+  success: '#10B981',
+  successLight: '#34D399',
+  warning: '#F59E0B',
+  warningLight: '#FBBF24',
+  error: '#EF4444',
+  errorLight: '#F87171',
+  info: '#6366F1',
+  infoLight: '#818CF8',
+  // 背景色
+  bgWarm: '#FDF8F6',
+  bgCard: '#FFFFFF',
+  bgLayout: '#FAFAFA',
+  // 情绪色彩
+  emotionJoy: '#FFD666',
+  emotionSadness: '#69C0FF',
+  emotionAnger: '#FF7875',
+  emotionFear: '#B37FEB',
+  emotionAnxiety: '#FFA940',
+  emotionCalm: '#95DE64',
+}
+
 // 主题配置
 export const appTheme = {
   token: {
-    // 主色
-    colorPrimary: '#1890ff',
-    colorSuccess: '#52c41a',
-    colorWarning: '#faad14',
-    colorError: '#ff4d4f',
-    colorInfo: '#1890ff',
-    // 边框圆角
-    borderRadius: 12,
-    borderRadiusLG: 16,
-    borderRadiusSM: 8,
+    // 主色 - 温暖紫色
+    colorPrimary: brandColors.primary,
+    colorSuccess: brandColors.success,
+    colorWarning: brandColors.warning,
+    colorError: brandColors.error,
+    colorInfo: brandColors.info,
+    // 背景色
+    colorBgContainer: brandColors.bgCard,
+    colorBgLayout: brandColors.bgLayout,
+    // 边框圆角 - 更圆润友好
+    borderRadius: 16,
+    borderRadiusLG: 24,
+    borderRadiusSM: 12,
+    borderRadiusXS: 8,
     // 字体
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif',
     fontSize: 14,
     fontSizeHeading1: 38,
     fontSizeHeading2: 30,
@@ -36,46 +68,54 @@ export const appTheme = {
     marginLG: 24,
     marginXS: 8,
     marginXXS: 4,
-    // 阴影
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-    boxShadowSecondary: '0 4px 12px rgba(0, 0, 0, 0.12)',
+    // 阴影 - 更柔和
+    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.08)',
+    boxShadowSecondary: '0 4px 16px rgba(124, 58, 237, 0.12)',
     // 动画
-    motionDurationFast: '0.1s',
-    motionDurationMid: '0.2s',
-    motionDurationSlow: '0.3s',
+    motionDurationFast: '0.15s',
+    motionDurationMid: '0.25s',
+    motionDurationSlow: '0.35s',
     motionEaseInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
     motionEaseOut: 'cubic-bezier(0.0, 0, 0.2, 1)',
     motionEaseIn: 'cubic-bezier(0.4, 0, 1, 1)',
   },
   components: {
     Card: {
-      borderRadiusLG: 16,
-      paddingLG: 20,
-      boxShadowTertiary: '0 1px 2px rgba(0, 0, 0, 0.04)',
+      borderRadiusLG: 20,
+      paddingLG: 24,
+      boxShadowTertiary: '0 1px 3px rgba(124, 58, 237, 0.06)',
     },
     Button: {
-      borderRadius: 8,
-      controlHeight: 40,
-      controlHeightLG: 48,
-      controlHeightSM: 32,
+      borderRadius: 12,
+      controlHeight: 44,
+      controlHeightLG: 52,
+      controlHeightSM: 36,
+      primaryShadow: 'none',
+      defaultShadow: 'none',
     },
     Input: {
-      borderRadius: 8,
-      controlHeight: 40,
+      borderRadius: 12,
+      controlHeight: 44,
     },
     Select: {
-      borderRadius: 8,
-      controlHeight: 40,
+      borderRadius: 12,
+      controlHeight: 44,
     },
     Modal: {
-      borderRadiusLG: 16,
+      borderRadiusLG: 20,
     },
     Tag: {
-      borderRadiusSM: 8,
+      borderRadiusSM: 10,
     },
     Menu: {
-      itemBorderRadius: 8,
+      itemBorderRadius: 12,
       iconSize: 18,
+    },
+    Message: {
+      borderRadiusLG: 12,
+    },
+    Notification: {
+      borderRadiusLG: 12,
     },
   },
   algorithm: theme.defaultAlgorithm,

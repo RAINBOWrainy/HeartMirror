@@ -44,6 +44,40 @@ class HeartMirrorPersona:
 - 不做医疗诊断，但会关心地询问相关情况
 - 不说过于正式或书面化的话"""
 
+    # 心理学知识增强
+    PSYCHOLOGICAL_KNOWLEDGE = """
+你的心理学知识基础：
+
+【情绪理解】
+- 情绪是正常的人类体验，没有"对错"之分
+- 负面情绪往往传递重要信息，值得倾听和理解
+- 情绪的强度会随时间变化，高峰通常短暂
+- 接纳情绪是管理情绪的第一步
+
+【共情技巧】
+- 积极倾听：关注对方言语中的情绪关键词
+- 情绪确认：用简洁的语言反映对方的感受
+- 开放式提问：帮助对方探索自己的想法和感受
+- 避免急于给出建议，先确保对方感到被理解
+
+【支持原则】
+- 不急于给出建议，先确保对方感到被理解
+- 尊重对方的自主性，相信他们有能力做出决定
+- 适时提供信息和资源，但不强加于人
+- 鼓励小的积极改变，而非追求完美
+
+【危机识别】
+- 注意自伤、自杀相关的表达
+- 发现高风险信号时，温和但坚定地提供专业资源
+- 保持陪伴和支持，不让对方独自面对危机
+- 熟悉常见心理危机的应对方式
+
+【认知偏差】
+- 注意常见的认知扭曲：非黑即白、过度概括、灾难化
+- 温和地帮助对方发现可能的想法陷阱
+- 不直接否定对方的想法，而是提供不同视角
+"""
+
     # 朋友式闲聊响应
     CASUAL_RESPONSES = {
         "greeting": [
@@ -238,6 +272,62 @@ class HeartMirrorPersona:
         "这些方法都很简单，找个合适的时间试试？放松一点，不用给自己压力。"
     ]
 
+    # 模式切换过渡语模板
+    MODE_TRANSITIONS = {
+        ("casual", "assessment"): [
+            "听起来你最近有些烦恼，想多和我说说吗？",
+            "嗯，感觉你心里有些事情，愿意聊聊吗？",
+            "你说的这些让我想多了解一些，可以吗？",
+            "听你这么说，我想更了解你的情况..."
+        ],
+        ("assessment", "intervention"): [
+            "我了解了，有一些方法可能对你有帮助...",
+            "谢谢你和我说这些，我们来想想有什么能让你感觉好一点的方法？",
+            "根据你说的，我想到一些可能对你有用的东西...",
+            "我想帮你，要不试试这些方法？"
+        ],
+        ("intervention", "casual"): [
+            "好了，如果还有其他想聊的，随时告诉我",
+            "希望这些对你有帮助，我们随时可以继续聊",
+            "试试看吧，有问题随时来找我",
+            "放松一点，有任何想法都可以和我说"
+        ],
+        ("assessment", "casual"): [
+            "好的，谢谢你和我分享这些。还有什么想聊的吗？",
+            "我了解了，如果还有其他想说的，我在这儿",
+            "嗯嗯，我在听，还有吗？"
+        ],
+        ("casual", "crisis"): [
+            "你说的话让我有些担心...我想认真听你说",
+            "我能感觉到你现在可能很难受，我在这里陪你",
+            "等等，我想先确认一下你的安全..."
+        ],
+        ("crisis", "casual"): [
+            "谢谢你能和我说这些。记住，你不是一个人。",
+            "很高兴你愿意分享，我会一直在这里。",
+            "有什么想继续聊的，我都在。"
+        ]
+    }
+
+    # 个性化称呼模板
+    PERSONALIZED_GREETINGS = {
+        "with_nickname": [
+            "{nickname}，今天怎么样？",
+            "嘿{nickname}，来啦～",
+            "{nickname}，刚好想到你，今天还好吗？"
+        ],
+        "returning_user": [
+            "又见面啦！最近还好吗？",
+            "来啦～上次聊的那些怎么样了？",
+            "嘿，好久不见！最近怎么样？"
+        ],
+        "first_time": [
+            "嗨！今天怎么样？",
+            "来啦～最近有什么新鲜事吗？",
+            "嘿，刚好有空，聊两句？"
+        ]
+    }
+
     @classmethod
     def get_emotion_acknowledge(cls, emotion: str) -> str:
         """
@@ -360,6 +450,144 @@ class HeartMirrorPersona:
             return cls.get_stage_transition(emotion or "to_assessment")
         else:
             return "我在听，请继续说。"
+
+    @classmethod
+    def get_mode_transition(
+        cls,
+        from_mode: str,
+        to_mode: str,
+        user_input: str = None
+    ) -> str:
+        """
+        获取模式切换过渡语
+
+        Args:
+            from_mode: 当前模式
+            to_mode: 目标模式
+            user_input: 用户输入（可选，用于上下文选择）
+
+        Returns:
+            过渡语文本
+        """
+        key = (from_mode, to_mode)
+        templates = cls.MODE_TRANSITIONS.get(key, [])
+
+        if templates:
+            return random.choice(templates)
+        else:
+            # 默认过渡语
+            return "好的，我们继续。"
+
+    @classmethod
+    def get_personalized_greeting(
+        cls,
+        nickname: str = None,
+        is_returning: bool = False,
+        emotion_context: str = None
+    ) -> str:
+        """
+        获取个性化问候语
+
+        Args:
+            nickname: 用户昵称
+            is_returning: 是否是回访用户
+            emotion_context: 情绪上下文（如上次聊的主题）
+
+        Returns:
+            个性化问候语
+        """
+        if nickname:
+            templates = cls.PERSONALIZED_GREETINGS["with_nickname"]
+            return random.choice(templates).format(nickname=nickname)
+        elif is_returning:
+            templates = cls.PERSONALIZED_GREETINGS["returning_user"]
+            greeting = random.choice(templates)
+            if emotion_context:
+                greeting += f"（上次我们聊到{emotion_context}）"
+            return greeting
+        else:
+            templates = cls.PERSONALIZED_GREETINGS["first_time"]
+            return random.choice(templates)
+
+    @classmethod
+    def personalize_response(
+        cls,
+        base_response: str,
+        user_context: Dict[str, Any] = None
+    ) -> str:
+        """
+        根据用户上下文个性化响应
+
+        Args:
+            base_response: 基础响应
+            user_context: 用户上下文
+
+        Returns:
+            个性化后的响应
+        """
+        if not user_context:
+            return base_response
+
+        # 获取用户偏好
+        preferences = user_context.get("preferences", {})
+        nickname = user_context.get("nickname")
+
+        # 获取情绪模式
+        emotion_patterns = user_context.get("emotion_patterns", {})
+        dominant_emotions = emotion_patterns.get("dominant_emotions", [])
+
+        # 如果用户有昵称，可以在响应中使用
+        # 这里暂时保持基础响应，后续可以根据更多上下文进行增强
+
+        return base_response
+
+    @classmethod
+    def get_contextual_follow_up(
+        cls,
+        emotion: str,
+        user_context: Dict[str, Any] = None
+    ) -> str:
+        """
+        获取基于上下文的跟进问题
+
+        Args:
+            emotion: 当前情绪
+            user_context: 用户上下文
+
+        Returns:
+            跟进问题
+        """
+        # 基于情绪的基础跟进
+        follow_ups = {
+            "sadness": [
+                "这种感觉持续多久了？",
+                "最近发生了什么让你难过的事吗？",
+                "有谁可以和你聊聊这些吗？"
+            ],
+            "anxiety": [
+                "这种紧张的感觉从什么时候开始的？",
+                "有没有什么特别让你担心的事情？",
+                "平时有什么能让你放松的方法吗？"
+            ],
+            "frustration": [
+                "最近是不是压力太大了？",
+                "工作/学习上有什么让你特别累的事吗？",
+                "有没有休息好？"
+            ],
+            "loneliness": [
+                "最近和朋友家人有联系吗？",
+                "有没有什么活动是你想参加的？",
+                "一个人独处的时候会做些什么？"
+            ],
+            "anger": [
+                "发生什么事让你这么生气？",
+                "这种感觉多久了？",
+                "有没有人和你聊过这件事？"
+            ]
+        }
+
+        templates = follow_ups.get(emotion, ["还有其他想说的吗？"])
+        return random.choice(templates)
 
 
 # 情绪中文映射

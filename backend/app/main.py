@@ -5,10 +5,12 @@ from contextlib import asynccontextmanager
 from typing import List
 import logging
 import traceback
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from app.config import settings
@@ -17,7 +19,7 @@ from app.core.exceptions import HeartMirrorException, http_exception_from_error
 from app.core.redis_client import close_redis, init_redis
 
 # 导入API路由
-from app.api import auth, chat, emotion, diary, dashboard, crisis
+from app.api import auth, chat, emotion, diary, dashboard, crisis, intervention, questionnaire
 
 
 # 配置标准 logging
@@ -121,6 +123,8 @@ app.include_router(emotion.router, prefix="/api/emotion", tags=["情绪"])
 app.include_router(diary.router, prefix="/api/diary", tags=["日记"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["看板"])
 app.include_router(crisis.router, prefix="/api/crisis", tags=["危机支持"])
+app.include_router(intervention.router, prefix="/api/intervention", tags=["干预方案"])
+app.include_router(questionnaire.router, prefix="/api/questionnaire", tags=["问卷评估"])
 
 
 # 健康检查端点
@@ -184,4 +188,61 @@ if __name__ == "__main__":
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,
+    )
+
+
+# ============================================================================
+# SPA Static File Serving (for Render deployment)
+# ============================================================================
+
+# 检测前端静态文件目录
+FRONTEND_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+
+def _is_api_route(path: str) -> bool:
+    """检查是否为API路由"""
+    api_prefixes = [
+        "api/", "docs", "redoc", "health", "openapi.json",
+        "favicon.ico", "robots.txt"
+    ]
+    return any(path.startswith(prefix) or path == prefix.rstrip("/") for prefix in api_prefixes)
+
+
+# 挂载静态资源目录（如果存在）
+if os.path.exists(os.path.join(FRONTEND_STATIC_DIR, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_STATIC_DIR, "assets")), name="assets")
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa(request: Request, full_path: str):
+    """
+    SPA路由回退 - 处理前端路由
+
+    对于非API路由，返回index.html让前端路由处理
+    这解决了SPA应用在页面刷新时404的问题
+    """
+    # 如果是API路由，跳过（让FastAPI返回404）
+    if _is_api_route(full_path):
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Not Found"}
+        )
+
+    # 检查是否请求静态文件（如图片、CSS等）
+    file_path = os.path.join(FRONTEND_STATIC_DIR, full_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+
+    # 返回index.html让前端路由处理
+    index_path = os.path.join(FRONTEND_STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+
+    # 如果前端未构建，返回提示信息
+    return JSONResponse(
+        status_code=503,
+        content={
+            "message": "Frontend not built. Please run 'npm run build' in the frontend directory.",
+            "docs": "/docs"
+        }
     )

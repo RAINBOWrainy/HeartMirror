@@ -15,7 +15,8 @@ import {
   LogoutOutlined,
   MenuOutlined,
   CloseOutlined,
-  HeartOutlined
+  HeartOutlined,
+  FileTextOutlined
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
@@ -59,14 +60,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       label: '对话',
     },
     {
+      key: '/questionnaire',
+      icon: <FileTextOutlined />,
+      label: '评估',
+    },
+    {
+      key: '/intervention',
+      icon: <HeartOutlined />,
+      label: '干预',
+    },
+    {
       key: '/diary',
       icon: <BookOutlined />,
-      label: '情绪日记',
+      label: '日记',
     },
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
-      label: '数据看板',
+      label: '看板',
     },
     {
       key: '/crisis',

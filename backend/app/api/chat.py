@@ -320,6 +320,26 @@ async def send_message(
     )
     db.add(assistant_message)
 
+    # 自动保存情绪记录到 EmotionRecord 表
+    # 这使得聊天情绪能够在数据看板中显示
+    if emotion_detected:
+        try:
+            from app.services.emotion_record_service import EmotionRecordService
+            emotion_service = EmotionRecordService(db)
+            await emotion_service.create_from_chat(
+                user_id=current_user.id,
+                session_id=session.id,
+                emotion=emotion_detected,
+                intensity=emotion_intensity or 0.5,
+                confidence=emotion_data.get("confidence", 0.5),
+                user_input=request.message,
+                emotion_scores=emotion_data.get("all_scores"),
+            )
+        except Exception as e:
+            # 情绪记录失败不应影响主流程
+            import logging
+            logging.warning(f"Failed to create emotion record: {e}")
+
     # 更新会话
     session.message_count += 2
     session.last_message_at = datetime.now(timezone.utc)

@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Boolean, DateTime, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -89,6 +89,27 @@ class User(Base):
         Boolean,
         default=False,
         comment="用户是否确认免责声明"
+    )
+
+    # 用户昵称（可选）
+    nickname: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="用户昵称，用于个性化称呼"
+    )
+
+    # 用户记忆上下文（JSONB）
+    memory_context: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="用户记忆上下文：情绪模式、有效干预、重要事件等"
+    )
+
+    # 用户偏好设置（JSONB）
+    preferences: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="用户偏好设置：沟通风格、通知设置等"
     )
 
     # 游客用户标记

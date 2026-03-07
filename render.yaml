@@ -2,7 +2,7 @@
 # https://render.com/docs/blueprint-spec
 
 services:
-  # Web Service - 后端API
+  # Web Service - 后端API + 前端静态文件托管
   - type: web
     name: heartmirror-backend
     env: python
@@ -10,7 +10,11 @@ services:
     plan: free
     branch: main
     rootDir: backend
-    buildCommand: pip install -r requirements-prod.txt
+    buildCommand: |
+      pip install -r requirements-prod.txt
+      cd ../frontend && npm install && npm run build
+      mkdir -p ../backend/app/static
+      cp -r dist/* ../backend/app/static/
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
@@ -27,7 +31,7 @@ services:
       - key: ENCRYPTION_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: '["http://localhost:5173","http://localhost:3000","https://rainbowrainy.github.io","https://heartmirror-demo.vercel.app"]'
+        value: '["http://localhost:5173","http://localhost:3000","https://rainbowrainy.github.io","https://heartmirror-demo.vercel.app","https://heartmirror-backend.onrender.com"]'
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_BASE_URL
@@ -40,6 +44,8 @@ services:
         value: false
       - key: USE_BERT_MODEL
         value: false
+      - key: RENDER
+        value: true
 
 databases:
   # PostgreSQL Database

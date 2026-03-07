@@ -107,3 +107,37 @@ export const crisisApi = {
   getImmediateHelp: () => api.get('/crisis/immediate-help'),
   getGroundingExercises: () => api.get('/crisis/grounding-exercises'),
 }
+
+// 干预计划相关 API
+export const interventionApi = {
+  getPlans: (params?: { active_only?: boolean; limit?: number }) =>
+    api.get('/intervention/plans', { params }),
+  getPlan: (planId: string) =>
+    api.get(`/intervention/plans/${planId}`),
+  startSession: (planId: string, data?: { emotion_before?: string; intensity_before?: number }) =>
+    api.post(`/intervention/plans/${planId}/start`, data || {}),
+  completeSession: (sessionId: string, data: { user_rating?: number; emotion_after?: string; intensity_after?: number; actual_duration?: number; feedback?: string }) =>
+    api.post(`/intervention/sessions/${sessionId}/complete`, data),
+  getRecommendations: (params?: { emotion?: string; intensity?: number }) =>
+    api.get('/intervention/recommendations', { params }),
+  getStats: () =>
+    api.get('/intervention/stats'),
+}
+
+// 问卷评估相关 API
+export const questionnaireApi = {
+  getTypes: () =>
+    api.get('/questionnaire/types'),
+  getTypeDetail: (questionnaireType: string) =>
+    api.get(`/questionnaire/types/${questionnaireType}`),
+  start: (data: { questionnaire_type: string; mode?: string }) =>
+    api.post('/questionnaire/start', data),
+  submitAnswer: (data: { session_id: string; question_index: number; answer_value: number; answer_text?: string }) =>
+    api.post('/questionnaire/answer', data),
+  getSession: (sessionId: string) =>
+    api.get(`/questionnaire/sessions/${sessionId}`),
+  getResult: (sessionId: string) =>
+    api.get(`/questionnaire/sessions/${sessionId}/result`),
+  getHistory: (params?: { limit?: number }) =>
+    api.get('/questionnaire/history', { params }),
+}

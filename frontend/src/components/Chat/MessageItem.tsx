@@ -1,6 +1,6 @@
 /**
  * MessageItem Component
- * 单条消息显示组件
+ * 单条消息显示组件 - 温暖友好风格
  */
 
 import React from 'react'
@@ -8,6 +8,7 @@ import { Card, Avatar, Space, Typography, Tooltip } from 'antd'
 import { UserOutlined, RobotOutlined } from '@ant-design/icons'
 import type { Message } from '../../stores/chatStore'
 import EmotionBadge from './EmotionBadge'
+import { brandColors } from '../../theme'
 
 const { Paragraph, Text } = Typography
 
@@ -30,7 +31,8 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       style={{
         display: 'flex',
         justifyContent: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 16
+        marginBottom: 16,
+        animation: 'slideUpFade 0.3s ease-out',
       }}
     >
       <Space
@@ -44,8 +46,9 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           <Avatar
             icon={isUser ? <UserOutlined /> : <RobotOutlined />}
             style={{
-              backgroundColor: isUser ? '#1890ff' : '#52c41a',
-              flexShrink: 0
+              backgroundColor: isUser ? brandColors.primary : brandColors.success,
+              flexShrink: 0,
+              boxShadow: `0 4px 12px ${isUser ? brandColors.primary : brandColors.success}30`,
             }}
           />
         </Tooltip>
@@ -53,17 +56,24 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           <Card
             size="small"
             style={{
-              background: isUser ? '#e6f7ff' : '#f6ffed',
-              borderRadius: 12,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+              background: isUser
+                ? `linear-gradient(135deg, ${brandColors.primary}10 0%, ${brandColors.primaryLight}08 100%)`
+                : `linear-gradient(135deg, ${brandColors.success}10 0%, #f6ffed 100%)`,
+              borderRadius: 16,
+              border: isUser
+                ? `1px solid ${brandColors.primary}15`
+                : `1px solid ${brandColors.success}15`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             }}
-            bodyStyle={{ padding: '12px 16px' }}
+            styles={{ body: { padding: '12px 16px' } }}
           >
             <Paragraph
               style={{
                 margin: 0,
                 whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word'
+                wordBreak: 'break-word',
+                color: '#333',
+                lineHeight: 1.6,
               }}
             >
               {message.content}

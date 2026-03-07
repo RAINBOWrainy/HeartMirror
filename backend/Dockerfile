@@ -49,6 +49,12 @@ COPY --from=builder /app/requirements.txt .
 # 安装Python依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 预下载BERT模型，避免运行时下载（提升启动速度）
+RUN python -c "from transformers import BertTokenizer, BertModel; \
+    BertTokenizer.from_pretrained('bert-base-chinese'); \
+    BertModel.from_pretrained('bert-base-chinese'); \
+    print('BERT model downloaded successfully')" || echo "BERT model download failed, will use keyword-based fallback"
+
 # 复制应用代码
 COPY --chown=heartmirror:heartmirror . .
 

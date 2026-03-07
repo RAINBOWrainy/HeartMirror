@@ -25,6 +25,7 @@ class DashboardOverview(BaseModel):
     """看板概览"""
     total_sessions: int
     total_diaries: int
+    total_chat_emotions: int
     total_interventions: int
     current_streak: int
     risk_level: str
@@ -45,12 +46,22 @@ class InterventionStats(BaseModel):
     by_type: Dict[str, int]
 
 
+class QuestionnaireStats(BaseModel):
+    """问卷评估统计"""
+    total_sessions: int
+    completed_sessions: int
+    latest_phq9_score: Optional[int]
+    latest_gad7_score: Optional[int]
+    by_type: Dict[str, int]
+
+
 class DashboardResponse(BaseModel):
     """看板完整响应"""
     overview: DashboardOverview
     emotion_trend: List[EmotionTrendPoint]
     emotion_distribution: Dict[str, int]
     intervention_stats: InterventionStats
+    questionnaire_stats: QuestionnaireStats
     recent_activities: List[Dict]
 
 
@@ -75,13 +86,21 @@ async def get_dashboard(
     )
     total_sessions = sessions_result.scalar() or 0
 
-    # 日记数
+    # 日记数（保持原有逻辑）
     diaries_result = await db.execute(
         select(func.count(EmotionRecord.id))
         .where(EmotionRecord.user_id == current_user.id)
         .where(EmotionRecord.is_diary == True)
     )
     total_diaries = diaries_result.scalar() or 0
+
+    # 聊天情绪记录数（新增）
+    chat_emotions_result = await db.execute(
+        select(func.count(EmotionRecord.id))
+        .where(EmotionRecord.user_id == current_user.id)
+        .where(EmotionRecord.source_type == "chat")
+    )
+    total_chat_emotions = chat_emotions_result.scalar() or 0
 
     # 干预次数
     interventions_result = await db.execute(
@@ -100,6 +119,7 @@ async def get_dashboard(
     overview = DashboardOverview(
         total_sessions=total_sessions,
         total_diaries=total_diaries,
+        total_chat_emotions=total_chat_emotions,
         total_interventions=total_interventions,
         current_streak=streak,
         risk_level=current_user.risk_level,
@@ -114,7 +134,10 @@ async def get_dashboard(
     # 4. 干预统计
     intervention_stats = await _get_intervention_stats(current_user.id, db)
 
-    # 5. 最近活动
+    # 5. 问卷评估统计
+    questionnaire_stats = await _get_questionnaire_stats(current_user.id, db)
+
+    # 6. 最近活动
     recent_activities = await _get_recent_activities(current_user.id, db)
 
     return DashboardResponse(
@@ -122,6 +145,7 @@ async def get_dashboard(
         emotion_trend=emotion_trend,
         emotion_distribution=emotion_distribution,
         intervention_stats=intervention_stats,
+        questionnaire_stats=questionnaire_stats,
         recent_activities=recent_activities,
     )
 
@@ -252,6 +276,61 @@ async def _get_intervention_stats(user_id, db) -> InterventionStats:
     )
 
 
+async def _get_questionnaire_stats(user_id, db) -> QuestionnaireStats:
+    """获取问卷评估统计"""
+    # 按类型统计
+    type_result = await db.execute(
+        select(QuestionnaireSession.questionnaire_type, func.count(QuestionnaireSession.id))
+        .where(QuestionnaireSession.user_id == user_id)
+        .group_by(QuestionnaireSession.questionnaire_type)
+    )
+    by_type = {row[0].value: row[1] for row in type_result}
+
+    # 总会话数和完成数
+    total_result = await db.execute(
+        select(func.count(QuestionnaireSession.id))
+        .where(QuestionnaireSession.user_id == user_id)
+    )
+    total_sessions = total_result.scalar() or 0
+
+    completed_result = await db.execute(
+        select(func.count(QuestionnaireSession.id))
+        .where(QuestionnaireSession.user_id == user_id)
+        .where(QuestionnaireSession.is_completed == True)
+    )
+    completed_sessions = completed_result.scalar() or 0
+
+    # 获取最近的PHQ-9分数
+    phq9_result = await db.execute(
+        select(QuestionnaireSession.total_score)
+        .where(QuestionnaireSession.user_id == user_id)
+        .where(QuestionnaireSession.questionnaire_type == "phq9")
+        .where(QuestionnaireSession.is_completed == True)
+        .order_by(QuestionnaireSession.completed_at.desc())
+        .limit(1)
+    )
+    latest_phq9_score = phq9_result.scalar_one_or_none()
+
+    # 获取最近的GAD-7分数
+    gad7_result = await db.execute(
+        select(QuestionnaireSession.total_score)
+        .where(QuestionnaireSession.user_id == user_id)
+        .where(QuestionnaireSession.questionnaire_type == "gad7")
+        .where(QuestionnaireSession.is_completed == True)
+        .order_by(QuestionnaireSession.completed_at.desc())
+        .limit(1)
+    )
+    latest_gad7_score = gad7_result.scalar_one_or_none()
+
+    return QuestionnaireStats(
+        total_sessions=total_sessions,
+        completed_sessions=completed_sessions,
+        latest_phq9_score=latest_phq9_score,
+        latest_gad7_score=latest_gad7_score,
+        by_type=by_type,
+    )
+
+
 async def _get_recent_activities(user_id, db, limit: int = 10) -> List[Dict]:
     """获取最近活动"""
     activities = []
@@ -286,6 +365,23 @@ async def _get_recent_activities(user_id, db, limit: int = 10) -> List[Dict]:
             "type": "diary",
             "title": f"情绪日记 - {diary.primary_emotion.value}",
             "timestamp": diary.recorded_at.isoformat(),
+        })
+
+    # 获取最近的聊天情绪记录
+    chat_emotions_result = await db.execute(
+        select(EmotionRecord)
+        .where(EmotionRecord.user_id == user_id)
+        .where(EmotionRecord.source_type == "chat")
+        .where(EmotionRecord.recorded_at >= start_date)
+        .order_by(EmotionRecord.recorded_at.desc())
+        .limit(5)
+    )
+    for record in chat_emotions_result.scalars().all():
+        activities.append({
+            "type": "chat_emotion",
+            "title": f"聊天情绪 - {record.primary_emotion.value}",
+            "timestamp": record.recorded_at.isoformat(),
+            "intensity": record.intensity,
         })
 
     # 按时间排序

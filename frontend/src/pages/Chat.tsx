@@ -1,23 +1,36 @@
 /**
  * Chat Page
- * AI对话页面 - 使用 HTTP API
+ * AI对话页面 - 使用 HTTP API - 温暖友好风格
  */
 
-import React, { useState } from 'react'
-import { Card, Alert, message, Tag, Space } from 'antd'
-import { WifiOutlined, DisconnectOutlined } from '@ant-design/icons'
+import React, { useState, useEffect } from 'react'
+import { Card, Alert, message, Tag, Space, Typography } from 'antd'
+import { WifiOutlined, DisconnectOutlined, HeartOutlined } from '@ant-design/icons'
 import { useChatStore } from '../stores/chatStore'
 import { Message } from '../types'
 import { chatApi } from '../services/api'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { MessageList, ChatInput } from '../components/Chat'
 import { useCrisisAlert } from '../components/common/CrisisAlert'
+import { DailyEncouragement, recordSession } from '../components/companion'
+import { brandColors } from '../theme'
+
+const { Text } = Typography
 
 const Chat: React.FC = () => {
   const { currentSession, addMessage, isLoading, setLoading } = useChatStore()
   const { showAlert: showCrisisAlert } = useCrisisAlert()
   const { isOnline } = useOnlineStatus()
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
+  const [sessionStarted, setSessionStarted] = useState(false)
+
+  // 记录会话开始
+  useEffect(() => {
+    if (!sessionStarted) {
+      recordSession()
+      setSessionStarted(true)
+    }
+  }, [sessionStarted])
 
   // 发送消息
   const handleSend = async (userMessage: string) => {
@@ -69,14 +82,22 @@ const Chat: React.FC = () => {
   const ConnectionStatus = () => {
     if (!isOnline) {
       return (
-        <Tag color="error" icon={<DisconnectOutlined />}>
+        <Tag
+          color="error"
+          icon={<DisconnectOutlined />}
+          style={{ borderRadius: 8, padding: '2px 8px' }}
+        >
           离线
         </Tag>
       )
     }
 
     return (
-      <Tag color="success" icon={<WifiOutlined />}>
+      <Tag
+        color="success"
+        icon={<WifiOutlined />}
+        style={{ borderRadius: 8, padding: '2px 8px' }}
+      >
         已连接
       </Tag>
     )
@@ -88,15 +109,29 @@ const Chat: React.FC = () => {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* 免责声明和连接状态 */}
-      <Space direction="vertical" style={{ marginBottom: 16, width: '100%' }}>
+      {/* 顶部区域 */}
+      <Space direction="vertical" style={{ marginBottom: 16, width: '100%' }} size={12}>
+        {/* 温馨提示 */}
         <Alert
-          message="请注意：这是AI辅助对话，不构成医疗诊断或治疗建议"
+          message={
+            <Space>
+              <HeartOutlined style={{ color: brandColors.primary }} />
+              <Text>温馨提示：这是AI辅助对话，不构成医疗诊断或治疗建议</Text>
+            </Space>
+          }
           type="info"
-          showIcon
-          style={{ borderRadius: 8 }}
+          style={{
+            borderRadius: 16,
+            background: `${brandColors.primary}08`,
+            border: `1px solid ${brandColors.primary}15`,
+          }}
         />
-        <ConnectionStatus />
+
+        {/* 连接状态和每日鼓励 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <ConnectionStatus />
+          <DailyEncouragement compact />
+        </div>
       </Space>
 
       {/* 消息列表 */}
@@ -105,13 +140,16 @@ const Chat: React.FC = () => {
           flex: 1,
           overflow: 'hidden',
           marginBottom: 16,
-          borderRadius: 12
+          borderRadius: 20,
+          border: `1px solid ${brandColors.primary}10`,
         }}
-        bodyStyle={{
-          height: '100%',
-          padding: '0 16px',
-          display: 'flex',
-          flexDirection: 'column'
+        styles={{
+          body: {
+            height: '100%',
+            padding: '0 16px',
+            display: 'flex',
+            flexDirection: 'column'
+          }
         }}
       >
         <MessageList
