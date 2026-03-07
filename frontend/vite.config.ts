@@ -5,9 +5,10 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   // 部署路径配置：
-  // - Render部署: 使用根路径 '/'
   // - GitHub Pages: 使用仓库名 '/HeartMirror/'
-  base: process.env.RENDER === 'true' ? '/' : '/HeartMirror/',
+  // - 其他环境（Tauri桌面应用、Render部署）: 使用根路径 '/'
+  // 设置 VITE_BASE_URL=/HeartMirror/ 来启用 GitHub Pages 路径
+  base: process.env.VITE_BASE_URL || '/',
   plugins: [react()],
   resolve: {
     alias: {
