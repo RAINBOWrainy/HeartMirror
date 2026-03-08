@@ -46,9 +46,12 @@ aiofiles>=23.2.1
 # ===== 缓存（可选）=====
 redis>=5.0.0
 
-# ===== BERT模型支持（可选，用于情绪识别增强）=====
-# 注意：torch + transformers 约 1GB，超出免费计划资源限制
-# 免费计划建议使用 keyword 模式（设置 EMOTION_MODEL_MODE=keyword）
-# 如需启用 BERT，取消下面两行的注释：
-# transformers>=4.36.0
-# torch>=2.1.0
+# ===== 轻量级情绪检测模型支持 =====
+# 使用 CPU 版本 torch (~200MB) + transformers (~200MB)
+# 总计约 400MB，配合轻量级模型 (~100MB) 可在免费计划运行
+transformers>=4.36.0
+torch>=2.1.0 --index-url https://download.pytorch.org/whl/cpu
+
+# ===== ModelScope（国内模型下载）=====
+# 从 ModelScope 下载模型，无需特殊网络
+modelscope>=1.10.0

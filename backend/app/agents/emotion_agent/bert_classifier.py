@@ -10,7 +10,7 @@ Emotion BERT Classifier
 注意：此模块需要 torch 和 transformers 库。
 在生产环境中如果这些库不可用，会降级到简单的情绪分析。
 
-支持从 ModelScope 或 Hugging Face 加载模型。
+支持从 ModelScope（国内推荐）或 Hugging Face 加载模型。
 """
 from typing import Dict, List, Optional, Tuple
 import logging
@@ -28,6 +28,11 @@ except ImportError:
     ML_AVAILABLE = False
     logger.warning("torch/transformers not available, using fallback emotion classifier")
 
+# ModelScope 模型配置（国内推荐，无需特殊网络）
+MODELSCOPE_MODELS = {
+    "bert-base-chinese": "tiansz/bert-base-chinese",  # ModelScope 镜像
+}
+
 # ModelScope 模型缓存路径
 MODELSCOPE_CACHE = os.path.expanduser("~/.cache/modelscope/hub/models/tiansz/bert-base-chinese")
 
@@ -37,6 +42,30 @@ LIGHTWEIGHT_MODELS = {
     "distilbert_sentiment": "lxyuan/distilbert-base-uncased-distilled-sentiment",  # ~65MB
     "twitter_sentiment": "cardiffnlp/twitter-roberta-base-sentiment",  # ~50MB
 }
+
+
+def download_from_modelscope(model_name: str = "tiansz/bert-base-chinese") -> Optional[str]:
+    """
+    从 ModelScope 下载模型（国内推荐）
+
+    Args:
+        model_name: ModelScope 模型名称
+
+    Returns:
+        本地模型路径，如果下载失败返回 None
+    """
+    try:
+        from modelscope import snapshot_download
+        logger.info(f"Downloading model from ModelScope: {model_name}")
+        model_dir = snapshot_download(model_name)
+        logger.info(f"Model downloaded to: {model_dir}")
+        return model_dir
+    except ImportError:
+        logger.warning("modelscope not installed, skipping ModelScope download")
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to download from ModelScope: {e}")
+        return None
 
 
 class EmotionBERTClassifier:
@@ -205,13 +234,19 @@ class EmotionBERTClassifier:
                 logger.info(f"Loading lightweight model: {actual_model_name}")
                 self._is_lightweight = True
             else:
-                # 优先使用 ModelScope 缓存的模型
+                # full 模式：优先使用 ModelScope 下载
                 actual_model_path = model_path
+
+                # 1. 检查 ModelScope 缓存
                 if actual_model_path is None and os.path.exists(MODELSCOPE_CACHE):
                     safetensors_path = os.path.join(MODELSCOPE_CACHE, "model.safetensors")
                     if os.path.exists(safetensors_path):
                         actual_model_path = MODELSCOPE_CACHE
                         logger.info(f"Using ModelScope cached model: {MODELSCOPE_CACHE}")
+
+                # 2. 尝试从 ModelScope 下载
+                if actual_model_path is None:
+                    actual_model_path = download_from_modelscope("tiansz/bert-base-chinese")
 
                 if actual_model_path:
                     actual_model_name = actual_model_path

@@ -12,6 +12,8 @@ services:
     rootDir: backend
     buildCommand: |
       pip install -r requirements-prod.txt
+      # 从 ModelScope 预下载 BERT 模型（国内镜像，无需特殊网络）
+      python -c "from modelscope import snapshot_download; model_dir = snapshot_download('tiansz/bert-base-chinese'); print(f'Model downloaded to: {model_dir}')" || echo "Model download skipped, will use keyword mode"
       cd ../frontend && npm install && npm run build
       mkdir -p ../backend/app/static
       cp -r dist/* ../backend/app/static/
@@ -43,7 +45,7 @@ services:
       - key: DEBUG
         value: false
       - key: EMOTION_MODEL_MODE
-        value: keyword  # 使用关键词模式，避免模型下载阻塞启动
+        value: full  # 使用完整BERT模型，构建时已从ModelScope预下载
       - key: RENDER
         value: true
 
