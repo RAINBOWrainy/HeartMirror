@@ -15,6 +15,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Crisis = lazy(() => import('./pages/Crisis'))
 const Intervention = lazy(() => import('./pages/Intervention'))
 const Questionnaire = lazy(() => import('./pages/Questionnaire'))
+const Settings = lazy(() => import('./pages/Settings'))
 
 // 加载组件
 const PageLoader = () => (
@@ -146,6 +147,7 @@ function App() {
                       <Route path="/intervention" element={<Intervention />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/crisis" element={<Crisis />} />
+                      <Route path="/settings" element={<Settings />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>

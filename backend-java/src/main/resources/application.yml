@@ -1,0 +1,78 @@
+# HeartMirror Application Configuration
+# AI心理健康自助管理系统 - 企业级Java后端配置
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: HeartMirror
+
+  # SQLite Database Configuration
+  datasource:
+    url: jdbc:sqlite:./data/heartmirror.db
+    driver-class-name: org.sqlite.JDBC
+
+  # JPA/Hibernate Configuration
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  # JSON Configuration
+  jackson:
+    default-property-inclusion: non_null
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+  # WebSocket Configuration
+  websocket:
+    allowed-origins: "http://localhost:3002,http://127.0.0.1:3002"
+
+# JWT Configuration
+jwt:
+  secret: HeartMirror-JWT-Secret-Key-2024-Please-Change-In-Production
+  expiration: 86400000  # 24 hours in milliseconds
+
+# AI Configuration (Default - Users can override in Settings UI)
+ai:
+  default:
+    model: gpt-3.5-turbo
+  timeout:
+    connect: 30
+    read: 120
+
+# CORS Configuration
+cors:
+  allowed-origins: "http://localhost:3002,http://127.0.0.1:3002"
+  allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+  allowed-headers: "*"
+  allow-credentials: true
+
+# Crisis Support Configuration
+crisis:
+  hotline: "400-161-9995"
+  resources:
+    beijing: "010-82951332"
+    shanghai: "021-34289888"
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.heartmirror: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
