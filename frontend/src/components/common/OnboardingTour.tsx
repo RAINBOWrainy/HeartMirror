@@ -32,31 +32,31 @@ const tourSteps: TourStep[] = [
     title: '欢迎来到心镜',
     description: '心镜是一款AI心理健康自助管理工具，帮助您记录情绪、管理压力、获得支持。',
     icon: <Heart className="w-9 h-9" />,
-    color: '#1890ff'
+    color: '#5B8C5A' // Primary sage green
   },
   {
     title: 'AI 对话',
     description: '与 AI 助手进行温暖对话，它会倾听您的烦恼并提供支持性建议。',
     icon: <MessageSquare className="w-9 h-9" />,
-    color: '#52c41a'
+    color: '#5B8C5A' // Primary sage green
   },
   {
     title: '情绪日记',
     description: '记录每一天的心情，AI 会自动分析您的情绪，帮助您更好地了解自己。',
     icon: <Book className="w-9 h-9" />,
-    color: '#722ed1'
+    color: '#6B9BD2' // Info blue from DESIGN.md
   },
   {
     title: '数据看板',
     description: '查看情绪趋势图表，了解您的心理健康状态变化。',
     icon: <LayoutDashboard className="w-9 h-9" />,
-    color: '#fa8c16'
+    color: '#E07A5F' // Warning terracotta from DESIGN.md
   },
   {
     title: '危机支持',
     description: '当您需要时，这里提供心理援助热线和应对策略。',
     icon: <AlertTriangle className="w-9 h-9" />,
-    color: '#f5222d'
+    color: '#C84B31' // Error red from DESIGN.md
   }
 ]
 
