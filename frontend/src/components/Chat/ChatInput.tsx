@@ -1,13 +1,12 @@
 /**
  * ChatInput Component
- * 聊天输入组件
+ * 聊天输入组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React, { useState } from 'react'
-import { Input, Button, Space, Card } from 'antd'
-import { SendOutlined } from '@ant-design/icons'
-
-const { TextArea } = Input
+import { Send } from 'lucide-react'
+import { Button, Textarea } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface ChatInputProps {
   onSend: (message: string) => void
@@ -39,39 +38,28 @@ const ChatInput: React.FC<ChatInputProps> = ({
   }
 
   return (
-    <Card
-      style={{ borderTop: '1px solid #f0f0f0' }}
-      bodyStyle={{ padding: 16 }}
-    >
-      <Space.Compact style={{ width: '100%' }}>
-        <TextArea
+    <div className="bg-surface border-t border-border p-4">
+      <div className="flex gap-2">
+        <Textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           placeholder={placeholder}
           disabled={disabled}
-          autoSize={{ minRows: 1, maxRows: 4 }}
-          style={{
-            borderRadius: '12px 0 0 12px',
-            resize: 'none'
-          }}
+          className="flex-1 min-h-[44px] max-h-32 resize-none"
+          rows={1}
         />
         <Button
-          type="primary"
-          icon={<SendOutlined />}
           onClick={handleSend}
           loading={loading}
           disabled={disabled || !value.trim()}
-          style={{
-            height: 'auto',
-            borderRadius: '0 12px 12px 0',
-            minWidth: 80
-          }}
+          className="shrink-0 h-11 px-4"
         >
+          <Send className="w-4 h-4 mr-2" />
           发送
         </Button>
-      </Space.Compact>
-    </Card>
+      </div>
+    </div>
   )
 }
 

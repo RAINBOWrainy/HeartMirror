@@ -3,7 +3,7 @@
  * 实时通信服务
  */
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/api/chat'
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/chat'
 
 export type MessageType = 'message' | 'typing' | 'error' | 'connected' | 'disconnected'
 

@@ -70,7 +70,7 @@ public class DashboardService {
      */
     private DashboardDTO.Overview getOverview(Long userId) {
         Long totalSessions = chatSessionRepository.countByUserId(userId);
-        Long totalDiaries = diaryRepository.findByUserIdOrderByDateDesc(userId).size();
+        Long totalDiaries = (long) diaryRepository.findByUserIdOrderByDateDesc(userId).size();
         Long totalInterventions = interventionSessionRepository.countCompletedByUserId(userId);
         Integer currentStreak = calculateStreak(userId);
 

@@ -1,8 +1,11 @@
-import React from 'react'
-import { Alert, Space, Typography } from 'antd'
-import { InfoCircleOutlined } from '@ant-design/icons'
+/**
+ * GuestModeBanner Component
+ * 访客模式横幅 - 使用 Tailwind + shadcn/ui
+ */
 
-const { Text } = Typography
+import React from 'react'
+import { Info } from 'lucide-react'
+import { Alert } from '@/components/ui'
 
 interface GuestModeBannerProps {
   guestExpiresAt?: string
@@ -29,21 +32,13 @@ const GuestModeBanner: React.FC<GuestModeBannerProps> = ({ guestExpiresAt }) => 
   }
 
   return (
-    <Alert
-      type="info"
-      showIcon
-      icon={<InfoCircleOutlined />}
-      message={
-        <Space>
-          <Text strong>欢迎使用心镜</Text>
-          <Text type="secondary">会话有效期: {getRemainingTime()}</Text>
-        </Space>
-      }
-      style={{
-        marginBottom: 16,
-        borderRadius: 8,
-      }}
-    />
+    <Alert variant="info" className="mb-4">
+      <div className="flex items-center gap-2">
+        <Info className="w-4 h-4 shrink-0" />
+        <span className="font-medium text-foreground">欢迎使用心镜</span>
+        <span className="text-muted-foreground">会话有效期: {getRemainingTime()}</span>
+      </div>
+    </Alert>
   )
 }
 

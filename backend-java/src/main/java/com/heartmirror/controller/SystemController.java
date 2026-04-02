@@ -58,19 +58,4 @@ public class SystemController {
         return result;
     }
 
-    @Operation(summary = "危机资源")
-    @GetMapping("/api/crisis/resources")
-    public Map<String, Object> getCrisisResources() {
-        Map<String, Object> result = new HashMap<>();
-        result.put("hotline", crisisHotline);
-
-        Map<String, String> resources = new HashMap<>();
-        resources.put("beijing", "010-82951332");
-        resources.put("shanghai", "021-34289888");
-        resources.put("national", crisisHotline);
-        result.put("resources", resources);
-
-        result.put("message", "如果您正处于危机状态，请立即拨打以上热线寻求帮助。");
-        return result;
     }
-}

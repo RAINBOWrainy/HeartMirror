@@ -1,26 +1,26 @@
 /**
  * Chat Page
- * AI对话页面 - 使用 HTTP API - 温暖友好风格
+ * AI对话页面 - 使用 Tailwind + shadcn/ui
  */
 
 import React, { useState, useEffect } from 'react'
-import { Card, Alert, message, Tag, Space, Typography } from 'antd'
-import { WifiOutlined, DisconnectOutlined, HeartOutlined } from '@ant-design/icons'
-import { useChatStore } from '../stores/chatStore'
-import { Message } from '../types'
-import { chatApi } from '../services/api'
-import { useOnlineStatus } from '../hooks/useOnlineStatus'
-import { MessageList, ChatInput } from '../components/Chat'
-import { useCrisisAlert } from '../components/common/CrisisAlert'
-import { DailyEncouragement, recordSession } from '../components/companion'
-import { brandColors } from '../theme'
-
-const { Text } = Typography
+import { useNavigate } from 'react-router-dom'
+import { Wifi, WifiOff, Heart } from 'lucide-react'
+import { useChatStore } from '@/stores/chatStore'
+import { Message } from '@/types'
+import { chatApi } from '@/services/api'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { MessageList, ChatInput } from '@/components/Chat'
+import { useCrisisAlert } from '@/components/common/CrisisAlert'
+import { DailyEncouragement, recordSession } from '@/components/companion'
+import { Badge, Alert } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 const Chat: React.FC = () => {
   const { currentSession, addMessage, isLoading, setLoading } = useChatStore()
   const { showAlert: showCrisisAlert } = useCrisisAlert()
   const { isOnline } = useOnlineStatus()
+  const navigate = useNavigate()
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [sessionStarted, setSessionStarted] = useState(false)
 
@@ -48,31 +48,32 @@ const Chat: React.FC = () => {
     try {
       const response = await chatApi.sendMessage({
         session_id: currentSessionId || currentSession?.id,
-        message: userMessage,
+        content: userMessage,
       })
 
       // 更新会话ID
-      if (response.data.session_id && !currentSessionId) {
-        setCurrentSessionId(response.data.session_id)
+      if (response.data.sessionId && !currentSessionId) {
+        setCurrentSessionId(response.data.sessionId)
       }
 
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.data.reply,
-        emotion: response.data.emotion_detected,
-        emotionIntensity: response.data.emotion_intensity,
+        content: response.data.content,
+        emotion: response.data.emotion,
+        emotionIntensity: response.data.emotionIntensity,
         timestamp: new Date(),
       }
       addMessage(aiMsg)
 
       // 高风险情绪提示
-      if (response.data.emotion_intensity && response.data.emotion_intensity > 0.7) {
-        showCrisisAlert({ emotionIntensity: response.data.emotion_intensity })
+      if (response.data.emotionIntensity && response.data.emotionIntensity > 0.7) {
+        showCrisisAlert({ emotionIntensity: response.data.emotionIntensity })
       }
     } catch (error: any) {
       console.error('发送消息失败:', error)
-      message.error(error.response?.data?.detail || '发送消息失败，请重试')
+      // TODO: 使用新的 toast 系统
+      alert(error.response?.data?.detail || '发送消息失败，请重试')
     } finally {
       setLoading(false)
     }
@@ -82,82 +83,52 @@ const Chat: React.FC = () => {
   const ConnectionStatus = () => {
     if (!isOnline) {
       return (
-        <Tag
-          color="error"
-          icon={<DisconnectOutlined />}
-          style={{ borderRadius: 8, padding: '2px 8px' }}
-        >
+        <Badge variant="error" className="flex items-center gap-1.5">
+          <WifiOff className="w-3.5 h-3.5" />
           离线
-        </Tag>
+        </Badge>
       )
     }
 
     return (
-      <Tag
-        color="success"
-        icon={<WifiOutlined />}
-        style={{ borderRadius: 8, padding: '2px 8px' }}
-      >
+      <Badge variant="success" className="flex items-center gap-1.5">
+        <Wifi className="w-3.5 h-3.5" />
         已连接
-      </Tag>
+      </Badge>
     )
   }
 
   return (
-    <div style={{
-      height: 'calc(100vh - 64px - 48px)',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <div className="h-[calc(100vh-56px-48px)] flex flex-col">
       {/* 顶部区域 */}
-      <Space direction="vertical" style={{ marginBottom: 16, width: '100%' }} size={12}>
+      <div className="mb-4 space-y-3">
         {/* 温馨提示 */}
-        <Alert
-          message={
-            <Space>
-              <HeartOutlined style={{ color: brandColors.primary }} />
-              <Text>温馨提示：这是AI辅助对话，不构成医疗诊断或治疗建议</Text>
-            </Space>
-          }
-          type="info"
-          style={{
-            borderRadius: 16,
-            background: `${brandColors.primary}08`,
-            border: `1px solid ${brandColors.primary}15`,
-          }}
-        />
+        <Alert variant="info" className="flex items-center gap-2">
+          <Heart className="w-4 h-4 text-primary shrink-0" />
+          <span>温馨提示：这是AI辅助对话，不构成医疗诊断或治疗建议</span>
+        </Alert>
 
         {/* 连接状态和每日鼓励 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="flex items-center justify-between">
           <ConnectionStatus />
           <DailyEncouragement compact />
         </div>
-      </Space>
+      </div>
 
       {/* 消息列表 */}
-      <Card
-        style={{
-          flex: 1,
-          overflow: 'hidden',
-          marginBottom: 16,
-          borderRadius: 20,
-          border: `1px solid ${brandColors.primary}10`,
-        }}
-        styles={{
-          body: {
-            height: '100%',
-            padding: '0 16px',
-            display: 'flex',
-            flexDirection: 'column'
-          }
-        }}
+      <div
+        className={cn(
+          'flex-1 overflow-hidden mb-4 rounded-lg',
+          'bg-surface border border-border shadow-card',
+          'px-4'
+        )}
       >
         <MessageList
           messages={currentSession?.messages || []}
           isLoading={isLoading}
           loadingText="AI正在思考..."
         />
-      </Card>
+      </div>
 
       {/* 输入区域 */}
       <ChatInput

@@ -1,12 +1,11 @@
 /**
  * Custom Hooks
- * 自定义React Hooks
+ * 自定义React Hooks - 使用 Tailwind + shadcn/ui (已移除 Ant Design message)
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { message } from 'antd'
-import { useAuthStore } from '../stores/authStore'
-import { authApi, emotionApi, diaryApi, dashboardApi, crisisApi } from '../services/api'
+import { useAuthStore } from '@/stores/authStore'
+import { authApi, emotionApi, diaryApi, dashboardApi, crisisApi } from '@/services/api'
 
 // 认证相关Hook
 export function useAuth() {
@@ -19,10 +18,10 @@ export function useAuth() {
       const response = await authApi.login({ anonymous_id: anonymousId, password })
       const { access_token, user } = response.data
       setAuth(access_token, user)
-      message.success('登录成功')
+      alert('登录成功')
       return true
     } catch (error: any) {
-      message.error(error.response?.data?.detail || '登录失败')
+      alert(error.response?.data?.detail || '登录失败')
       return false
     } finally {
       setLoading(false)
@@ -38,10 +37,10 @@ export function useAuth() {
     setLoading(true)
     try {
       await authApi.register(data)
-      message.success('注册成功')
+      alert('注册成功')
       return true
     } catch (error: any) {
-      message.error(error.response?.data?.detail || '注册失败')
+      alert(error.response?.data?.detail || '注册失败')
       return false
     } finally {
       setLoading(false)
@@ -71,6 +70,7 @@ export function useEmotion() {
       const response = await emotionApi.getRecords({ days })
       setRecords(response.data || [])
     } catch (error) {
+      alert('获取情绪记录失败')
       console.error('获取情绪记录失败', error)
     } finally {
       setLoading(false)
@@ -82,6 +82,7 @@ export function useEmotion() {
       const response = await emotionApi.getStats({ days })
       setStats(response.data)
     } catch (error) {
+      alert('获取情绪统计失败')
       console.error('获取情绪统计失败', error)
     }
   }, [])
@@ -94,10 +95,10 @@ export function useEmotion() {
   }) => {
     try {
       await emotionApi.createRecord(data)
-      message.success('情绪记录成功')
+      alert('情绪记录成功')
       fetchRecords()
     } catch (error) {
-      message.error('记录失败')
+      alert('记录失败')
     }
   }, [fetchRecords])
 
@@ -127,6 +128,7 @@ export function useDiary() {
       const response = await diaryApi.list({ limit, offset })
       setDiaries(response.data || [])
     } catch (error) {
+      alert('获取日记失败')
       console.error('获取日记失败', error)
     } finally {
       setLoading(false)
@@ -140,11 +142,11 @@ export function useDiary() {
   }) => {
     try {
       await diaryApi.create(data)
-      message.success('日记创建成功')
+      alert('日记创建成功')
       fetchDiaries()
       return true
     } catch (error) {
-      message.error('创建失败')
+      alert('创建失败')
       return false
     }
   }, [fetchDiaries])
@@ -152,10 +154,10 @@ export function useDiary() {
   const deleteDiary = useCallback(async (id: string) => {
     try {
       await diaryApi.delete(id)
-      message.success('删除成功')
+      alert('删除成功')
       fetchDiaries()
     } catch (error) {
-      message.error('删除失败')
+      alert('删除失败')
     }
   }, [fetchDiaries])
 
@@ -183,6 +185,7 @@ export function useDashboard(days = 30) {
         const response = await dashboardApi.getDashboard({ days })
         setData(response.data)
       } catch (error) {
+        alert('获取看板数据失败')
         console.error('获取看板数据失败', error)
       } finally {
         setLoading(false)
@@ -210,6 +213,7 @@ export function useCrisisResources() {
         setResources(resourcesRes.data || [])
         setExercises(exercisesRes.data?.exercises || [])
       } catch (error) {
+        alert('获取危机资源失败')
         console.error('获取危机资源失败', error)
       } finally {
         setLoading(false)

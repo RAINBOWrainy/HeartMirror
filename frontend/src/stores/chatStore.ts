@@ -1,10 +1,13 @@
 /**
  * Chat Store
  * 聊天状态管理 - 支持会话管理
+ *
+ * 使用 IndexedDB 存储 + AES-256 加密，支持完整消息持久化
  */
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { encryptedChatStorage } from '../services/encryptedStorage'
 import { Message, ChatSessionState } from '../types'
 
 // 重新导出类型以保持向后兼容
@@ -136,13 +139,10 @@ export const useChatStore = create<ChatState>()(
     }),
     {
       name: 'heartmirror-chat',
-      // 只持久化会话列表，不持久化当前会话的消息
-      partialize: (state) => ({
-        sessions: state.sessions.map(s => ({
-          ...s,
-          messages: [] // 不持久化消息，减少存储
-        }))
-      })
+      // 使用加密的 IndexedDB 存储，保护聊天隐私
+      storage: createJSONStorage(() => encryptedChatStorage),
+      // 完整持久化所有数据，包括消息
+      // 纯本地应用需要保存用户所有历史对话
     }
   )
 )

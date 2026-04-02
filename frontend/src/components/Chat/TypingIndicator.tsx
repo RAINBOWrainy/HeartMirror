@@ -1,13 +1,11 @@
 /**
  * TypingIndicator Component
- * AI正在输入的指示器组件
+ * AI正在输入的指示器组件 - 使用 Tailwind
  */
 
 import React from 'react'
-import { Space, Typography } from 'antd'
-import { RobotOutlined } from '@ant-design/icons'
-
-const { Text } = Typography
+import { Bot } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TypingIndicatorProps {
   text?: string
@@ -17,31 +15,14 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   text = 'AI正在思考...'
 }) => {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-        padding: '12px 0'
-      }}
-    >
-      <Space>
-        <RobotOutlined style={{ color: '#52c41a', fontSize: 16 }} />
-        <Text type="secondary" style={{ fontSize: 14 }}>
-          {text}
-        </Text>
-        <span className="typing-dots">
-          <span style={{ animation: 'blink 1s infinite' }}>.</span>
-          <span style={{ animation: 'blink 1s infinite 0.2s' }}>.</span>
-          <span style={{ animation: 'blink 1s infinite 0.4s' }}>.</span>
-        </span>
-      </Space>
-      <style>{`
-        @keyframes blink {
-          0%, 50% { opacity: 0; }
-          51%, 100% { opacity: 1; }
-        }
-      `}</style>
+    <div className="flex items-center gap-2 py-3">
+      <Bot className="w-4 h-4 text-accent" />
+      <span className="text-sm text-muted-foreground">{text}</span>
+      <span className="flex gap-0.5">
+        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+      </span>
     </div>
   )
 }

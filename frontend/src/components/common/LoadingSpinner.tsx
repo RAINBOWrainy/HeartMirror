@@ -1,11 +1,11 @@
 /**
  * LoadingSpinner Component
- * 通用加载指示器组件
+ * 通用加载指示器组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React from 'react'
-import { Spin } from 'antd'
-import { LoadingOutlined } from '@ant-design/icons'
+import { Spinner } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface LoadingSpinnerProps {
   size?: 'small' | 'default' | 'large'
@@ -18,31 +18,21 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   tip,
   fullScreen = false
 }) => {
-  const indicator = <LoadingOutlined style={{ fontSize: size === 'large' ? 48 : 24 }} spin />
+  const spinnerSize = size === 'large' ? 'lg' : size === 'small' ? 'sm' : 'default'
 
   if (fullScreen) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        width: '100%',
-        background: '#fff'
-      }}>
-        <Spin indicator={indicator} size={size} tip={tip} />
+      <div className="flex justify-center items-center min-h-screen w-full bg-surface">
+        <Spinner size={spinnerSize} />
+        {tip && <span className="ml-2 text-muted-foreground">{tip}</span>}
       </div>
     )
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: '48px 0'
-    }}>
-      <Spin indicator={indicator} size={size} tip={tip} />
+    <div className="flex justify-center items-center py-12">
+      <Spinner size={spinnerSize} />
+      {tip && <span className="ml-2 text-muted-foreground">{tip}</span>}
     </div>
   )
 }

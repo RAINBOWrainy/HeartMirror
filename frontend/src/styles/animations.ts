@@ -205,6 +205,43 @@ export const hoverClasses = `
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* 触摸友好的按压效果 */
+.touch-active {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.touch-active:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* 仅在支持hover的设备上应用hover效果 */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.15);
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 28px rgba(124, 58, 237, 0.12);
+  }
+}
+
+/* 触摸设备的按压反馈 */
+@media (hover: none) and (pointer: coarse) {
+  .hover-lift:active,
+  .card-hover:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+}
 `
 
 // 注入动画样式到页面

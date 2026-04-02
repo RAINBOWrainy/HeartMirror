@@ -1,7 +1,9 @@
 package com.heartmirror.config;
 
 import com.heartmirror.security.JwtAuthenticationFilter;
+import com.heartmirror.security.LocalModeFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Spring Security Configuration
  *
  * JWT认证配置，定义公开和受保护的端点
+ * 支持本地模式，跳过所有认证
  */
 @Configuration
 @EnableWebSecurity
@@ -26,6 +29,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final LocalModeFilter localModeFilter;
+
+    @Value("${app.local-mode:false}")
+    private boolean localMode;
 
     // 公开端点（无需认证）
     private static final String[] PUBLIC_ENDPOINTS = {
@@ -49,11 +56,19 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        // 本地模式：允许所有请求，注入默认用户
+        if (localMode) {
+            http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .addFilterBefore(localModeFilter, UsernamePasswordAuthenticationFilter.class);
+        } else {
+            // 正常模式：需要认证
+            http.authorizeHttpRequests(auth -> auth
+                            .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                            .anyRequest().authenticated())
+                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        }
 
         return http.build();
     }

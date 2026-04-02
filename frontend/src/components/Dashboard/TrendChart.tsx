@@ -1,11 +1,11 @@
 /**
  * TrendChart Component
- * 情绪趋势折线图组件
+ * 情绪趋势折线图组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React from 'react'
-import { Card } from 'antd'
 import ReactECharts from 'echarts-for-react'
+import { cn } from '@/lib/utils'
 
 interface TrendData {
   date: string
@@ -16,18 +16,26 @@ interface TrendChartProps {
   data?: TrendData[]
   loading?: boolean
   height?: number
+  className?: string
 }
 
 const TrendChart: React.FC<TrendChartProps> = ({
   data = [],
   loading = false,
-  height = 300
+  height = 300,
+  className
 }) => {
+  const primaryColor = '#8B5CF6' // lavender from design system
+
   const chartOption = {
     title: {
       text: '情绪趋势',
       left: 'center',
-      textStyle: { fontSize: 16 }
+      textStyle: {
+        fontSize: 16,
+        fontFamily: 'var(--font-heading)',
+        color: 'var(--text-primary)'
+      }
     },
     tooltip: {
       trigger: 'axis',
@@ -47,16 +55,16 @@ const TrendChart: React.FC<TrendChartProps> = ({
       type: 'category',
       boundaryGap: false,
       data: data.map((item) => item.date),
-      axisLine: { lineStyle: { color: '#e8e8e8' } },
-      axisLabel: { color: '#8c8c8c' }
+      axisLine: { lineStyle: { color: 'var(--color-border)' } },
+      axisLabel: { color: 'var(--text-secondary)' }
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 1,
-      splitLine: { lineStyle: { color: '#f0f0f0' } },
+      splitLine: { lineStyle: { color: 'var(--color-border-muted)' } },
       axisLabel: {
-        color: '#8c8c8c',
+        color: 'var(--text-secondary)',
         formatter: (value: number) => `${(value * 100).toFixed(0)}%`
       }
     },
@@ -69,11 +77,11 @@ const TrendChart: React.FC<TrendChartProps> = ({
         symbol: 'circle',
         symbolSize: 8,
         lineStyle: {
-          color: '#1890ff',
+          color: primaryColor,
           width: 3
         },
         itemStyle: {
-          color: '#1890ff'
+          color: primaryColor
         },
         areaStyle: {
           color: {
@@ -83,8 +91,8 @@ const TrendChart: React.FC<TrendChartProps> = ({
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(24, 144, 255, 0.3)' },
-              { offset: 1, color: 'rgba(24, 144, 255, 0.05)' }
+              { offset: 0, color: 'rgba(139, 92, 246, 0.3)' },
+              { offset: 1, color: 'rgba(139, 92, 246, 0.05)' }
             ]
           }
         }
@@ -93,17 +101,24 @@ const TrendChart: React.FC<TrendChartProps> = ({
   }
 
   return (
-    <Card
-      loading={loading}
-      style={{ borderRadius: 12, height: '100%' }}
-      bodyStyle={{ padding: 16 }}
+    <div
+      className={cn(
+        'bg-surface rounded-lg border border-border p-4 h-full',
+        className
+      )}
     >
-      <ReactECharts
-        option={chartOption}
-        style={{ height }}
-        opts={{ renderer: 'svg' }}
-      />
-    </Card>
+      {loading ? (
+        <div className="flex items-center justify-center" style={{ height }}>
+          <div className="animate-pulse text-muted-foreground">加载中...</div>
+        </div>
+      ) : (
+        <ReactECharts
+          option={chartOption}
+          style={{ height }}
+          opts={{ renderer: 'svg' }}
+        />
+      )}
+    </div>
   )
 }
 

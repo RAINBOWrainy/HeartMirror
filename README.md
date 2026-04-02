@@ -1,6 +1,6 @@
 # HeartMirror (心镜)
 
-> 闭环循证AI心理健康自助管理系统 - 企业级Java本地部署版
+> 闭环循证AI心理健康自助管理系统 - Java本地部署版
 
 [![Java](https://img.shields.io/badge/Java-17+-orange.svg)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2+-green.svg)](https://spring.io/projects/spring-boot)

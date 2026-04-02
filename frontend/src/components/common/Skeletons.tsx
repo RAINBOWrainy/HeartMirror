@@ -1,10 +1,11 @@
 /**
  * Skeleton Components
- * 骨架屏加载组件
+ * 骨架屏加载组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React from 'react'
-import { Skeleton, Card, Row, Col, Space } from 'antd'
+import { Card, Skeleton } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface ChatSkeletonProps {
   count?: number
@@ -15,28 +16,19 @@ interface ChatSkeletonProps {
  */
 export const ChatSkeleton: React.FC<ChatSkeletonProps> = ({ count = 4 }) => {
   return (
-    <div style={{ padding: '16px 0' }}>
+    <div className="py-4 space-y-4">
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          style={{
-            display: 'flex',
-            justifyContent: index % 2 === 0 ? 'flex-start' : 'flex-end',
-            marginBottom: 16
-          }}
+          className={cn(
+            'flex items-start gap-3',
+            index % 2 === 0 ? 'justify-start' : 'justify-start flex-row-reverse'
+          )}
         >
-          <Space
-            align="start"
-            style={{
-              maxWidth: '80%',
-              flexDirection: index % 2 === 0 ? 'row' : 'row-reverse'
-            }}
-          >
-            <Skeleton.Avatar active size="default" />
-            <div style={{ width: 200 + Math.random() * 100 }}>
-              <Skeleton.Input active style={{ width: '100%', height: 60 }} />
-            </div>
-          </Space>
+          <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
+          <div className="max-w-80">
+            <div className="h-15 bg-muted animate-pulse rounded-lg" style={{ width: 200 + Math.random() * 100 }} />
+          </div>
         </div>
       ))}
     </div>
@@ -48,11 +40,11 @@ export const ChatSkeleton: React.FC<ChatSkeletonProps> = ({ count = 4 }) => {
  */
 export const StatCardSkeleton: React.FC = () => {
   return (
-    <Card style={{ borderRadius: 12, height: '100%' }} bodyStyle={{ padding: 20 }}>
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <Skeleton.Input active size="small" style={{ width: 80 }} />
-        <Skeleton.Input active size="large" style={{ width: 120 }} />
-      </Space>
+    <Card className="rounded-3 h-full p-5">
+      <div className="space-y-3">
+        <div className="w-20 h-4 bg-muted animate-pulse rounded" />
+        <div className="w-30 h-8 bg-muted animate-pulse rounded" />
+      </div>
     </Card>
   )
 }
@@ -62,13 +54,13 @@ export const StatCardSkeleton: React.FC = () => {
  */
 export const ChartSkeleton: React.FC = () => {
   return (
-    <Card style={{ borderRadius: 12, height: '100%' }} bodyStyle={{ padding: 16 }}>
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <Skeleton.Input active style={{ width: 120, height: 24 }} />
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Skeleton.Image active style={{ width: 200, height: 200, borderRadius: '50%' }} />
+    <Card className="rounded-3 h-full p-4">
+      <div className="space-y-4">
+        <div className="w-30 h-6 bg-muted animate-pulse rounded" />
+        <div className="flex justify-center">
+          <div className="w-50 h-50 bg-muted animate-pulse rounded-full" />
         </div>
-      </Space>
+      </div>
     </Card>
   )
 }
@@ -78,18 +70,18 @@ export const ChartSkeleton: React.FC = () => {
  */
 export const DiaryCardSkeleton: React.FC = () => {
   return (
-    <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 16 }}>
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Skeleton.Input active size="small" style={{ width: 100 }} />
-          <Skeleton.Input active size="small" style={{ width: 80 }} />
+    <Card className="rounded-3 p-4">
+      <div className="space-y-3">
+        <div className="flex justify-between">
+          <div className="w-25 h-4 bg-muted animate-pulse rounded" />
+          <div className="w-20 h-4 bg-muted animate-pulse rounded" />
         </div>
-        <Skeleton active paragraph={{ rows: 2 }} />
-        <Space>
-          <Skeleton.Button active size="small" />
-          <Skeleton.Button active size="small" />
-        </Space>
-      </Space>
+        <Skeleton rows={2} />
+        <div className="flex gap-2">
+          <div className="w-16 h-8 bg-muted animate-pulse rounded-lg" />
+          <div className="w-16 h-8 bg-muted animate-pulse rounded-lg" />
+        </div>
+      </div>
     </Card>
   )
 }
@@ -101,31 +93,25 @@ export const DashboardSkeleton: React.FC = () => {
   return (
     <div>
       {/* 统计卡片骨架 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((i) => (
-          <Col xs={24} sm={12} md={6} key={i}>
-            <StatCardSkeleton />
-          </Col>
+          <StatCardSkeleton key={i} />
         ))}
-      </Row>
+      </div>
 
       {/* 风险指示器骨架 */}
-      <Card style={{ marginBottom: 24, borderRadius: 12 }}>
-        <Space>
-          <Skeleton.Input active style={{ width: 120 }} />
-          <Skeleton.Button active style={{ width: 80 }} />
-        </Space>
+      <Card className="mb-6 rounded-3 p-4">
+        <div className="flex items-center gap-4">
+          <div className="w-30 h-6 bg-muted animate-pulse rounded" />
+          <div className="w-20 h-8 bg-muted animate-pulse rounded-lg" />
+        </div>
       </Card>
 
       {/* 图表骨架 */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={12}>
-          <ChartSkeleton />
-        </Col>
-        <Col xs={24} md={12}>
-          <ChartSkeleton />
-        </Col>
-      </Row>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ChartSkeleton />
+        <ChartSkeleton />
+      </div>
     </div>
   )
 }
@@ -135,13 +121,13 @@ export const DashboardSkeleton: React.FC = () => {
  */
 export const ListItemSkeleton: React.FC = () => {
   return (
-    <Card style={{ marginBottom: 12, borderRadius: 12 }} bodyStyle={{ padding: 16 }}>
-      <Space style={{ width: '100%' }}>
-        <Skeleton.Avatar active />
-        <div style={{ flex: 1 }}>
-          <Skeleton active paragraph={{ rows: 1 }} />
+    <Card className="mb-3 rounded-3 p-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-muted animate-pulse rounded-full shrink-0" />
+        <div className="flex-1">
+          <Skeleton rows={1} />
         </div>
-      </Space>
+      </div>
     </Card>
   )
 }

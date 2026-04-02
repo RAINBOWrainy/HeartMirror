@@ -1,149 +1,148 @@
+/**
+ * Diary Page
+ * 情绪日记页面 - 使用 Tailwind + shadcn/ui
+ */
+
 import React, { useState } from 'react'
-import { Card, Button, Input, Space, Typography, message, Modal, Form, DatePicker, Select, Tag } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { useRequest } from 'ahooks'
-import { diaryApi } from '../services/api'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { localDiaryService, DiaryItem } from '@/services/localDiary'
+import { MOOD_CONFIG } from '@/components/common/MoodIcons'
+import {
+  Button,
+  Card,
+  CardContent,
+  Badge,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+  Label,
+  Skeleton,
+  Spinner
+} from '@/components/ui'
+import { cn } from '@/lib/utils'
 
-const { TextArea } = Input
-const { Title, Text, Paragraph } = Typography
-const { Option } = Select
-
-interface DiaryItem {
-  id: string
-  mood: string
-  tags: string[]
-  emotion: string
-  emotion_intensity: number
-  created_at: string
-  content?: string
-}
-
-const moodOptions = [
-  { value: 'joy', label: '😊 开心', color: 'gold' },
-  { value: 'calm', label: '😌 平静', color: 'green' },
-  { value: 'sadness', label: '😢 悲伤', color: 'blue' },
-  { value: 'anxiety', label: '😰 焦虑', color: 'orange' },
-  { value: 'anger', label: '😠 愤怒', color: 'red' },
-  { value: 'fear', label: '😨 恐惧', color: 'purple' },
-  { value: 'neutral', label: '😐 中性', color: 'default' },
-]
+// 心情选项
+const moodOptions = MOOD_CONFIG.map(mood => ({
+  value: mood.value,
+  label: mood.label,
+  color: mood.color === 'var(--emotion-joy)' ? 'joy' :
+         mood.color === 'var(--emotion-calm)' ? 'calm' :
+         mood.color === 'var(--emotion-sadness)' ? 'sadness' :
+         mood.color === 'var(--emotion-anxiety)' ? 'anxiety' :
+         mood.color === 'var(--emotion-anger)' ? 'anger' : 'default',
+}))
 
 const Diary: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [form] = Form.useForm()
-  const [editForm] = Form.useForm()
   const [selectedDiary, setSelectedDiary] = useState<DiaryItem | null>(null)
   const [editingDiary, setEditingDiary] = useState<DiaryItem | null>(null)
+  const [formMood, setFormMood] = useState('')
+  const [formTags, setFormTags] = useState<string[]>([])
+  const [formContent, setFormContent] = useState('')
+  const [editMood, setEditMood] = useState('')
+  const [editTags, setEditTags] = useState<string[]>([])
+  const [editContent, setEditContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [diaryToDelete, setDiaryToDelete] = useState<DiaryItem | null>(null)
 
   // 获取日记列表
-  const { data: diaries, loading, refresh, error } = useRequest(() => diaryApi.list(), {
+  const { data: diaries, loading, refresh, error } = useRequest(() => localDiaryService.list(), {
     onError: (err) => {
       console.error('获取日记列表失败', err)
     },
   })
 
   // 创建日记
-  const { run: createDiary, loading: creating } = useRequest(
-    (values) => diaryApi.create(values),
-    {
-      manual: true,
-      onSuccess: () => {
-        message.success('日记创建成功')
-        setIsModalOpen(false)
-        form.resetFields()
-        refresh()
-      },
-      onError: () => {
-        message.error('创建失败，请重试')
-      },
+  const handleCreate = async () => {
+    if (!formMood || !formContent.trim()) return
+
+    setSubmitting(true)
+    try {
+      await localDiaryService.create({
+        content: formContent,
+        mood: formMood,
+        tags: formTags,
+      })
+      setIsModalOpen(false)
+      setFormMood('')
+      setFormTags([])
+      setFormContent('')
+      refresh()
+    } catch (error) {
+      console.error('创建失败', error)
+    } finally {
+      setSubmitting(false)
     }
-  )
+  }
 
   // 更新日记
-  const { run: updateDiary, loading: updating } = useRequest(
-    (id, values) => diaryApi.update(id, values),
-    {
-      manual: true,
-      onSuccess: () => {
-        message.success('日记更新成功')
-        setIsEditModalOpen(false)
-        editForm.resetFields()
-        setEditingDiary(null)
-        refresh()
-      },
-      onError: () => {
-        message.error('更新失败，请重试')
-      },
+  const handleUpdate = async () => {
+    if (!editingDiary || !editMood || !editContent.trim()) return
+
+    setSubmitting(true)
+    try {
+      await localDiaryService.update(editingDiary.id, {
+        content: editContent,
+        mood: editMood,
+        tags: editTags,
+      })
+      setIsEditModalOpen(false)
+      setEditingDiary(null)
+      refresh()
+    } catch (error) {
+      console.error('更新失败', error)
+    } finally {
+      setSubmitting(false)
     }
-  )
+  }
 
   // 删除日记
-  const { run: deleteDiary } = useRequest((id) => diaryApi.delete(id), {
-    manual: true,
-    onSuccess: () => {
-      message.success('删除成功')
-      refresh()
-    },
-    onError: (err) => {
-      console.error('删除失败', err)
-      message.error('删除失败，请重试')
-    },
-  })
+  const handleDelete = async () => {
+    if (!diaryToDelete) return
 
-  // 确认删除
-  const handleDelete = (id: string) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除这篇日记吗？此操作不可撤销。',
-      okText: '删除',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: () => deleteDiary(id),
-    })
+    try {
+      await localDiaryService.delete(diaryToDelete.id)
+      setDeleteDialogOpen(false)
+      setDiaryToDelete(null)
+      refresh()
+    } catch (error) {
+      console.error('删除失败', error)
+    }
   }
 
   // 查看日记详情
-  const { run: viewDiary } = useRequest((id) => diaryApi.get(id), {
-    manual: true,
-    onSuccess: (response) => {
-      setSelectedDiary(response.data)
-    },
-    onError: (err) => {
-      console.error('获取日记详情失败', err)
-      message.error('获取日记详情失败，请重试')
-    },
-  })
-
-  const handleSubmit = (values: any) => {
-    createDiary({
-      content: values.content,
-      mood: values.mood,
-      tags: values.tags,
-    })
+  const handleView = async (diary: DiaryItem) => {
+    setSelectedDiary(diary)
   }
 
   // 打开编辑弹窗
-  const handleEdit = (diary: DiaryItem) => {
-    setEditingDiary(diary)
-    editForm.setFieldsValue({
-      mood: diary.mood,
-      tags: diary.tags,
-      content: diary.content,
-    })
-    setIsEditModalOpen(true)
-  }
-
-  // 提交编辑
-  const handleEditSubmit = (values: any) => {
-    if (editingDiary) {
-      updateDiary(editingDiary.id, {
-        content: values.content,
-        mood: values.mood,
-        tags: values.tags,
-      })
+  const handleEdit = async (diary: DiaryItem) => {
+    try {
+      const res = await localDiaryService.get(diary.id)
+      if (res.data) {
+        setEditingDiary(res.data)
+        setEditMood(res.data.mood)
+        setEditTags(res.data.tags || [])
+        setEditContent(res.data.content || '')
+        setIsEditModalOpen(true)
+      }
+    } catch (error) {
+      console.error('获取日记详情失败', error)
     }
   }
+
+  const diaryList = Array.isArray(diaries?.data) ? diaries.data : []
 
   const getMoodLabel = (mood: string) => {
     const option = moodOptions.find((opt) => opt.value === mood)
@@ -151,259 +150,263 @@ const Diary: React.FC = () => {
   }
 
   return (
-    <div>
-      <Card
-        title={
-          <Space>
-            <Title level={4} style={{ margin: 0 }}>
-              情绪日记
-            </Title>
-            <Text type="secondary">记录每一天的心情</Text>
-          </Space>
-        }
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-            写日记
-          </Button>
-        }
-      >
-        {loading ? (
-          <Text>加载中...</Text>
-        ) : error ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <Paragraph type="secondary">加载失败，请检查网络连接</Paragraph>
-            <Button type="primary" onClick={() => refresh()}>
-              重试
-            </Button>
-          </div>
-        ) : diaries?.data?.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <Paragraph type="secondary">还没有日记记录</Paragraph>
-            <Button type="primary" onClick={() => setIsModalOpen(true)}>
-              写第一篇日记
-            </Button>
-          </div>
-        ) : (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            {diaries?.data?.map((diary: DiaryItem) => {
-              const mood = getMoodLabel(diary.mood)
-              return (
-                <Card
-                  key={diary.id}
-                  size="small"
-                  hoverable
-                  onClick={() => viewDiary(diary.id)}
-                  extra={
-                    <Space>
-                      <Button
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          // 先获取详情再编辑
-                          diaryApi.get(diary.id)
-                            .then(res => {
-                              handleEdit(res.data)
-                            })
-                            .catch(err => {
-                              console.error('获取日记详情失败', err)
-                              message.error('获取日记详情失败，请重试')
-                            })
-                        }}
-                      />
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(diary.id)
-                        }}
-                      />
-                    </Space>
-                  }
-                >
-                  <Space>
-                    <Tag color={mood.color}>{mood.label}</Tag>
-                    <Text type="secondary">
+    <div className="max-w-3xl mx-auto">
+      {/* 标题区域 */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-heading text-xl font-semibold text-foreground m-0">
+            情绪日记
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            记录每一天的心情
+          </p>
+        </div>
+        <Button onClick={() => setIsModalOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          写日记
+        </Button>
+      </div>
+
+      {/* 日记列表 */}
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="p-6">
+              <Skeleton rows={2} />
+            </Card>
+          ))}
+        </div>
+      ) : error ? (
+        <Card className="p-10 text-center">
+          <p className="text-muted-foreground mb-4">加载失败，请检查网络连接</p>
+          <Button onClick={() => refresh()}>重试</Button>
+        </Card>
+      ) : diaryList.length === 0 ? (
+        <Card className="p-10 text-center">
+          <p className="text-muted-foreground mb-4">还没有日记记录</p>
+          <Button onClick={() => setIsModalOpen(true)}>写第一篇日记</Button>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {diaryList.map((diary: DiaryItem) => {
+            const mood = getMoodLabel(diary.mood)
+            return (
+              <Card
+                key={diary.id}
+                className="p-6 cursor-pointer hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200"
+                onClick={() => handleView(diary)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-3">
+                    <Badge variant={mood.color as any}>{mood.label}</Badge>
+                    <span className="text-sm text-muted-foreground">
                       {new Date(diary.created_at).toLocaleDateString('zh-CN')}
-                    </Text>
-                  </Space>
-                  {diary.tags?.length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      {diary.tags.map((tag, index) => (
-                        <Tag key={index}>{tag}</Tag>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              )
-            })}
-          </Space>
-        )}
-      </Card>
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEdit(diary)
+                      }}
+                    >
+                      <Pencil className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDiaryToDelete(diary)
+                        setDeleteDialogOpen(true)
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 text-error" />
+                    </Button>
+                  </div>
+                </div>
+                {diary.tags?.length > 0 && (
+                  <div className="mt-3 flex gap-2 flex-wrap">
+                    {diary.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
       {/* 创建日记弹窗 */}
-      <Modal
-        title="写日记"
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-        width={600}
-      >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item
-            name="mood"
-            label="今天的心情"
-            rules={[{ required: true, message: '请选择心情' }]}
-          >
-            <Select placeholder="选择今天的心情">
-              {moodOptions.map((opt) => (
-                <Option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="tags" label="标签">
-            <Select mode="tags" placeholder="添加标签，如：工作、学习、人际关系">
-              <Option value="工作">工作</Option>
-              <Option value="学习">学习</Option>
-              <Option value="人际关系">人际关系</Option>
-              <Option value="家庭">家庭</Option>
-              <Option value="健康">健康</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="content"
-            label="日记内容"
-            rules={[{ required: true, message: '请输入日记内容' }]}
-          >
-            <TextArea
-              rows={6}
-              placeholder="记录今天发生了什么，你的感受如何..."
-              showCount
-              maxLength={2000}
-            />
-          </Form.Item>
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit" loading={creating}>
-                保存
-              </Button>
-              <Button onClick={() => setIsModalOpen(false)}>取消</Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>写日记</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>今天的心情</Label>
+              <Select value={formMood} onValueChange={setFormMood}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="选择今天的心情" />
+                </SelectTrigger>
+                <SelectContent>
+                  {moodOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>标签</Label>
+              <Select value={formTags[0] || ''} onValueChange={(v) => setFormTags(v ? [v] : [])}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="添加标签" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="工作">工作</SelectItem>
+                  <SelectItem value="学习">学习</SelectItem>
+                  <SelectItem value="人际关系">人际关系</SelectItem>
+                  <SelectItem value="家庭">家庭</SelectItem>
+                  <SelectItem value="健康">健康</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>日记内容</Label>
+              <Textarea
+                className="mt-2 font-diary text-lg"
+                rows={6}
+                placeholder="记录今天发生了什么，你的感受如何..."
+                value={formContent}
+                onChange={(e) => setFormContent(e.target.value)}
+                maxLength={2000}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} loading={submitting}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 日记详情弹窗 */}
-      <Modal
-        title="日记详情"
-        open={!!selectedDiary}
-        onCancel={() => setSelectedDiary(null)}
-        footer={
-          <Space>
-            <Button onClick={() => setSelectedDiary(null)}>关闭</Button>
-            <Button
-              type="primary"
-              onClick={() => {
-                if (selectedDiary) {
-                  setSelectedDiary(null)
-                  handleEdit(selectedDiary)
-                }
-              }}
-            >
-              编辑
-            </Button>
-          </Space>
-        }
-      >
-        {selectedDiary && (
-          <div>
-            <Space style={{ marginBottom: 16 }}>
-              <Tag color={getMoodLabel(selectedDiary.mood).color}>
-                {getMoodLabel(selectedDiary.mood).label}
-              </Tag>
-              <Text type="secondary">
-                {new Date(selectedDiary.created_at).toLocaleString('zh-CN')}
-              </Text>
-            </Space>
-            {selectedDiary.tags?.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                {selectedDiary.tags.map((tag, index) => (
-                  <Tag key={index}>{tag}</Tag>
-                ))}
+      <Dialog open={!!selectedDiary} onOpenChange={() => setSelectedDiary(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>日记详情</DialogTitle>
+          </DialogHeader>
+          {selectedDiary && (
+            <div className="py-4">
+              <div className="flex items-center gap-3 mb-4">
+                <Badge variant={getMoodLabel(selectedDiary.mood).color as any}>
+                  {getMoodLabel(selectedDiary.mood).label}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {new Date(selectedDiary.created_at).toLocaleString('zh-CN')}
+                </span>
               </div>
-            )}
-            <Paragraph style={{ whiteSpace: 'pre-wrap' }}>
-              {selectedDiary.content}
-            </Paragraph>
-          </div>
-        )}
-      </Modal>
+              {selectedDiary.tags?.length > 0 && (
+                <div className="mb-4 flex gap-2 flex-wrap">
+                  {selectedDiary.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary">{tag}</Badge>
+                  ))}
+                </div>
+              )}
+              <div className="bg-muted rounded-lg p-6">
+                <p className="font-diary text-xl leading-relaxed text-foreground whitespace-pre-wrap m-0">
+                  {selectedDiary.content}
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedDiary(null)}>关闭</Button>
+            <Button onClick={() => {
+              if (selectedDiary) {
+                setSelectedDiary(null)
+                handleEdit(selectedDiary)
+              }
+            }}>编辑</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 编辑日记弹窗 */}
-      <Modal
-        title="编辑日记"
-        open={isEditModalOpen}
-        onCancel={() => {
-          setIsEditModalOpen(false)
-          setEditingDiary(null)
-        }}
-        footer={null}
-        width={600}
-      >
-        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit}>
-          <Form.Item
-            name="mood"
-            label="心情"
-            rules={[{ required: true, message: '请选择心情' }]}
-          >
-            <Select placeholder="选择心情">
-              {moodOptions.map((opt) => (
-                <Option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="tags" label="标签">
-            <Select mode="tags" placeholder="添加标签">
-              <Option value="工作">工作</Option>
-              <Option value="学习">学习</Option>
-              <Option value="人际关系">人际关系</Option>
-              <Option value="家庭">家庭</Option>
-              <Option value="健康">健康</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="content"
-            label="日记内容"
-            rules={[{ required: true, message: '请输入日记内容' }]}
-          >
-            <TextArea
-              rows={6}
-              placeholder="记录今天发生了什么，你的感受如何..."
-              showCount
-              maxLength={2000}
-            />
-          </Form.Item>
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit" loading={updating}>
-                保存修改
-              </Button>
-              <Button onClick={() => {
-                setIsEditModalOpen(false)
-                setEditingDiary(null)
-              }}>
-                取消
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>编辑日记</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>心情</Label>
+              <Select value={editMood} onValueChange={setEditMood}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="选择心情" />
+                </SelectTrigger>
+                <SelectContent>
+                  {moodOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>标签</Label>
+              <Select value={editTags[0] || ''} onValueChange={(v) => setEditTags(v ? [v] : [])}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="添加标签" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="工作">工作</SelectItem>
+                  <SelectItem value="学习">学习</SelectItem>
+                  <SelectItem value="人际关系">人际关系</SelectItem>
+                  <SelectItem value="家庭">家庭</SelectItem>
+                  <SelectItem value="健康">健康</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>日记内容</Label>
+              <Textarea
+                className="mt-2 font-diary text-lg"
+                rows={6}
+                placeholder="记录今天发生了什么，你的感受如何..."
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                maxLength={2000}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>取消</Button>
+            <Button onClick={handleUpdate} loading={submitting}>保存修改</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 删除确认弹窗 */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground">确定要删除这篇日记吗？此操作不可撤销。</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>取消</Button>
+            <Button variant="destructive" onClick={handleDelete}>删除</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

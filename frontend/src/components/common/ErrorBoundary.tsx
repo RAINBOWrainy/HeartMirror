@@ -1,10 +1,11 @@
 /**
  * ErrorBoundary Component
- * React 错误边界组件，捕获子组件的 JavaScript 错误
+ * React 错误边界组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
-import { Result, Button } from 'antd'
+import { AlertTriangle } from 'lucide-react'
+import { Button, Card } from '@/components/ui'
 
 interface Props {
   children: ReactNode
@@ -59,27 +60,26 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '100vh',
-          padding: '24px',
-          background: '#f5f5f5'
-        }}>
-          <Result
-            status="error"
-            title="页面出错了"
-            subTitle={error?.message || '抱歉，页面遇到了一些问题'}
-            extra={[
-              <Button type="primary" key="retry" onClick={this.handleReset}>
+        <div className="flex justify-center items-center min-h-screen p-6 bg-base">
+          <Card className="p-10 text-center max-w-md">
+            <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle className="w-8 h-8 text-error" />
+            </div>
+            <h2 className="font-heading text-xl font-semibold text-foreground mb-2">
+              页面出错了
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              {error?.message || '抱歉，页面遇到了一些问题'}
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button onClick={this.handleReset}>
                 重试
-              </Button>,
-              <Button key="reload" onClick={this.handleReload}>
+              </Button>
+              <Button variant="outline" onClick={this.handleReload}>
                 刷新页面
               </Button>
-            ]}
-          />
+            </div>
+          </Card>
         </div>
       )
     }

@@ -1,33 +1,35 @@
+/**
+ * Questionnaire Page
+ * 心理评估页面 - 使用 Tailwind + shadcn/ui
+ */
+
 import React, { useState } from 'react'
 import {
-  Card,
-  Row,
-  Col,
-  Typography,
-  Button,
-  Radio,
-  Progress,
-  Space,
-  Tag,
-  Modal,
-  message,
-  Empty,
-  Spin,
-  List,
-  Descriptions,
-} from 'antd'
-import {
-  FileTextOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  MessageOutlined,
-  FormOutlined,
-  RightOutlined,
-} from '@ant-design/icons'
+  FileText,
+  Clock,
+  CheckCircle,
+  MessageSquare,
+  Pencil,
+} from 'lucide-react'
 import { useRequest } from 'ahooks'
-import { questionnaireApi } from '../services/api'
-
-const { Title, Text, Paragraph } = Typography
+import { questionnaireApi } from '@/services/api'
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  Progress,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Spinner,
+  Skeleton,
+} from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface QuestionnaireType {
   id: string
@@ -91,6 +93,7 @@ const Questionnaire: React.FC = () => {
     () => questionnaireApi.getTypes(),
     {
       onError: (err) => {
+        alert('获取问卷类型失败')
         console.error('获取问卷类型失败', err)
       },
     }
@@ -101,6 +104,7 @@ const Questionnaire: React.FC = () => {
     () => questionnaireApi.getHistory(),
     {
       onError: (err) => {
+        alert('获取历史记录失败')
         console.error('获取历史记录失败', err)
       },
     }
@@ -120,7 +124,7 @@ const Questionnaire: React.FC = () => {
         setResult(null)
       },
       onError: () => {
-        message.error('开始评估失败，请重试')
+        alert('开始评估失败，请重试')
       },
     }
   )
@@ -134,7 +138,7 @@ const Questionnaire: React.FC = () => {
         setSessionDetail(res.data)
       },
       onError: () => {
-        message.error('加载问题失败')
+        alert('加载问题失败')
       },
     }
   )
@@ -160,7 +164,7 @@ const Questionnaire: React.FC = () => {
         }
       },
       onError: () => {
-        message.error('提交答案失败')
+        alert('提交答案失败')
       },
     }
   )
@@ -177,13 +181,13 @@ const Questionnaire: React.FC = () => {
         refreshHistory()
       },
       onError: () => {
-        message.error('获取结果失败')
+        alert('获取结果失败')
       },
     }
   )
 
-  const types = typesData?.data || []
-  const history = historyData?.data || []
+  const types = Array.isArray(typesData?.data) ? typesData.data : []
+  const history = Array.isArray(historyData?.data) ? historyData.data : []
 
   const handleStartAssessment = (typeId: string, assessmentMode: 'conversational' | 'form') => {
     setSelectedType(typeId)
@@ -199,7 +203,7 @@ const Questionnaire: React.FC = () => {
     }
   }
 
-  const riskColors: Record<string, string> = {
+  const riskVariants: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
     green: 'success',
     yellow: 'warning',
     orange: 'warning',
@@ -214,225 +218,240 @@ const Questionnaire: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3}>
-        <FileTextOutlined /> 心理评估
-      </Title>
+    <div className="max-w-3xl mx-auto py-6">
+      <h2 className="font-heading text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+        <FileText className="w-6 h-6 text-primary" />
+        心理评估
+      </h2>
 
-      <Paragraph type="secondary">
+      <p className="text-muted-foreground mb-6">
         专业的心理评估量表，帮助你更好地了解自己的心理状态
-      </Paragraph>
+      </p>
 
       {/* 可用评估 */}
-      <Title level={4} style={{ marginTop: 24 }}>可用评估</Title>
-      <Spin spinning={typesLoading}>
-        <Row gutter={[16, 16]}>
-          {types.map((type: QuestionnaireType) => (
-            <Col xs={24} sm={12} md={8} key={type.id}>
-              <Card
-                hoverable
-                style={{ height: '100%' }}
-              >
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Title level={5}>{type.name}</Title>
-                  <Text type="secondary">{type.description}</Text>
-                  <Space>
-                    <Tag><MessageOutlined /> {type.question_count}道题</Tag>
-                    <Tag><ClockCircleOutlined /> 约{type.question_count}分钟</Tag>
-                  </Space>
-
-                  <div style={{ marginTop: 16 }}>
-                    <Text>选择模式：</Text>
-                  </div>
-                  <Space style={{ width: '100%' }}>
-                    <Button
-                      type="primary"
-                      icon={<MessageOutlined />}
-                      onClick={() => handleStartAssessment(type.id, 'conversational')}
-                    >
-                      对话式
-                    </Button>
-                    <Button
-                      icon={<FormOutlined />}
-                      onClick={() => handleStartAssessment(type.id, 'form')}
-                    >
-                      表单式
-                    </Button>
-                  </Space>
-                </Space>
-              </Card>
-            </Col>
+      <h3 className="font-heading text-lg font-semibold text-foreground mb-4">可用评估</h3>
+      {typesLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="p-6">
+              <Skeleton rows={4} />
+            </Card>
           ))}
-        </Row>
-      </Spin>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {types.map((type: QuestionnaireType) => (
+            <Card
+              key={type.id}
+              className="cursor-pointer hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <CardContent className="space-y-3">
+                <p className="font-heading text-lg font-semibold text-foreground">{type.name}</p>
+                <p className="text-muted-foreground text-sm">{type.description}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    {type.question_count}道题
+                  </Badge>
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    约{type.question_count}分钟
+                  </Badge>
+                </div>
+
+                <p className="text-sm text-muted-foreground mt-4">选择模式：</p>
+                <div className="flex gap-2">
+                  <Button onClick={() => handleStartAssessment(type.id, 'conversational')}>
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    对话式
+                  </Button>
+                  <Button variant="outline" onClick={() => handleStartAssessment(type.id, 'form')}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    表单式
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* 评估历史 */}
-      <Title level={4} style={{ marginTop: 32 }}>评估历史</Title>
-      <Spin spinning={historyLoading}>
-        {history.length > 0 ? (
-          <List
-            dataSource={history}
-            renderItem={(item: any) => (
-              <List.Item
-                actions={[
-                  <Button
-                    key="view"
-                    type="link"
-                    onClick={() => {
-                      loadResult(item.id)
-                      setResultModalOpen(true)
-                    }}
-                  >
-                    查看详情
-                  </Button>,
-                ]}
-              >
-                <List.Item.Meta
-                  title={
-                    <Space>
-                      <Text>{item.questionnaire_type.toUpperCase()}</Text>
-                      <Tag color={riskColors[item.risk_level]}>
-                        {riskLabels[item.risk_level]}
-                      </Tag>
-                    </Space>
-                  }
-                  description={
-                    <Space>
-                      <Text type="secondary">
-                        得分：{item.total_score || '-'}
-                      </Text>
-                      <Text type="secondary">
-                        {item.completed_at
-                          ? `完成于 ${new Date(item.completed_at).toLocaleDateString()}`
-                          : '未完成'}
-                      </Text>
-                    </Space>
-                  }
-                />
-              </List.Item>
-            )}
-          />
-        ) : (
-          <Empty description="暂无评估记录" />
-        )}
-      </Spin>
+      <h3 className="font-heading text-lg font-semibold text-foreground mt-8 mb-4">评估历史</h3>
+      {historyLoading ? (
+        <div className="flex items-center justify-center p-10">
+          <Spinner size="lg" />
+        </div>
+      ) : history.length > 0 ? (
+        <div className="space-y-3">
+          {history.map((item: any) => (
+            <Card
+              key={item.id}
+              className="cursor-pointer hover:shadow-soft transition-all duration-200"
+              onClick={() => {
+                loadResult(item.id)
+                setResultModalOpen(true)
+              }}
+            >
+              <CardContent className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">{item.questionnaire_type.toUpperCase()}</span>
+                    <Badge variant={riskVariants[item.risk_level]}>
+                      {riskLabels[item.risk_level]}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className="text-sm text-muted-foreground">得分：{item.total_score || '-'}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {item.completed_at
+                        ? `完成于 ${new Date(item.completed_at).toLocaleDateString()}`
+                        : '未完成'}
+                    </span>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm">
+                  查看详情
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="p-10 text-center">
+          <p className="text-muted-foreground">暂无评估记录</p>
+        </Card>
+      )}
 
       {/* 评估弹窗 */}
-      <Modal
-        title={
-          <Space>
-            <FileTextOutlined />
-            {sessionDetail?.questionnaire_type?.toUpperCase() || '评估'}
-          </Space>
-        }
-        open={assessmentModalOpen}
-        onCancel={() => setAssessmentModalOpen(false)}
-        footer={null}
-        width={600}
-      >
-        <Spin spinning={loadingDetail || submitting}>
-          {sessionDetail && (
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
-              {/* 进度 */}
-              <Progress
-                percent={(sessionDetail.progress.current / sessionDetail.progress.total) * 100}
-                format={() => `${sessionDetail.progress.current} / ${sessionDetail.progress.total}`}
-              />
+      <Dialog open={assessmentModalOpen} onOpenChange={setAssessmentModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              {sessionDetail?.questionnaire_type?.toUpperCase() || '评估'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {loadingDetail || submitting ? (
+              <div className="flex items-center justify-center py-10">
+                <Spinner size="lg" />
+              </div>
+            ) : sessionDetail && (
+              <>
+                {/* 进度 */}
+                <Progress
+                  value={(sessionDetail.progress.current / sessionDetail.progress.total) * 100}
+                  showLabel={`${sessionDetail.progress.current} / ${sessionDetail.progress.total}`}
+                />
 
-              {/* 当前问题 */}
-              {sessionDetail.current_question && (
-                <Card>
-                  <Paragraph style={{ fontSize: 16, marginBottom: 24 }}>
-                    {sessionDetail.current_question.text}
-                  </Paragraph>
+                {/* 当前问题 */}
+                {sessionDetail.current_question && (
+                  <Card className="p-6">
+                    <p className="text-lg text-foreground mb-6">
+                      {sessionDetail.current_question.text}
+                    </p>
 
-                  <Radio.Group
-                    onChange={(e) => handleAnswer(e.target.value)}
-                    value={answers[sessionDetail.current_question.index]}
-                    style={{ width: '100%' }}
-                  >
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <div className="space-y-3">
                       {sessionDetail.current_question.options.map((option) => (
-                        <Radio
+                        <button
                           key={option.value}
-                          value={option.value}
-                          style={{ fontSize: 14 }}
+                          onClick={() => handleAnswer(option.value)}
+                          className={cn(
+                            'w-full p-3 rounded-lg border text-left transition-all duration-200',
+                            answers[sessionDetail.current_question?.index ?? 0] === option.value
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50 hover:bg-surface'
+                          )}
                         >
-                          {option.label}
-                        </Radio>
+                          <span className="text-foreground">{option.label}</span>
+                        </button>
                       ))}
-                    </Space>
-                  </Radio.Group>
-                </Card>
-              )}
-            </Space>
-          )}
-        </Spin>
-      </Modal>
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 结果弹窗 */}
-      <Modal
-        title="评估结果"
-        open={resultModalOpen}
-        onCancel={() => setResultModalOpen(false)}
-        footer={[
-          <Button key="close" onClick={() => setResultModalOpen(false)}>
-            关闭
-          </Button>,
-        ]}
-        width={600}
-      >
-        <Spin spinning={loadingResult}>
-          {result && (
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <Dialog open={resultModalOpen} onOpenChange={setResultModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>评估结果</DialogTitle>
+          </DialogHeader>
+          {loadingResult ? (
+            <div className="flex items-center justify-center py-10">
+              <Spinner size="lg" />
+            </div>
+          ) : result && (
+            <div className="space-y-4">
               {/* 总分和风险等级 */}
-              <Descriptions bordered column={1}>
-                <Descriptions.Item label="总分">
-                  <Text strong style={{ fontSize: 18 }}>{result.total_score}</Text>
-                </Descriptions.Item>
-                <Descriptions.Item label="风险等级">
-                  <Tag color={riskColors[result.risk_level]} style={{ fontSize: 14 }}>
-                    {riskLabels[result.risk_level]}
-                  </Tag>
-                </Descriptions.Item>
-              </Descriptions>
+              <Card className="p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">总分</p>
+                    <p className="text-xl font-semibold text-foreground">{result.total_score}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">风险等级</p>
+                    <Badge variant={riskVariants[result.risk_level]} className="text-base">
+                      {riskLabels[result.risk_level]}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
 
               {/* 解读 */}
-              <Card title="结果解读">
-                <Paragraph>{result.interpretation}</Paragraph>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">结果解读</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <p className="text-muted-foreground">{result.interpretation}</p>
+                </CardContent>
               </Card>
 
               {/* 建议 */}
-              <Card title="建议">
-                <List
-                  dataSource={result.recommendations}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-                      {item}
-                    </List.Item>
-                  )}
-                />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">建议</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 space-y-2">
+                  {result.recommendations.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-success" />
+                      <span className="text-foreground">{item}</span>
+                    </div>
+                  ))}
+                </CardContent>
               </Card>
 
               {/* 维度得分 */}
               {result.dimension_scores && (
-                <Card title="维度得分">
-                  <List
-                    dataSource={Object.entries(result.dimension_scores)}
-                    renderItem={([key, value]) => (
-                      <List.Item>
-                        <Text>{key}</Text>
-                        <Progress percent={(value as number) * 10} size="small" style={{ width: 200 }} />
-                      </List.Item>
-                    )}
-                  />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">维度得分</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0 space-y-3">
+                    {Object.entries(result.dimension_scores).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-foreground">{key}</span>
+                        <Progress value={(value as number) * 10} className="w-24" />
+                      </div>
+                    ))}
+                  </CardContent>
                 </Card>
               )}
-            </Space>
+            </div>
           )}
-        </Spin>
-      </Modal>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResultModalOpen(false)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

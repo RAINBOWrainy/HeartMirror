@@ -1,9 +1,11 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { encryptedAISettingsStorage } from '../services/encryptedStorage'
 
 /**
  * AI设置接口
  * 用户可以配置自己的AI API Key、Base URL和模型
+ * API Key 使用加密存储保护
  */
 export interface AISettings {
   apiKey: string
@@ -41,6 +43,8 @@ export const useAISettingsStore = create<AISettingsState>()(
     }),
     {
       name: 'heartmirror-ai-settings',
+      // 使用加密的 IndexedDB 存储，保护 API Key
+      storage: createJSONStorage(() => encryptedAISettingsStorage),
     }
   )
 )

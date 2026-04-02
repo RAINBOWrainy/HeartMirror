@@ -1,21 +1,19 @@
 /**
  * Quick Mood Check-In Component
- * 快捷心情签到组件 - 可复用版本
+ * 快捷心情签到组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React, { useState } from 'react'
-import { Typography, Space, Tooltip } from 'antd'
 import { useNavigate } from 'react-router-dom'
-import { brandColors } from '../../theme'
-
-const { Text } = Typography
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 // 心情选项配置
 export const MOOD_OPTIONS = [
-  { emoji: '😊', label: '开心', value: 'joy', color: brandColors.emotionJoy },
-  { emoji: '😌', label: '平静', value: 'calm', color: brandColors.emotionCalm },
-  { emoji: '😔', label: '低落', value: 'sadness', color: brandColors.emotionSadness },
-  { emoji: '😰', label: '焦虑', value: 'anxiety', color: brandColors.emotionAnxiety },
+  { emoji: '😊', label: '开心', value: 'joy', color: 'var(--emotion-joy)' },
+  { emoji: '😌', label: '平静', value: 'calm', color: 'var(--emotion-calm)' },
+  { emoji: '😔', label: '低落', value: 'sadness', color: 'var(--emotion-sadness)' },
+  { emoji: '😰', label: '焦虑', value: 'anxiety', color: 'var(--emotion-anxiety)' },
   { emoji: '😴', label: '疲惫', value: 'frustration', color: '#95DE64' },
 ]
 
@@ -24,7 +22,7 @@ interface QuickMoodCheckInProps {
   navigateToChat?: boolean
   showLabel?: boolean
   size?: 'default' | 'small' | 'large'
-  style?: React.CSSProperties
+  className?: string
 }
 
 const QuickMoodCheckIn: React.FC<QuickMoodCheckInProps> = ({
@@ -32,7 +30,7 @@ const QuickMoodCheckIn: React.FC<QuickMoodCheckInProps> = ({
   navigateToChat = true,
   showLabel = true,
   size = 'default',
-  style,
+  className,
 }) => {
   const navigate = useNavigate()
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
@@ -63,82 +61,66 @@ const QuickMoodCheckIn: React.FC<QuickMoodCheckInProps> = ({
   const config = sizeConfig[size]
 
   return (
-    <div style={{ textAlign: 'center', ...style }}>
+    <div className={cn('text-center', className)}>
       {showLabel && (
-        <Text
-          style={{
-            fontSize: size === 'large' ? 16 : 14,
-            color: brandColors.primaryDark,
-            marginBottom: 12,
-            display: 'block',
-          }}
-        >
+        <p className={cn(
+          'text-foreground mb-3',
+          size === 'large' ? 'text-base' : 'text-sm'
+        )}>
           今天感觉怎么样？
-        </Text>
+        </p>
       )}
       <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: config.gap,
-        }}
+        className="flex justify-center"
+        style={{ gap: config.gap }}
       >
         {MOOD_OPTIONS.map((mood) => (
-          <Tooltip key={mood.value} title={mood.label}>
-            <button
-              onClick={() => handleMoodClick(mood.value)}
-              onMouseEnter={() => setHoveredMood(mood.value)}
-              onMouseLeave={() => setHoveredMood(null)}
-              style={{
-                width: config.buttonSize,
-                height: config.buttonSize,
-                borderRadius: config.buttonSize * 0.3,
-                border:
-                  selectedMood === mood.value
-                    ? `2px solid ${mood.color}`
+          <Tooltip key={mood.value}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => handleMoodClick(mood.value)}
+                onMouseEnter={() => setHoveredMood(mood.value)}
+                onMouseLeave={() => setHoveredMood(null)}
+                className="rounded-2xl transition-all duration-250"
+                style={{
+                  width: config.buttonSize,
+                  height: config.buttonSize,
+                  fontSize: config.fontSize,
+                  borderWidth: 2,
+                  borderStyle: 'solid',
+                  borderColor: selectedMood === mood.value
+                    ? mood.color
                     : hoveredMood === mood.value
-                      ? `2px solid ${mood.color}50`
-                      : '2px solid transparent',
-                background:
-                  selectedMood === mood.value
+                      ? `${mood.color}80`
+                      : 'transparent',
+                  backgroundColor: selectedMood === mood.value
                     ? `${mood.color}20`
                     : hoveredMood === mood.value
                       ? `${mood.color}10`
-                      : '#fff',
-                cursor: 'pointer',
-                fontSize: config.fontSize,
-                transition: 'all 0.25s ease',
-                boxShadow:
-                  selectedMood === mood.value
+                      : 'white',
+                  boxShadow: selectedMood === mood.value
                     ? `0 4px 12px ${mood.color}30`
                     : hoveredMood === mood.value
                       ? `0 4px 12px ${mood.color}15`
                       : '0 2px 6px rgba(0,0,0,0.06)',
-                transform:
-                  selectedMood === mood.value
+                  transform: selectedMood === mood.value
                     ? 'scale(1.1)'
                     : hoveredMood === mood.value
                       ? 'scale(1.08)'
                       : 'scale(1)',
-              }}
-            >
-              {mood.emoji}
-            </button>
+                }}
+              >
+                {mood.emoji}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{mood.label}</TooltipContent>
           </Tooltip>
         ))}
       </div>
       {selectedMood && navigateToChat && (
-        <Text
-          type="secondary"
-          style={{
-            fontSize: 12,
-            marginTop: 10,
-            display: 'block',
-            opacity: 0.8,
-          }}
-        >
+        <p className="text-sm text-muted-foreground mt-2.5 opacity-80">
           正在为你跳转到对话...
-        </Text>
+        </p>
       )}
     </div>
   )

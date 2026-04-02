@@ -1,19 +1,12 @@
 /**
  * Progress Feedback Component
- * 进度反馈组件 - 轻量级本地存储实现
+ * 进度反馈组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { Card, Progress, Typography, Space, Tag } from 'antd'
-import {
-  FireOutlined,
-  TrophyOutlined,
-  HeartOutlined,
-  CheckCircleOutlined,
-} from '@ant-design/icons'
-import { brandColors } from '../../theme'
-
-const { Text, Title } = Typography
+import { Flame, Trophy, Heart } from 'lucide-react'
+import { Card, Progress } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 // 进度状态接口
 interface ProgressState {
@@ -116,11 +109,11 @@ export const recordDiaryEntry = (): ProgressState => {
 
 // 鼓励消息配置
 const ENCOURAGEMENT_MESSAGES = [
-  { threshold: 1, message: '开始就是进步！', icon: <HeartOutlined /> },
-  { threshold: 3, message: '坚持得很棒！', icon: <FireOutlined /> },
-  { threshold: 7, message: '一周打卡达成！', icon: <TrophyOutlined /> },
-  { threshold: 14, message: '两周不间断，太厉害了！', icon: <TrophyOutlined /> },
-  { threshold: 30, message: '一个月坚持，你真了不起！', icon: <TrophyOutlined /> },
+  { threshold: 1, message: '开始就是进步！', icon: Heart },
+  { threshold: 3, message: '坚持得很棒！', icon: Flame },
+  { threshold: 7, message: '一周打卡达成！', icon: Trophy },
+  { threshold: 14, message: '两周不间断，太厉害了！', icon: Trophy },
+  { threshold: 30, message: '一个月坚持，你真了不起！', icon: Trophy },
 ]
 
 interface ProgressFeedbackProps {
@@ -148,90 +141,54 @@ const ProgressFeedback: React.FC<ProgressFeedbackProps> = ({ compact = false }) 
   // 计算进度百分比（以30天为目标）
   const progressPercent = Math.min((progress.consecutiveDays / 30) * 100, 100)
 
+  const IconComponent = currentEncouragement.icon
+
   if (compact) {
     return (
-      <Space>
-        <FireOutlined style={{ color: brandColors.warning }} />
-        <Text type="secondary">
-          连续 {progress.consecutiveDays} 天
-        </Text>
-      </Space>
+      <div className="flex items-center gap-2">
+        <Flame className="w-4 h-4 text-warning" />
+        <span className="text-muted-foreground">连续 {progress.consecutiveDays} 天</span>
+      </div>
     )
   }
 
   return (
     <Card
-      style={{
-        borderRadius: 20,
-        background: `linear-gradient(135deg, ${brandColors.primary}05 0%, ${brandColors.primaryLight}08 100%)`,
-        border: `1px solid ${brandColors.primary}15`,
-      }}
-      styles={{ body: { padding: 20 } }}
+      className="rounded-5 bg-gradient-to-br from-primary/5 to-primary-light/10 border border-primary/15"
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="flex items-center gap-4">
         <div
+          className="w-15 h-15 rounded-4 flex items-center justify-center text-primary"
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: 16,
-            background: `linear-gradient(135deg, ${brandColors.primary}15 0%, ${brandColors.primaryLight}20 100%)`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 28,
-            color: brandColors.primary,
+            background: 'linear-gradient(135deg, var(--color-primary)/15 0%, var(--color-primary-light)/20 100%)'
           }}
         >
-          {currentEncouragement.icon}
+          <IconComponent className="w-7 h-7" />
         </div>
-        <div style={{ flex: 1 }}>
-          <Title level={5} style={{ margin: '0 0 4px 0', color: brandColors.primaryDark }}>
+        <div className="flex-1">
+          <p className="font-heading font-semibold text-foreground mb-1">
             {currentEncouragement.message}
-          </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            已连续使用 <strong>{progress.consecutiveDays}</strong> 天
-          </Text>
-          <Progress
-            percent={progressPercent}
-            showInfo={false}
-            strokeColor={{
-              '0%': brandColors.primary,
-              '100%': brandColors.primaryLight,
-            }}
-            trailColor={`${brandColors.primary}15`}
-            size="small"
-            style={{ marginTop: 8 }}
-          />
+          </p>
+          <p className="text-muted-foreground text-sm">
+            已连续使用 <strong className="text-foreground">{progress.consecutiveDays}</strong> 天
+          </p>
+          <Progress value={progressPercent} className="mt-2" />
         </div>
       </div>
 
       {/* 统计数据 */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 16,
-          marginTop: 16,
-          paddingTop: 16,
-          borderTop: `1px solid ${brandColors.primary}10`,
-        }}
-      >
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>对话次数</Text>
-          <div style={{ fontWeight: 600, color: brandColors.primary, fontSize: 18 }}>
-            {progress.totalSessions}
-          </div>
+      <div className="flex gap-4 mt-4 pt-4 border-t border-primary/10">
+        <div className="flex-1 text-center">
+          <p className="text-muted-foreground text-xs mb-1">对话次数</p>
+          <p className="font-semibold text-primary text-lg m-0">{progress.totalSessions}</p>
         </div>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>情绪签到</Text>
-          <div style={{ fontWeight: 600, color: brandColors.success, fontSize: 18 }}>
-            {progress.emotionalCheckIns}
-          </div>
+        <div className="flex-1 text-center">
+          <p className="text-muted-foreground text-xs mb-1">情绪签到</p>
+          <p className="font-semibold text-success text-lg m-0">{progress.emotionalCheckIns}</p>
         </div>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>日记记录</Text>
-          <div style={{ fontWeight: 600, color: brandColors.info, fontSize: 18 }}>
-            {progress.diaryEntries}
-          </div>
+        <div className="flex-1 text-center">
+          <p className="text-muted-foreground text-xs mb-1">日记记录</p>
+          <p className="font-semibold text-info text-lg m-0">{progress.diaryEntries}</p>
         </div>
       </div>
     </Card>

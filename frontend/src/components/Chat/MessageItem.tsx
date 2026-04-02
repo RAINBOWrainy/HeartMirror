@@ -1,16 +1,15 @@
 /**
  * MessageItem Component
- * 单条消息显示组件 - 温暖友好风格
+ * 单条消息显示组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React from 'react'
-import { Card, Avatar, Space, Typography, Tooltip } from 'antd'
-import { UserOutlined, RobotOutlined } from '@ant-design/icons'
-import type { Message } from '../../stores/chatStore'
+import { User, Bot } from 'lucide-react'
+import type { Message } from '@/stores/chatStore'
 import EmotionBadge from './EmotionBadge'
-import { brandColors } from '../../theme'
-
-const { Paragraph, Text } = Typography
+import { Avatar, AvatarFallback } from '@/components/ui'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 interface MessageItemProps {
   message: Message
@@ -28,66 +27,48 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
 
   return (
     <div
-      style={{
-        display: 'flex',
-        justifyContent: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 16,
-        animation: 'slideUpFade 0.3s ease-out',
-      }}
+      className={cn(
+        'flex mb-4 animate-slide-up',
+        isUser ? 'justify-end' : 'justify-start'
+      )}
     >
-      <Space
-        align="start"
-        style={{
-          maxWidth: '80%',
-          flexDirection: isUser ? 'row-reverse' : 'row'
-        }}
-      >
-        <Tooltip title={isUser ? '我' : 'AI助手'}>
-          <Avatar
-            icon={isUser ? <UserOutlined /> : <RobotOutlined />}
-            style={{
-              backgroundColor: isUser ? brandColors.primary : brandColors.success,
-              flexShrink: 0,
-              boxShadow: `0 4px 12px ${isUser ? brandColors.primary : brandColors.success}30`,
-            }}
-          />
-        </Tooltip>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <Card
-            size="small"
-            style={{
-              background: isUser
-                ? `linear-gradient(135deg, ${brandColors.primary}10 0%, ${brandColors.primaryLight}08 100%)`
-                : `linear-gradient(135deg, ${brandColors.success}10 0%, #f6ffed 100%)`,
-              borderRadius: 16,
-              border: isUser
-                ? `1px solid ${brandColors.primary}15`
-                : `1px solid ${brandColors.success}15`,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            }}
-            styles={{ body: { padding: '12px 16px' } }}
+      <div className={cn('flex gap-3 max-w-[80%]', isUser && 'flex-row-reverse')}>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Avatar className="w-10 h-10 shrink-0">
+                <AvatarFallback className={cn(
+                  isUser ? 'bg-primary' : 'bg-accent'
+                )}>
+                  {isUser ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isUser ? '我' : 'AI助手'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <div className="flex flex-col gap-1">
+          {/* 消息气泡 */}
+          <div
+            className={cn(
+              'rounded-lg px-4 py-3 border border-border shadow-soft',
+              isUser ? 'bg-primary/10' : 'bg-surface'
+            )}
           >
-            <Paragraph
-              style={{
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                color: '#333',
-                lineHeight: 1.6,
-              }}
-            >
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">
               {message.content}
-            </Paragraph>
-          </Card>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            flexDirection: isUser ? 'row-reverse' : 'row'
-          }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {formatTime(message.timestamp)}
-            </Text>
+            </p>
+          </div>
+
+          {/* 时间和情绪标签 */}
+          <div className={cn(
+            'flex items-center gap-2 text-xs text-muted-foreground',
+            isUser && 'flex-row-reverse'
+          )}>
+            <span>{formatTime(message.timestamp)}</span>
             {message.emotion && (
               <EmotionBadge
                 emotion={message.emotion}
@@ -97,7 +78,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
             )}
           </div>
         </div>
-      </Space>
+      </div>
     </div>
   )
 }

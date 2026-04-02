@@ -1,151 +1,152 @@
 /**
- * App Theme Configuration
- * 应用主题配置 - 温暖友好风格
+ * Theme Provider
+ * Handles light/dark mode and design tokens
  */
 
-import React from 'react'
-import { ConfigProvider, theme } from 'antd'
-import zhCN from 'antd/locale/zh_CN'
+import * as React from 'react'
 
-// 品牌色彩系统 - 温暖友好
-export const brandColors = {
-  // 主色调 - 温暖紫色系
-  primary: '#7C3AED',
-  primaryLight: '#A78BFA',
-  primaryDark: '#5B21B6',
-  // 辅助色
-  success: '#10B981',
-  successLight: '#34D399',
-  warning: '#F59E0B',
-  warningLight: '#FBBF24',
-  error: '#EF4444',
-  errorLight: '#F87171',
-  info: '#6366F1',
-  infoLight: '#818CF8',
-  // 背景色
-  bgWarm: '#FDF8F6',
-  bgCard: '#FFFFFF',
-  bgLayout: '#FAFAFA',
-  // 情绪色彩
-  emotionJoy: '#FFD666',
-  emotionSadness: '#69C0FF',
-  emotionAnger: '#FF7875',
-  emotionFear: '#B37FEB',
-  emotionAnxiety: '#FFA940',
-  emotionCalm: '#95DE64',
+type Theme = 'light' | 'dark'
+
+interface ThemeContextValue {
+  theme: Theme
+  setTheme: (theme: Theme) => void
+  toggleTheme: () => void
 }
 
-// 主题配置
-export const appTheme = {
-  token: {
-    // 主色 - 温暖紫色
-    colorPrimary: brandColors.primary,
-    colorSuccess: brandColors.success,
-    colorWarning: brandColors.warning,
-    colorError: brandColors.error,
-    colorInfo: brandColors.info,
-    // 背景色
-    colorBgContainer: brandColors.bgCard,
-    colorBgLayout: brandColors.bgLayout,
-    // 边框圆角 - 更圆润友好
-    borderRadius: 16,
-    borderRadiusLG: 24,
-    borderRadiusSM: 12,
-    borderRadiusXS: 8,
-    // 字体
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif',
-    fontSize: 14,
-    fontSizeHeading1: 38,
-    fontSizeHeading2: 30,
-    fontSizeHeading3: 24,
-    fontSizeHeading4: 20,
-    // 间距
-    padding: 16,
-    paddingLG: 24,
-    paddingXS: 8,
-    paddingXXS: 4,
-    margin: 16,
-    marginLG: 24,
-    marginXS: 8,
-    marginXXS: 4,
-    // 阴影 - 更柔和
-    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.08)',
-    boxShadowSecondary: '0 4px 16px rgba(124, 58, 237, 0.12)',
-    // 动画
-    motionDurationFast: '0.15s',
-    motionDurationMid: '0.25s',
-    motionDurationSlow: '0.35s',
-    motionEaseInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
-    motionEaseOut: 'cubic-bezier(0.0, 0, 0.2, 1)',
-    motionEaseIn: 'cubic-bezier(0.4, 0, 1, 1)',
-  },
-  components: {
-    Card: {
-      borderRadiusLG: 20,
-      paddingLG: 24,
-      boxShadowTertiary: '0 1px 3px rgba(124, 58, 237, 0.06)',
-    },
-    Button: {
-      borderRadius: 12,
-      controlHeight: 44,
-      controlHeightLG: 52,
-      controlHeightSM: 36,
-      primaryShadow: 'none',
-      defaultShadow: 'none',
-    },
-    Input: {
-      borderRadius: 12,
-      controlHeight: 44,
-    },
-    Select: {
-      borderRadius: 12,
-      controlHeight: 44,
-    },
-    Modal: {
-      borderRadiusLG: 20,
-    },
-    Tag: {
-      borderRadiusSM: 10,
-    },
-    Menu: {
-      itemBorderRadius: 12,
-      iconSize: 18,
-    },
-    Message: {
-      borderRadiusLG: 12,
-    },
-    Notification: {
-      borderRadiusLG: 12,
-    },
-  },
-  algorithm: theme.defaultAlgorithm,
-}
+const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefined)
 
-// 紧凑主题（可选）
-export const compactTheme = {
-  ...appTheme,
-  token: {
-    ...appTheme.token,
-    fontSize: 13,
-    padding: 12,
-    margin: 12,
-  },
-  algorithm: theme.compactAlgorithm,
-}
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = React.useState<Theme>(() => {
+    // Check localStorage
+    const stored = localStorage.getItem('theme') as Theme | null
+    if (stored) return stored
 
-interface ThemeProviderProps {
-  children: React.ReactNode
-}
+    // Check system preference
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark'
+    }
 
-/**
- * 主题提供者组件
- */
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+    return 'light'
+  })
+
+  React.useEffect(() => {
+    const root = document.documentElement
+
+    if (theme === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  // Listen for system theme changes
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      const stored = localStorage.getItem('theme')
+      // Only auto-switch if user hasn't manually set a preference
+      if (!stored) {
+        setTheme(e.matches ? 'dark' : 'light')
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  const toggleTheme = React.useCallback(() => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+  }, [])
+
   return (
-    <ConfigProvider theme={appTheme} locale={zhCN}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
-    </ConfigProvider>
+    </ThemeContext.Provider>
   )
+}
+
+export function useTheme() {
+  const context = React.useContext(ThemeContext)
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider')
+  }
+  return context
+}
+
+// Export shadows for backward compatibility
+export const softShadows = {
+  none: { boxShadow: 'none' },
+  soft: { boxShadow: 'var(--shadow-soft)' },
+  card: { boxShadow: 'var(--shadow-card)' },
+  elevated: { boxShadow: 'var(--shadow-elevated)' },
+  focus: { boxShadow: 'var(--shadow-focus)' },
+  sidebar: { boxShadow: 'var(--shadow-sidebar)' },
+  header: { boxShadow: 'var(--shadow-header)' },
+  // Backward compatibility aliases
+  raised: { boxShadow: 'var(--shadow-card)' },
+  smooth: { boxShadow: 'var(--shadow-soft)' },
+}
+
+// Backward compatibility aliases
+export const neuShadows = softShadows
+export const flatShadows = softShadows
+
+// Export appTheme for backward compatibility (now just an empty object since we don't use Ant Design)
+export const appTheme = {}
+
+// Export brandColors with all legacy properties
+// Updated to match DESIGN.md - Organic/Natural aesthetic
+export const brandColors = {
+  // Primary - Sage Green
+  primary: 'var(--color-primary)',
+  primaryLight: 'var(--color-primary-light)',
+  primaryDark: 'var(--color-primary-dark)',
+  // Secondary - Warm Sand
+  accent: 'var(--color-secondary)',
+  accentLight: 'var(--color-secondary)',
+  accentSoft: 'var(--color-secondary-soft)',
+  // Semantic colors
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-soft)',
+  warning: 'var(--color-warning)',
+  warningSoft: 'var(--color-warning-soft)',
+  error: 'var(--color-error)',
+  errorSoft: 'var(--color-error-soft)',
+  info: 'var(--color-info)',
+  infoLight: 'var(--color-info)',
+  infoSoft: 'var(--color-info-soft)',
+  // Background colors
+  bgBase: 'var(--color-bg)',
+  bgLight: 'var(--color-surface)',
+  bgCard: 'var(--color-surface)',
+  bgLayout: 'var(--color-bg)',
+  bgMuted: 'var(--color-muted)',
+  // Text colors
+  textPrimary: 'var(--text-primary)',
+  textSecondary: 'var(--text-secondary)',
+  textMuted: 'var(--text-muted)',
+  // Border colors
+  border: 'var(--color-border)',
+  borderMuted: 'var(--color-border-muted)',
+  // Emotion colors - 6-color system from DESIGN.md
+  emotionJoy: 'var(--emotion-joy)',
+  emotionJoySoft: 'var(--emotion-joy-soft)',
+  emotionSadness: 'var(--emotion-sadness)',
+  emotionSadnessSoft: 'var(--emotion-sadness-soft)',
+  emotionAnger: 'var(--emotion-anger)',
+  emotionAngerSoft: 'var(--emotion-anger-soft)',
+  emotionAnxiety: 'var(--emotion-anxiety)',
+  emotionAnxietySoft: 'var(--emotion-anxiety-soft)',
+  emotionFear: 'var(--emotion-fear)',
+  emotionFearSoft: 'var(--emotion-fear-soft)',
+  emotionCalm: 'var(--emotion-calm)',
+  emotionCalmSoft: 'var(--emotion-calm-soft)',
+  // Typography
+  fontBody: 'var(--font-body)',
+  fontDiary: 'var(--font-diary)',
 }
 
 export default ThemeProvider

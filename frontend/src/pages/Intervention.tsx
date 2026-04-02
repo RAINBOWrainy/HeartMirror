@@ -1,69 +1,72 @@
+/**
+ * Intervention Page
+ * 干预计划页面 - 使用 Tailwind + shadcn/ui
+ */
+
 import React, { useState } from 'react'
 import {
-  Card,
-  Tabs,
-  Button,
-  Space,
-  Typography,
-  message,
-  Tag,
-  Progress,
-  Modal,
-  Rate,
-  Empty,
-  Spin,
-  Row,
-  Col,
-  Statistic,
-} from 'antd'
-import {
-  HeartOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  PlayCircleOutlined,
-  StarOutlined,
-} from '@ant-design/icons'
+  Heart,
+  Clock,
+  CheckCircle,
+  Play,
+  Star,
+} from 'lucide-react'
 import { useRequest } from 'ahooks'
-import { interventionApi } from '../services/api'
-
-const { Title, Text, Paragraph } = Typography
-const { TabPane } = Tabs
+import { interventionApi } from '@/services/api'
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Badge,
+  Progress,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Spinner,
+  Skeleton,
+} from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface InterventionPlan {
   id: string
   name: string
-  intervention_type: string
-  content: {
-    name: string
-    description: string
-    steps?: string[]
-    duration: number
-  }
-  difficulty_level: number
-  estimated_duration: number
-  is_active: boolean
-  effectiveness_score?: number
-  created_at: string
+  interventionType: string
+  description?: string
+  difficultyLevel: number
+  estimatedDuration: number
+  isActive: boolean
+  effectivenessScore?: number
+  steps?: string[]
+  createdAt: string
 }
 
 interface InterventionSession {
   id: string
-  plan_id: string
-  is_completed: boolean
-  emotion_before?: string
-  emotion_after?: string
-  intensity_before?: number
-  intensity_after?: number
-  user_rating?: number
-  started_at: string
-  completed_at?: string
+  planId: string
+  isCompleted: boolean
+  emotionBefore?: string
+  emotionAfter?: string
+  intensityBefore?: number
+  intensityAfter?: number
+  userRating?: number
+  startedAt: string
+  completedAt?: string
 }
 
 interface InterventionStats {
   total: number
   completed: number
-  completion_rate: number
-  by_type: Record<string, number>
+  completionRate: number
+  byType: Record<string, number>
 }
 
 const interventionTypeNames: Record<string, string> = {
@@ -76,6 +79,27 @@ const interventionTypeNames: Record<string, string> = {
   education: '心理教育',
   behavioral: '行为激活',
 }
+
+// 简单的评分组件
+const RatingStars: React.FC<{
+  value: number
+  onChange: (value: number) => void
+}> = ({ value, onChange }) => (
+  <div className="flex gap-1">
+    {[1, 2, 3, 4, 5].map((star) => (
+      <button
+        key={star}
+        onClick={() => onChange(star)}
+        className={cn(
+          'p-1 rounded transition-colors',
+          star <= value ? 'text-warning' : 'text-muted hover:text-warning/50'
+        )}
+      >
+        <Star className="w-6 h-6" fill={star <= value ? 'currentColor' : 'none'} />
+      </button>
+    ))}
+  </div>
+)
 
 const Intervention: React.FC = () => {
   const [activeTab, setActiveTab] = useState('recommended')
@@ -90,6 +114,7 @@ const Intervention: React.FC = () => {
     () => interventionApi.getPlans({ active_only: false }),
     {
       onError: (err) => {
+        alert('获取干预计划失败')
         console.error('获取干预计划失败', err)
       },
     }
@@ -100,6 +125,7 @@ const Intervention: React.FC = () => {
     () => interventionApi.getRecommendations(),
     {
       onError: (err) => {
+        alert('获取推荐计划失败')
         console.error('获取推荐计划失败', err)
       },
     }
@@ -110,6 +136,7 @@ const Intervention: React.FC = () => {
     () => interventionApi.getStats(),
     {
       onError: (err) => {
+        alert('获取统计数据失败')
         console.error('获取统计数据失败', err)
       },
     }
@@ -123,10 +150,10 @@ const Intervention: React.FC = () => {
       onSuccess: (res) => {
         setCurrentSession(res.data)
         setSessionModalOpen(true)
-        message.success('开始干预练习')
+        alert('开始干预练习')
       },
       onError: () => {
-        message.error('开始失败，请重试')
+        alert('开始失败，请重试')
       },
     }
   )
@@ -137,7 +164,7 @@ const Intervention: React.FC = () => {
     {
       manual: true,
       onSuccess: () => {
-        message.success('完成干预练习')
+        alert('完成干预练习')
         setCompleteModalOpen(false)
         setSessionModalOpen(false)
         setCurrentSession(null)
@@ -145,17 +172,17 @@ const Intervention: React.FC = () => {
         refreshPlans()
       },
       onError: () => {
-        message.error('提交失败，请重试')
+        alert('提交失败，请重试')
       },
     }
   )
 
-  const plans = plansData?.data || []
-  const recommendations = recommendationsData?.data || []
-  const stats: InterventionStats = statsData?.data || { total: 0, completed: 0, completion_rate: 0, by_type: {} }
+  const plans = Array.isArray(plansData?.data) ? plansData.data : []
+  const recommendations = Array.isArray(recommendationsData?.data) ? recommendationsData.data : []
+  const stats: InterventionStats = statsData?.data || { total: 0, completed: 0, completionRate: 0, byType: {} }
 
-  const activePlans = plans.filter((p: InterventionPlan) => p.is_active)
-  const completedPlans = plans.filter((p: InterventionPlan) => !p.is_active)
+  const activePlans = plans.filter((p: InterventionPlan) => p.isActive)
+  const completedPlans = plans.filter((p: InterventionPlan) => !p.isActive)
 
   const handleStartPlan = (plan: InterventionPlan) => {
     setSelectedPlan(plan)
@@ -165,7 +192,7 @@ const Intervention: React.FC = () => {
   const handleCompletePlan = () => {
     if (currentSession) {
       completeSession(currentSession.id, {
-        user_rating: userRating,
+        userRating: userRating,
       })
     }
   }
@@ -173,224 +200,227 @@ const Intervention: React.FC = () => {
   const renderPlanCard = (plan: InterventionPlan) => (
     <Card
       key={plan.id}
-      style={{ marginBottom: 16 }}
-      hoverable
+      className="mb-4 cursor-pointer hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200"
       onClick={() => setSelectedPlan(plan)}
     >
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <Space>
-          <Tag color="blue">{interventionTypeNames[plan.intervention_type] || plan.intervention_type}</Tag>
-          <Tag><ClockCircleOutlined /> {plan.estimated_duration}分钟</Tag>
-        </Space>
-        <Title level={5}>{plan.name}</Title>
-        <Text type="secondary" ellipsis>
-          {plan.content?.description}
-        </Text>
-        <Space>
-          <Text type="secondary">难度：</Text>
-          <Progress
-            percent={plan.difficulty_level * 20}
-            size="small"
-            style={{ width: 100 }}
-            showInfo={false}
-          />
-        </Space>
-        {plan.effectiveness_score && (
-          <Space>
-            <StarOutlined style={{ color: '#faad14' }} />
-            <Text>效果评分：{(plan.effectiveness_score * 100).toFixed(0)}%</Text>
-          </Space>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="primary">{interventionTypeNames[plan.interventionType] || plan.interventionType}</Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" />
+            {plan.estimatedDuration}分钟
+          </Badge>
+        </div>
+        <p className="font-heading text-lg font-semibold text-foreground">{plan.name}</p>
+        <p className="text-muted-foreground text-sm truncate">{plan.description}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">难度：</span>
+          <Progress value={plan.difficultyLevel * 20} className="w-24" />
+        </div>
+        {plan.effectivenessScore && (
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-warning" fill="currentColor" />
+            <span className="text-foreground">效果评分：{(plan.effectivenessScore * 100).toFixed(0)}%</span>
+          </div>
         )}
         <Button
-          type="primary"
-          icon={<PlayCircleOutlined />}
           onClick={(e) => {
             e.stopPropagation()
             handleStartPlan(plan)
           }}
         >
+          <Play className="w-4 h-4 mr-2" />
           开始练习
         </Button>
-      </Space>
+      </CardContent>
     </Card>
   )
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3}>
-        <HeartOutlined /> 干预计划
-      </Title>
+    <div className="max-w-3xl mx-auto py-6">
+      <h2 className="font-heading text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+        <Heart className="w-6 h-6 text-primary" />
+        干预计划
+      </h2>
 
       {/* 统计概览 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={8}>
-          <Card>
-            <Statistic
-              title="总练习次数"
-              value={stats.total}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8}>
-          <Card>
-            <Statistic
-              title="已完成"
-              value={stats.completed}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="完成率"
-              value={stats.completion_rate * 100}
-              precision={0}
-              suffix="%"
-            />
-          </Card>
-        </Col>
-      </Row>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        <Card className="p-4 text-center">
+          <div className="flex items-center justify-center mb-2">
+            <CheckCircle className="w-5 h-5 text-primary" />
+          </div>
+          <p className="text-2xl font-semibold text-foreground m-0">{stats.total}</p>
+          <p className="text-sm text-muted-foreground m-0 mt-1">总练习次数</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-semibold text-success m-0">{stats.completed}</p>
+          <p className="text-sm text-muted-foreground m-0 mt-1">已完成</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-semibold text-foreground m-0">{stats.completionRate * 100}%</p>
+          <p className="text-sm text-muted-foreground m-0 mt-1">完成率</p>
+        </Card>
+      </div>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab="为你推荐" key="recommended">
-          <Spin spinning={recommendationsLoading}>
-            {recommendations.length > 0 ? (
-              recommendations.map((plan: InterventionPlan) => renderPlanCard(plan))
-            ) : (
-              <Empty description="暂无推荐计划，先聊聊天让我们更了解你吧" />
-            )}
-          </Spin>
-        </TabPane>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="recommended">为你推荐</TabsTrigger>
+          <TabsTrigger value="active">进行中</TabsTrigger>
+          <TabsTrigger value="history">历史记录</TabsTrigger>
+        </TabsList>
 
-        <TabPane tab="进行中" key="active">
-          <Spin spinning={plansLoading}>
-            {activePlans.length > 0 ? (
-              activePlans.map((plan: InterventionPlan) => renderPlanCard(plan))
-            ) : (
-              <Empty description="暂无进行中的计划" />
-            )}
-          </Spin>
-        </TabPane>
+        <TabsContent value="recommended">
+          {recommendationsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="p-6">
+                  <Skeleton rows={3} />
+                </Card>
+              ))}
+            </div>
+          ) : recommendations.length > 0 ? (
+            recommendations.map((plan: InterventionPlan) => renderPlanCard(plan))
+          ) : (
+            <Card className="p-10 text-center">
+              <p className="text-muted-foreground">暂无推荐计划，先聊聊天让我们更了解你吧</p>
+            </Card>
+          )}
+        </TabsContent>
 
-        <TabPane tab="历史记录" key="history">
-          <Spin spinning={plansLoading}>
-            {completedPlans.length > 0 ? (
-              completedPlans.map((plan: InterventionPlan) => renderPlanCard(plan))
-            ) : (
-              <Empty description="暂无历史记录" />
-            )}
-          </Spin>
-        </TabPane>
+        <TabsContent value="active">
+          {plansLoading ? (
+            <div className="flex items-center justify-center p-10">
+              <Spinner size="lg" />
+            </div>
+          ) : activePlans.length > 0 ? (
+            activePlans.map((plan: InterventionPlan) => renderPlanCard(plan))
+          ) : (
+            <Card className="p-10 text-center">
+              <p className="text-muted-foreground">暂无进行中的计划</p>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="history">
+          {plansLoading ? (
+            <div className="flex items-center justify-center p-10">
+              <Spinner size="lg" />
+            </div>
+          ) : completedPlans.length > 0 ? (
+            completedPlans.map((plan: InterventionPlan) => renderPlanCard(plan))
+          ) : (
+            <Card className="p-10 text-center">
+              <p className="text-muted-foreground">暂无历史记录</p>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* 干预详情弹窗 */}
-      <Modal
-        title={selectedPlan?.name}
+      <Dialog
         open={!!selectedPlan && !sessionModalOpen}
-        onCancel={() => setSelectedPlan(null)}
-        footer={[
-          <Button key="cancel" onClick={() => setSelectedPlan(null)}>
-            关闭
-          </Button>,
-          <Button
-            key="start"
-            type="primary"
-            icon={<PlayCircleOutlined />}
-            onClick={() => selectedPlan && handleStartPlan(selectedPlan)}
-          >
-            开始练习
-          </Button>,
-        ]}
-        width={600}
+        onOpenChange={(open) => !open && setSelectedPlan(null)}
       >
-        {selectedPlan && (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Tag color="blue">{interventionTypeNames[selectedPlan.intervention_type]}</Tag>
-            <Paragraph>{selectedPlan.content?.description}</Paragraph>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selectedPlan?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedPlan && (
+            <div className="space-y-4">
+              <Badge variant="primary">{interventionTypeNames[selectedPlan.interventionType]}</Badge>
+              <p className="text-muted-foreground">{selectedPlan.description}</p>
 
-            {selectedPlan.content?.steps && (
-              <>
-                <Title level={5}>练习步骤</Title>
-                <ol>
-                  {selectedPlan.content.steps.map((step, index) => (
-                    <li key={index} style={{ marginBottom: 8 }}>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </>
-            )}
+              {selectedPlan.steps && (
+                <div>
+                  <p className="font-medium text-foreground mb-2">练习步骤</p>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    {selectedPlan.steps.map((step, index) => (
+                      <li key={index} className="text-foreground">{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
 
-            <Space>
-              <ClockCircleOutlined />
-              <Text>预计时长：{selectedPlan.estimated_duration}分钟</Text>
-            </Space>
-          </Space>
-        )}
-      </Modal>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">预计时长：{selectedPlan.estimatedDuration}分钟</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedPlan(null)}>关闭</Button>
+            <Button onClick={() => selectedPlan && handleStartPlan(selectedPlan)}>
+              <Play className="w-4 h-4 mr-2" />
+              开始练习
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 进行中会话弹窗 */}
-      <Modal
-        title="正在练习"
+      <Dialog
         open={sessionModalOpen}
-        onCancel={() => {
-          setSessionModalOpen(false)
-          setCurrentSession(null)
+        onOpenChange={(open) => {
+          if (!open) {
+            setSessionModalOpen(false)
+            setCurrentSession(null)
+          }
         }}
-        footer={[
-          <Button key="cancel" onClick={() => setCompleteModalOpen(true)}>
-            完成练习
-          </Button>,
-        ]}
-        width={600}
       >
-        {selectedPlan && (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Title level={4}>{selectedPlan.name}</Title>
-            <Paragraph>{selectedPlan.content?.description}</Paragraph>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>正在练习</DialogTitle>
+          </DialogHeader>
+          {selectedPlan && (
+            <div className="space-y-4">
+              <p className="font-heading text-lg font-semibold text-foreground">{selectedPlan.name}</p>
+              <p className="text-muted-foreground">{selectedPlan.description}</p>
 
-            {selectedPlan.content?.steps && (
-              <>
-                <Title level={5}>练习步骤</Title>
-                <ol>
-                  {selectedPlan.content.steps.map((step, index) => (
-                    <li key={index} style={{ marginBottom: 8 }}>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </>
-            )}
+              {selectedPlan.steps && (
+                <div>
+                  <p className="font-medium text-foreground mb-2">练习步骤</p>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    {selectedPlan.steps.map((step, index) => (
+                      <li key={index} className="text-foreground">{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
 
-            <Progress type="circle" percent={50} format={() => '进行中'} />
-          </Space>
-        )}
-      </Modal>
+              <div className="flex justify-center">
+                <Progress value={50} variant="circle" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompleteModalOpen(true)}>
+              完成练习
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 完成反馈弹窗 */}
-      <Modal
-        title="练习反馈"
-        open={completeModalOpen}
-        onOk={handleCompletePlan}
-        onCancel={() => setCompleteModalOpen(false)}
-        confirmLoading={completingSession}
-        okText="提交"
-        cancelText="取消"
-      >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Text>这次练习对你有帮助吗？请评分：</Text>
-          <Rate
-            value={userRating}
-            onChange={setUserRating}
-            allowHalf
-          />
-          <Text type="secondary">
-            {userRating >= 4 ? '很高兴对你有帮助！' : userRating >= 2 ? '感谢反馈，我们会持续改进' : '我们会继续努力'}
-          </Text>
-        </Space>
-      </Modal>
+      <Dialog open={completeModalOpen} onOpenChange={setCompleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>练习反馈</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-foreground">这次练习对你有帮助吗？请评分：</p>
+            <RatingStars value={userRating} onChange={setUserRating} />
+            <p className="text-muted-foreground">
+              {userRating >= 4 ? '很高兴对你有帮助！' :
+               userRating >= 2 ? '感谢反馈，我们会持续改进' :
+               '我们会继续努力'}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompleteModalOpen(false)}>取消</Button>
+            <Button onClick={handleCompletePlan} loading={completingSession}>提交</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

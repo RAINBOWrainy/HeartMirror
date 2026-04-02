@@ -1,18 +1,12 @@
 /**
  * EmotionBadge Component
- * 情绪标签显示组件
+ * 情绪标签显示组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React from 'react'
-import { Tag, Tooltip } from 'antd'
-import {
-  SmileOutlined,
-  FrownOutlined,
-  FireOutlined,
-  AlertOutlined,
-  ThunderboltOutlined,
-  HeartOutlined
-} from '@ant-design/icons'
+import { Smile, Frown, Flame, AlertTriangle, Zap, Heart } from 'lucide-react'
+import { Badge } from '@/components/ui'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
 interface EmotionBadgeProps {
   emotion: string
@@ -20,15 +14,17 @@ interface EmotionBadgeProps {
   showLabel?: boolean
 }
 
-const emotionConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-  joy: { color: 'gold', icon: <SmileOutlined />, label: '喜悦' },
-  happiness: { color: 'gold', icon: <SmileOutlined />, label: '快乐' },
-  sadness: { color: 'blue', icon: <FrownOutlined />, label: '悲伤' },
-  anger: { color: 'red', icon: <FireOutlined />, label: '愤怒' },
-  fear: { color: 'purple', icon: <AlertOutlined />, label: '恐惧' },
-  anxiety: { color: 'orange', icon: <ThunderboltOutlined />, label: '焦虑' },
-  neutral: { color: 'default', icon: <HeartOutlined />, label: '平静' },
-  surprise: { color: 'cyan', icon: <ThunderboltOutlined />, label: '惊讶' },
+// 情绪配置
+const emotionConfig: Record<string, { variant: 'success' | 'warning' | 'error' | 'default' | 'joy' | 'sadness' | 'anxiety' | 'calm'; icon: React.ReactNode; label: string }> = {
+  joy: { variant: 'joy', icon: <Smile className="w-3.5 h-3.5" />, label: '喜悦' },
+  happiness: { variant: 'joy', icon: <Smile className="w-3.5 h-3.5" />, label: '快乐' },
+  sadness: { variant: 'sadness', icon: <Frown className="w-3.5 h-3.5" />, label: '悲伤' },
+  anger: { variant: 'error', icon: <Flame className="w-3.5 h-3.5" />, label: '愤怒' },
+  fear: { variant: 'sadness', icon: <AlertTriangle className="w-3.5 h-3.5" />, label: '恐惧' },
+  anxiety: { variant: 'anxiety', icon: <Zap className="w-3.5 h-3.5" />, label: '焦虑' },
+  neutral: { variant: 'calm', icon: <Heart className="w-3.5 h-3.5" />, label: '平静' },
+  calm: { variant: 'calm', icon: <Heart className="w-3.5 h-3.5" />, label: '平静' },
+  surprise: { variant: 'default', icon: <Zap className="w-3.5 h-3.5" />, label: '惊讶' },
 }
 
 const EmotionBadge: React.FC<EmotionBadgeProps> = ({
@@ -40,25 +36,27 @@ const EmotionBadge: React.FC<EmotionBadgeProps> = ({
   const intensityPercent = intensity ? Math.round(intensity * 100) : null
 
   const content = (
-    <Tag
-      color={config.color}
-      icon={config.icon}
-      style={{
-        borderRadius: 12,
-        padding: '2px 8px',
-        margin: 0
-      }}
-    >
-      {showLabel && config.label}
-      {intensityPercent !== null && ` ${intensityPercent}%`}
-    </Tag>
+    <Badge variant={config.variant} className="text-sm px-3 py-1">
+      {config.icon}
+      {showLabel && <span className="ml-1">{config.label}</span>}
+      {intensityPercent !== null && (
+        <span className="ml-1 opacity-80">{intensityPercent}%</span>
+      )}
+    </Badge>
   )
 
   if (intensity !== undefined) {
     return (
-      <Tooltip title={`情绪强度: ${intensityPercent}%`}>
-        {content}
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {content}
+          </TooltipTrigger>
+          <TooltipContent>
+            情绪强度: {intensityPercent}%
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     )
   }
 

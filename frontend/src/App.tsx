@@ -1,136 +1,56 @@
-import { useEffect, useState, Suspense, lazy } from 'react'
+import { useEffect, Suspense, lazy } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider, Spin, Result, Button } from 'antd'
-import zhCN from 'antd/locale/zh_CN'
-import ErrorBoundary from './components/common/ErrorBoundary'
-import MainLayout from './components/common/MainLayout'
-import { useAuthStore } from './stores/authStore'
-import { authApi } from './services/api'
+import { MainLayout } from '@/components/layout'
+import { Loading } from '@/components/ui'
+import { ThemeProvider } from '@/theme'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
+import { useAuthStore } from '@/stores/authStore'
 
 // 路由懒加载 - 代码分割优化
-const Home = lazy(() => import('./pages/Home'))
-const Chat = lazy(() => import('./pages/Chat'))
-const Diary = lazy(() => import('./pages/Diary'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Crisis = lazy(() => import('./pages/Crisis'))
-const Intervention = lazy(() => import('./pages/Intervention'))
-const Questionnaire = lazy(() => import('./pages/Questionnaire'))
-const Settings = lazy(() => import('./pages/Settings'))
+const Home = lazy(() => import('@/pages/Home'))
+const Chat = lazy(() => import('@/pages/Chat'))
+const Diary = lazy(() => import('@/pages/Diary'))
+const Dashboard = lazy(() => import('@/pages/Dashboard'))
+const Crisis = lazy(() => import('@/pages/Crisis'))
+const Intervention = lazy(() => import('@/pages/Intervention'))
+const Questionnaire = lazy(() => import('@/pages/Questionnaire'))
+const Settings = lazy(() => import('@/pages/Settings'))
+const Profile = lazy(() => import('@/pages/Profile'))
 
 // 加载组件
-const PageLoader = () => (
-  <div style={{
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100%',
-    minHeight: '400px',
-    background: '#f5f5f5'
-  }}>
-    <Spin size="large" tip="加载中..." />
-  </div>
-)
+const PageLoader = () => <Loading tip="加载中..." />
 
-// 主题配置
-const themeConfig = {
-  token: {
-    colorPrimary: '#1890ff',
-    colorSuccess: '#52c41a',
-    colorWarning: '#faad14',
-    colorError: '#ff4d4f',
-    borderRadius: 12,
-    borderRadiusLG: 16,
-    borderRadiusSM: 8,
-    fontSize: 14,
-  },
-  components: {
-    Card: { borderRadiusLG: 16 },
-    Button: { borderRadius: 8 },
-    Input: { borderRadius: 8 },
-    Select: { borderRadius: 8 },
-    Modal: { borderRadiusLG: 16 },
-    Tag: { borderRadiusSM: 8 },
-  }
+// 纯本地应用默认用户
+const DEFAULT_USER = {
+  id: 'local-user',
+  anonymous_id: '本地用户',
+  nickname: '心镜用户',
+  risk_level: 'GREEN' as const,
+  is_guest: false,
 }
 
-// HashRouter 不需要 basename 配置
-// BrowserRouter 需要时使用: import.meta.env.BASE_URL
-
 function App() {
-  const { isAuthenticated, guestLogin, _hasHydrated } = useAuthStore()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { isAuthenticated, setLocalMode, _hasHydrated } = useAuthStore()
 
-  // 等待 zustand persist hydration 完成
+  // 纯本地模式：自动设置默认用户
   useEffect(() => {
     if (!_hasHydrated) return
 
-    const initApp = async () => {
-      // 如果已经认证，直接进入
-      if (isAuthenticated) {
-        setLoading(false)
-        return
-      }
-
-      // 尝试连接后端创建游客会话
-      try {
-        const response = await authApi.guestLogin()
-        const { access_token, user } = response.data
-        guestLogin(access_token, user)
-        console.log('[Auto Login] Guest session created')
-      } catch (err: any) {
-        console.error('[Auto Login] Failed:', err)
-        setError(err.message || '无法连接到后端服务器')
-      }
-      setLoading(false)
+    if (!isAuthenticated) {
+      setLocalMode(DEFAULT_USER)
+      console.log('[HeartMirror] 纯本地模式已启动，数据加密存储在本地')
     }
+  }, [_hasHydrated, isAuthenticated, setLocalMode])
 
-    initApp()
-  }, [_hasHydrated, isAuthenticated, guestLogin])
-
-  // Hydration 未完成或加载中
-  if (!_hasHydrated || loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}>
-        <Spin size="large" tip="正在初始化..." />
-      </div>
-    )
+  // 等待 hydration 完成
+  if (!_hasHydrated) {
+    return <Loading tip="加载中..." fullScreen />
   }
 
-  // 未认证时显示错误
-  if (!isAuthenticated || error) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#f5f5f5'
-      }}>
-        <Result
-          status="error"
-          title="无法连接到后端服务器"
-          subTitle={error || '请确保后端服务正在运行'}
-          extra={[
-            <Button type="primary" key="retry" onClick={() => window.location.reload()}>
-              重试
-            </Button>
-          ]}
-        />
-      </div>
-    )
-  }
-
-  // 主应用
+  // 纯本地应用 - 无需后端服务器
   return (
     <ErrorBoundary>
-      <ConfigProvider theme={themeConfig} locale={zhCN}>
+      <ThemeProvider>
         <HashRouter>
           <Routes>
             <Route
@@ -148,6 +68,7 @@ function App() {
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/crisis" element={<Crisis />} />
                       <Route path="/settings" element={<Settings />} />
+                      <Route path="/profile" element={<Profile />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>
@@ -156,7 +77,7 @@ function App() {
             />
           </Routes>
         </HashRouter>
-      </ConfigProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

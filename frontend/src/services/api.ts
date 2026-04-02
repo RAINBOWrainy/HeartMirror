@@ -56,15 +56,15 @@ export const authApi = {
 // 聊天相关 API
 export const chatApi = {
   createSession: (data?: { title?: string }) =>
-    api.post('/chat/sessions', data || {}),
+    api.post('/chat/session', data || {}),
   getSessions: (params?: { limit?: number; offset?: number }) =>
     api.get('/chat/sessions', { params }),
   getSession: (sessionId: string) =>
-    api.get(`/chat/sessions/${sessionId}`),
-  sendMessage: (data: { session_id?: string; message: string }) =>
+    api.get(`/chat/session/${sessionId}/messages`),
+  sendMessage: (data: { session_id?: string; content: string }) =>
     api.post('/chat/send', data),
   deleteSession: (sessionId: string) =>
-    api.delete(`/chat/sessions/${sessionId}`),
+    api.delete(`/chat/session/${sessionId}`),
 }
 
 // 情绪相关 API

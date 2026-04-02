@@ -1,19 +1,18 @@
 /**
  * EmptyState Component
- * 通用空状态组件
+ * 通用空状态组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React from 'react'
-import { Empty, Button, Typography, Space } from 'antd'
 import {
-  MessageOutlined,
-  BookOutlined,
-  DashboardOutlined,
-  AlertOutlined,
-  SearchOutlined
-} from '@ant-design/icons'
-
-const { Text, Paragraph } = Typography
+  MessageSquare,
+  Book,
+  LayoutDashboard,
+  AlertTriangle,
+  Search
+} from 'lucide-react'
+import { Button } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface EmptyStateProps {
   type?: 'chat' | 'diary' | 'dashboard' | 'crisis' | 'search' | 'default'
@@ -25,34 +24,40 @@ interface EmptyStateProps {
 
 const emptyConfigs = {
   chat: {
-    icon: <MessageOutlined style={{ fontSize: 48, color: '#1890ff' }} />,
+    icon: MessageSquare,
     title: '开始对话',
-    description: '与 AI 助手开始一段温暖的对话'
+    description: '与 AI 助手开始一段温暖的对话',
+    color: 'primary'
   },
   diary: {
-    icon: <BookOutlined style={{ fontSize: 48, color: '#52c41a' }} />,
+    icon: Book,
     title: '记录心情',
-    description: '写下今天的心情，让情绪被看见'
+    description: '写下今天的心情，让情绪被看见',
+    color: 'accent'
   },
   dashboard: {
-    icon: <DashboardOutlined style={{ fontSize: 48, color: '#722ed1' }} />,
+    icon: LayoutDashboard,
     title: '数据看板',
-    description: '开始使用后，这里将展示您的情绪数据'
+    description: '开始使用后，这里将展示您的情绪数据',
+    color: 'primary'
   },
   crisis: {
-    icon: <AlertOutlined style={{ fontSize: 48, color: '#faad14' }} />,
+    icon: AlertTriangle,
     title: '危机支持',
-    description: '这里提供心理援助资源和应对策略'
+    description: '这里提供心理援助资源和应对策略',
+    color: 'warning'
   },
   search: {
-    icon: <SearchOutlined style={{ fontSize: 48, color: '#8c8c8c' }} />,
+    icon: Search,
     title: '未找到结果',
-    description: '请尝试其他关键词'
+    description: '请尝试其他关键词',
+    color: 'muted-foreground'
   },
   default: {
     icon: undefined,
     title: '暂无数据',
-    description: '这里还没有任何内容'
+    description: '这里还没有任何内容',
+    color: 'muted-foreground'
   }
 }
 
@@ -64,57 +69,47 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   onAction
 }) => {
   const config = emptyConfigs[type]
+  const IconComponent = config.icon
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '48px 24px',
-      minHeight: 300
-    }}>
-      <div style={{
-        width: 80,
-        height: 80,
-        borderRadius: '50%',
-        background: type === 'chat' ? '#e6f7ff'
-          : type === 'diary' ? '#f6ffed'
-          : type === 'dashboard' ? '#f9f0ff'
-          : type === 'crisis' ? '#fffbe6'
-          : '#fafafa',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-        animation: 'pulse 2s ease-in-out infinite'
-      }}>
-        {config.icon}
-      </div>
+    <div className="flex flex-col items-center justify-center py-12 px-6 min-h-75">
+      {IconComponent && (
+        <div
+          className={cn(
+            'w-20 h-20 rounded-full flex items-center justify-center mb-6 animate-pulse',
+            type === 'chat' ? 'bg-primary/10' :
+            type === 'diary' ? 'bg-accent/10' :
+            type === 'dashboard' ? 'bg-primary/10' :
+            type === 'crisis' ? 'bg-warning/10' :
+            'bg-muted'
+          )}
+        >
+          <IconComponent
+            className={cn(
+              'w-12 h-12',
+              type === 'chat' ? 'text-primary' :
+              type === 'diary' ? 'text-accent' :
+              type === 'dashboard' ? 'text-primary' :
+              type === 'crisis' ? 'text-warning' :
+              'text-muted-foreground'
+            )}
+          />
+        </div>
+      )}
 
-      <Text strong style={{ fontSize: 16, marginBottom: 8 }}>
+      <p className="font-semibold text-base text-foreground mb-2">
         {title || config.title}
-      </Text>
+      </p>
 
-      <Paragraph
-        type="secondary"
-        style={{ textAlign: 'center', marginBottom: 16, maxWidth: 280 }}
-      >
+      <p className="text-muted-foreground text-center mb-4 max-w-70">
         {description || config.description}
-      </Paragraph>
+      </p>
 
       {actionText && onAction && (
-        <Button type="primary" onClick={onAction}>
+        <Button onClick={onAction}>
           {actionText}
         </Button>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-      `}</style>
     </div>
   )
 }

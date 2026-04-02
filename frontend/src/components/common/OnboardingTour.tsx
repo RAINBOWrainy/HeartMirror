@@ -1,20 +1,24 @@
 /**
  * OnboardingTour Component
- * 新手引导教程组件
+ * 新手引导教程组件 - 使用 Tailwind + shadcn/ui
  */
 
 import React, { useState, useEffect } from 'react'
-import { Modal, Button, Typography, Space, Card, Progress } from 'antd'
 import {
-  MessageOutlined,
-  BookOutlined,
-  DashboardOutlined,
-  AlertOutlined,
-  HeartOutlined,
-  CheckOutlined
-} from '@ant-design/icons'
-
-const { Title, Paragraph, Text } = Typography
+  MessageSquare,
+  Book,
+  LayoutDashboard,
+  AlertTriangle,
+  Heart,
+} from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Button,
+  Progress,
+} from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface TourStep {
   title: string
@@ -27,31 +31,31 @@ const tourSteps: TourStep[] = [
   {
     title: '欢迎来到心镜',
     description: '心镜是一款AI心理健康自助管理工具，帮助您记录情绪、管理压力、获得支持。',
-    icon: <HeartOutlined />,
+    icon: <Heart className="w-9 h-9" />,
     color: '#1890ff'
   },
   {
     title: 'AI 对话',
     description: '与 AI 助手进行温暖对话，它会倾听您的烦恼并提供支持性建议。',
-    icon: <MessageOutlined />,
+    icon: <MessageSquare className="w-9 h-9" />,
     color: '#52c41a'
   },
   {
     title: '情绪日记',
     description: '记录每一天的心情，AI 会自动分析您的情绪，帮助您更好地了解自己。',
-    icon: <BookOutlined />,
+    icon: <Book className="w-9 h-9" />,
     color: '#722ed1'
   },
   {
     title: '数据看板',
     description: '查看情绪趋势图表，了解您的心理健康状态变化。',
-    icon: <DashboardOutlined />,
+    icon: <LayoutDashboard className="w-9 h-9" />,
     color: '#fa8c16'
   },
   {
     title: '危机支持',
     description: '当您需要时，这里提供心理援助热线和应对策略。',
-    icon: <AlertOutlined />,
+    icon: <AlertTriangle className="w-9 h-9" />,
     color: '#f5222d'
   }
 ]
@@ -106,86 +110,60 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({
   const progress = ((currentStep + 1) / tourSteps.length) * 100
 
   return (
-    <Modal
+    <Dialog
       open={isVisible}
-      onCancel={handleSkip}
-      footer={null}
-      width={500}
-      centered
-      closable={false}
-      maskClosable={false}
-      styles={{
-        body: { padding: 0 }
-      }}
+      onOpenChange={(open) => !open && handleSkip()}
     >
-      <div style={{ textAlign: 'center', padding: 32 }}>
+      <DialogContent className="max-w-md text-center">
         {/* 进度条 */}
-        <Progress
-          percent={progress}
-          showInfo={false}
-          strokeColor={{
-            '0%': '#1890ff',
-            '100%': '#52c41a'
-          }}
-          style={{ marginBottom: 24 }}
-        />
+        <Progress value={progress} className="mb-6" />
 
         {/* 步骤指示 */}
-        <Text type="secondary">
+        <p className="text-sm text-muted-foreground">
           步骤 {currentStep + 1} / {tourSteps.length}
-        </Text>
+        </p>
 
         {/* 图标 */}
-        <div style={{
-          width: 80,
-          height: 80,
-          borderRadius: '50%',
-          background: `${step.color}15`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '24px auto',
-          fontSize: 36,
-          color: step.color
-        }}>
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto my-6"
+          style={{
+            backgroundColor: `${step.color}15`,
+            color: step.color
+          }}
+        >
           {step.icon}
         </div>
 
         {/* 标题 */}
-        <Title level={3} style={{ marginBottom: 12 }}>
+        <DialogTitle className="font-heading text-xl font-semibold text-foreground mb-3">
           {step.title}
-        </Title>
+        </DialogTitle>
 
         {/* 描述 */}
-        <Paragraph
-          type="secondary"
-          style={{ fontSize: 15, lineHeight: 1.8, marginBottom: 32 }}
-        >
+        <p className="text-muted-foreground text-base leading-relaxed mb-8">
           {step.description}
-        </Paragraph>
+        </p>
 
         {/* 按钮组 */}
-        <Space size={12}>
+        <div className="flex justify-center gap-3">
           {currentStep > 0 && (
-            <Button onClick={handlePrev}>
+            <Button variant="outline" onClick={handlePrev}>
               上一步
             </Button>
           )}
-          <Button type="primary" onClick={handleNext}>
+          <Button onClick={handleNext}>
             {currentStep === tourSteps.length - 1 ? '开始使用' : '下一步'}
           </Button>
-        </Space>
+        </div>
 
         {/* 跳过按钮 */}
         {currentStep < tourSteps.length - 1 && (
-          <div style={{ marginTop: 16 }}>
-            <Button type="link" onClick={handleSkip}>
-              跳过引导
-            </Button>
-          </div>
+          <Button variant="ghost" onClick={handleSkip} className="mt-4">
+            跳过引导
+          </Button>
         )}
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }
 
