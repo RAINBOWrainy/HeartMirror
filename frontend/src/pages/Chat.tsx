@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Wifi, WifiOff, Heart } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 import { Message } from '@/types'
@@ -20,7 +19,6 @@ const Chat: React.FC = () => {
   const { currentSession, addMessage, isLoading, setLoading } = useChatStore()
   const { showAlert: showCrisisAlert } = useCrisisAlert()
   const { isOnline } = useOnlineStatus()
-  const navigate = useNavigate()
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [sessionStarted, setSessionStarted] = useState(false)
 
@@ -99,7 +97,7 @@ const Chat: React.FC = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-56px-48px)] flex flex-col">
+    <div className="h-[calc(100vh-56px-48px)] flex flex-col pb-4">
       {/* 顶部区域 */}
       <div className="mb-4 space-y-3">
         {/* 温馨提示 */}

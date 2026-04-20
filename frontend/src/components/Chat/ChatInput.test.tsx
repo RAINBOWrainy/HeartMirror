@@ -157,8 +157,9 @@ describe('ChatInput', () => {
     it('should show loading state on send button', () => {
       render(<ChatInput onSend={mockOnSend} loading />)
 
-      const sendButton = screen.getByRole('button', { name: /发送/i })
-      expect(sendButton).toHaveClass('ant-btn-loading')
+      const sendButton = screen.getByRole('button', { name: /加载中/i })
+      // shadcn/ui Button handles loading styling internally
+      expect(sendButton).toBeDisabled()
     })
 
     it('should not send when loading', async () => {
@@ -166,7 +167,7 @@ describe('ChatInput', () => {
 
       const input = screen.getByPlaceholderText('输入您想说的话...')
       // In loading state, button should be disabled
-      const sendButton = screen.getByRole('button', { name: /发送/i })
+      const sendButton = screen.getByRole('button', { name: /加载中/i })
       expect(sendButton).toBeDisabled()
     })
   })

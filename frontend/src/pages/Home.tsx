@@ -16,7 +16,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { OnboardingTour } from '@/components/common'
 import { MOOD_CONFIG } from '@/components/common/MoodIcons'
-import { Button, Card, Progress } from '@/components/ui'
+import { Button, Card } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
 // 每日鼓励语
@@ -144,9 +144,9 @@ const Home: React.FC = () => {
             <Heart className="w-7 h-7" />
           </div>
           <div className="flex-1">
-            <h2 className="font-heading text-xl font-semibold text-foreground m-0 mb-2">
+            <h1 className="font-heading text-2xl font-semibold text-foreground m-0 mb-2">
               嗨，{user?.nickname || user?.anonymous_id || '朋友'}～
-            </h2>
+            </h1>
             <p className="text-muted-foreground text-base m-0">
               {encouragement}
             </p>
@@ -222,7 +222,7 @@ const Home: React.FC = () => {
 
       {/* 今日提示 */}
       <Card
-        className="mt-8 p-6"
+        className="mt-8 p-6 bg-transparent"
         style={{ backgroundColor: 'var(--color-info-soft)' }}
       >
         <div className="flex items-center gap-4">
