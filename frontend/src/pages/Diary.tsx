@@ -30,15 +30,19 @@ import {
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
-// 心情选项
+// 心情选项 - 颜色变体名称映射
+const colorVariantMap: Record<string, string> = {
+  'var(--emotion-joy)': 'joy',
+  'var(--emotion-calm)': 'calm',
+  'var(--emotion-sadness)': 'sadness',
+  'var(--emotion-anxiety)': 'anxiety',
+  'var(--emotion-anger)': 'anger',
+}
+
 const moodOptions = MOOD_CONFIG.map(mood => ({
   value: mood.value,
   label: mood.label,
-  color: mood.color === 'var(--emotion-joy)' ? 'joy' :
-         mood.color === 'var(--emotion-calm)' ? 'calm' :
-         mood.color === 'var(--emotion-sadness)' ? 'sadness' :
-         mood.color === 'var(--emotion-anxiety)' ? 'anxiety' :
-         mood.color === 'var(--emotion-anger)' ? 'anger' : 'default',
+  color: colorVariantMap[mood.color] || 'default',
 }))
 
 const Diary: React.FC = () => {
@@ -154,7 +158,7 @@ const Diary: React.FC = () => {
       {/* 标题区域 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-heading text-xl font-semibold text-foreground m-0">
+          <h1 className="font-heading text-2xl font-semibold text-foreground m-0">
             情绪日记
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -183,8 +187,7 @@ const Diary: React.FC = () => {
         </Card>
       ) : diaryList.length === 0 ? (
         <Card className="p-10 text-center">
-          <p className="text-muted-foreground mb-4">还没有日记记录</p>
-          <Button onClick={() => setIsModalOpen(true)}>写第一篇日记</Button>
+          <p className="text-muted-foreground">还没有日记记录</p>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -264,18 +267,32 @@ const Diary: React.FC = () => {
             </div>
             <div>
               <Label>标签</Label>
-              <Select value={formTags[0] || ''} onValueChange={(v) => setFormTags(v ? [v] : [])}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="添加标签" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="工作">工作</SelectItem>
-                  <SelectItem value="学习">学习</SelectItem>
-                  <SelectItem value="人际关系">人际关系</SelectItem>
-                  <SelectItem value="家庭">家庭</SelectItem>
-                  <SelectItem value="健康">健康</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {['工作', '学习', '人际关系', '家庭', '健康'].map((tag) => {
+                  const isSelected = formTags.includes(tag)
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setFormTags(formTags.filter(t => t !== tag))
+                        } else {
+                          setFormTags([...formTags, tag])
+                        }
+                      }}
+                      className={cn(
+                        'px-3 py-1 rounded-full border text-sm transition-colors',
+                        isSelected
+                          ? 'bg-primary/10 border-primary text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
             <div>
               <Label>日记内容</Label>
@@ -362,18 +379,32 @@ const Diary: React.FC = () => {
             </div>
             <div>
               <Label>标签</Label>
-              <Select value={editTags[0] || ''} onValueChange={(v) => setEditTags(v ? [v] : [])}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="添加标签" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="工作">工作</SelectItem>
-                  <SelectItem value="学习">学习</SelectItem>
-                  <SelectItem value="人际关系">人际关系</SelectItem>
-                  <SelectItem value="家庭">家庭</SelectItem>
-                  <SelectItem value="健康">健康</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {['工作', '学习', '人际关系', '家庭', '健康'].map((tag) => {
+                  const isSelected = editTags.includes(tag)
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setEditTags(editTags.filter(t => t !== tag))
+                        } else {
+                          setEditTags([...editTags, tag])
+                        }
+                      }}
+                      className={cn(
+                        'px-3 py-1 rounded-full border text-sm transition-colors',
+                        isSelected
+                          ? 'bg-primary/10 border-primary text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
             <div>
               <Label>日记内容</Label>
