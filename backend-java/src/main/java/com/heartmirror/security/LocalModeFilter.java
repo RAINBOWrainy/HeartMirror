@@ -36,7 +36,11 @@ public class LocalModeFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        if (localMode && SecurityContextHolder.getContext().getAuthentication() == null) {
+        // 本地模式只允许从 localhost/127.0.0.1 访问
+        String remoteAddr = request.getRemoteAddr();
+        boolean isLocal = "127.0.0.1".equals(remoteAddr) || "localhost".equals(remoteAddr) || "[::1]".equals(remoteAddr);
+
+        if (localMode && isLocal && SecurityContextHolder.getContext().getAuthentication() == null) {
             // 创建默认用户 - 用户名必须与 LocalModeConfig 中创建的一致
             User defaultUser = new User(
                     DEFAULT_USERNAME,
@@ -51,6 +55,10 @@ public class LocalModeFilter extends OncePerRequestFilter {
                             defaultUser.getAuthorities());
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+        } else if (localMode && !isLocal) {
+            // 拒绝非本地访问
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Local mode is only accessible from localhost");
+            return;
         }
 
         filterChain.doFilter(request, response);

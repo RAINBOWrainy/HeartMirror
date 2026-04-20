@@ -34,6 +34,12 @@ public class LocalModeConfig {
     @Value("${app.default-user.nickname:心镜用户}")
     private String defaultNickname;
 
+    @Value("${app.default-user.username:local_user}")
+    private String defaultUsername;
+
+    @Value("${app.default-user.password:local_password}")
+    private String defaultPassword;
+
     /**
      * 在本地模式下创建默认用户
      */
@@ -54,8 +60,8 @@ public class LocalModeConfig {
             // 创建默认用户
             User defaultUser = User.builder()
                     .id(defaultUserId)
-                    .username("local_user")
-                    .password(passwordEncoder.encode("local_password"))
+                    .username(defaultUsername)
+                    .password(passwordEncoder.encode(defaultPassword))
                     .nickname(defaultNickname)
                     .role(User.Role.USER)
                     .isGuest(false)
