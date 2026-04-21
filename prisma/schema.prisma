@@ -1,0 +1,23 @@
+// This is the base Prisma schema that works for both local and cloud modes
+// The provider is selected via environment variable
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = env("PRISMA_PROVIDER")
+  url      = env("DATABASE_URL")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  // Encrypted content containing the array of messages
+  // Format when decrypted: JSON array of { role, content, timestamp }
+  encryptedContent Bytes
+  // Initialization vector for AES-256-GCM
+  iv Bytes
+  // Authentication tag for authenticated encryption
+  authTag Bytes
+}

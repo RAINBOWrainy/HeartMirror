@@ -1,0 +1,43 @@
+{
+  "name": "heartmirror",
+  "version": "1.0.0",
+  "description": "> 闭环循证AI心理健康自助管理系统",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.71",
+    "@ai-sdk/openai": "^3.0.53",
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@prisma/client": "^7.7.0",
+    "@vercel/analytics": "^2.0.1",
+    "ai": "^6.0.168",
+    "next": "^16.2.4",
+    "prisma": "^7.7.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "autoprefixer": "^10.5.0",
+    "better-sqlite3": "^12.9.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^6.0.3"
+  }
+}
