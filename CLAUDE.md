@@ -20,3 +20,13 @@ Key routing rules:
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
+
+## Testing
+
+- Run all tests: `npx vitest run`
+- See [TESTING.md](TESTING.md) for full conventions
+- 100% test coverage is the goal — tests make vibe coding safe
+- When writing new functions, write a corresponding test
+- When fixing a bug, write a regression test
+- When adding a conditional (if/else), write tests for BOTH paths
+- Never commit code that makes existing tests fail
