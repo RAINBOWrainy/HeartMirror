@@ -6,7 +6,12 @@
 
 - 💆 **适合深夜情绪崩溃**：温和风格，帮你从情绪漩涡中走出来
 - 🔒 **隐私至上**：完全本地模式，数据永不离开你的设备
-- 🤖 **多 AI 提供商支持**：Anthropic Claude / 本地 Ollama 都支持
+- 🤖 **多 AI 提供商支持**：支持**所有兼容 OpenAI API 格式的大模型**
+  - Anthropic Claude
+  - OpenAI GPT-4o / GPT-4 / GPT-3.5
+  - 本地 Ollama (完全离线)
+  - DeepSeek, 通义千问, 文心一言, 豆包, Gemini
+  - 任何自定义部署的开源模型
 - 🔐 **端到端加密**：所有对话使用 AES-256-GCM 加密存储
 - 📱 **PWA 支持**：可添加到手机主屏幕，离线访问历史对话
 - 📤 **导入导出**：随时迁移数据，从云端转到本地或反向
@@ -55,18 +60,33 @@ npm run dev
 ### 配置 AI
 
 **使用 Anthropic Claude:**
-1. 在设置中选择 Provider: `anthropic`
+1. 在设置中选择 Provider 预设: `Anthropic`
 2. 输入你的 Anthropic API Key
-3. 选择模型（默认 `claude-3-sonnet-20240229`）
+3. 确认模型名称（默认 `claude-3-sonnet-20240229`）
+4. 开始聊天
+
+**使用 OpenAI:**
+1. 在设置中选择 Provider 预设: `OpenAI`
+2. 输入你的 OpenAI API Key
+3. 选择模型: `gpt-4o` 或 `gpt-4-turbo` 或 `gpt-3.5-turbo`
 4. 开始聊天
 
 **使用本地 Ollama:**
 1. 安装 [Ollama](https://ollama.com/)
 2. 拉取模型: `ollama pull llama3`
-3. 在设置中选择 Provider: `ollama`
-4. Base URL: `http://localhost:11434`
+3. 在设置中选择 Provider 预设: `Ollama`
+4. Base URL: `http://localhost:11434/v1`（已预设）
 5. 模型: `llama3`
 6. 开始聊天 — 完全离线，数据永不离开你的机器
+
+**使用自定义兼容 OpenAI 的提供商:**
+1. 在设置中选择 Provider 预设: `Custom (OpenAI)`
+2. 填入你的 API Base URL（必须包含 `/v1` 后缀如果需要）
+3. 输入你的 API Key（如果不需要可以留空）
+4. 输入模型名称
+5. 开始聊天
+
+支持: DeepSeek, Google Gemini, 阿里通义千问, 百度文心一言, 字节豆包, 任何本地或云服务的开源模型
 
 ### 构建生产版本
 

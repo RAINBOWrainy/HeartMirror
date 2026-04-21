@@ -64,3 +64,4 @@ prisma/*.db
 
 # Claude
 .claude/
+.gstack/

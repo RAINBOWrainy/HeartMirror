@@ -10,7 +10,30 @@ const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
 const BASE_URL_STORAGE_KEY = 'heartmirror-base-url';
 const MODEL_STORAGE_KEY = 'heartmirror-model';
 
-type AIProvider = 'anthropic' | 'ollama';
+type AIProvider = 'anthropic' | 'openai' | 'ollama' | 'custom';
+
+const PRESETS = {
+  anthropic: {
+    baseUrl: 'https://api.anthropic.com',
+    defaultModel: 'claude-3-sonnet-20240229',
+    requiresApiKey: true,
+  },
+  openai: {
+    baseUrl: 'https://api.openai.com/v1',
+    defaultModel: 'gpt-4o',
+    requiresApiKey: true,
+  },
+  ollama: {
+    baseUrl: 'http://localhost:11434/v1',
+    defaultModel: 'llama3',
+    requiresApiKey: false,
+  },
+  custom: {
+    baseUrl: '',
+    defaultModel: '',
+    requiresApiKey: true,
+  },
+};
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,18 +41,29 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState<string>('');
   const [provider, setProvider] = useState<AIProvider>('anthropic');
-  const [baseUrl, setBaseUrl] = useState<string>('http://localhost:11434');
-  const [model, setModel] = useState<string>('claude-3-sonnet-20240229');
+  const [baseUrl, setBaseUrl] = useState<string>(PRESETS.anthropic.baseUrl);
+  const [model, setModel] = useState<string>(PRESETS.anthropic.defaultModel);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsApiKey, setSettingsApiKey] = useState('');
   const [settingsProvider, setSettingsProvider] = useState<AIProvider>('anthropic');
-  const [settingsBaseUrl, setSettingsBaseUrl] = useState<string>('http://localhost:11434');
-  const [settingsModel, setSettingsModel] = useState<string>('claude-3-sonnet-20240229');
+  const [settingsBaseUrl, setSettingsBaseUrl] = useState<string>(PRESETS.anthropic.baseUrl);
+  const [settingsModel, setSettingsModel] = useState<string>(PRESETS.anthropic.defaultModel);
   const [isLocked, setIsLocked] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Update defaults when preset changes
+  const handleProviderChange = (newProvider: AIProvider) => {
+    setSettingsProvider(newProvider);
+    const preset = PRESETS[newProvider];
+    setSettingsBaseUrl(preset.baseUrl);
+    setSettingsModel(preset.defaultModel);
+    if (!preset.requiresApiKey) {
+      setSettingsApiKey('');
+    }
+  };
 
   // Check for password protection on mount and load saved settings
   useEffect(() => {
@@ -43,7 +77,20 @@ export default function Home() {
       const savedModel = localStorage.getItem(MODEL_STORAGE_KEY);
 
       if (savedApiKey) setApiKey(savedApiKey);
-      if (savedProvider) setProvider(savedProvider);
+      if (savedProvider) {
+        setProvider(savedProvider);
+        // If no saved base URL, use preset default
+        if (savedBaseUrl) {
+          setBaseUrl(savedBaseUrl);
+        } else {
+          setBaseUrl(PRESETS[savedProvider].baseUrl);
+        }
+        if (savedModel) {
+          setModel(savedModel);
+        } else {
+          setModel(PRESETS[savedProvider].defaultModel);
+        }
+      }
       if (savedBaseUrl) setBaseUrl(savedBaseUrl);
       if (savedModel) setModel(savedModel);
 
@@ -80,20 +127,29 @@ export default function Home() {
   };
 
   const saveSettings = () => {
-    if (settingsProvider === 'anthropic' && !settingsApiKey.trim()) {
-      alert('API key is required for Anthropic');
+    const preset = PRESETS[settingsProvider];
+    if (preset.requiresApiKey && !settingsApiKey.trim()) {
+      alert(`${settingsProvider === 'custom' ? 'API key' : 'API key is required for ' + settingsProvider}`);
+      return;
+    }
+    if (!settingsBaseUrl.trim()) {
+      alert('Base URL is required');
+      return;
+    }
+    if (!settingsModel.trim()) {
+      alert('Model name is required');
       return;
     }
 
     localStorage.setItem(API_KEY_STORAGE_KEY, settingsApiKey.trim());
     localStorage.setItem(PROVIDER_STORAGE_KEY, settingsProvider);
-    localStorage.setItem(BASE_URL_STORAGE_KEY, settingsBaseUrl);
-    localStorage.setItem(MODEL_STORAGE_KEY, settingsModel);
+    localStorage.setItem(BASE_URL_STORAGE_KEY, settingsBaseUrl.trim());
+    localStorage.setItem(MODEL_STORAGE_KEY, settingsModel.trim());
 
     setApiKey(settingsApiKey.trim());
     setProvider(settingsProvider);
-    setBaseUrl(settingsBaseUrl);
-    setModel(settingsModel);
+    setBaseUrl(settingsBaseUrl.trim());
+    setModel(settingsModel.trim());
     setShowSettings(false);
   };
 
@@ -292,11 +348,11 @@ export default function Home() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                AI Provider
+                AI Provider Preset
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => setSettingsProvider('anthropic')}
+                  onClick={() => handleProviderChange('anthropic')}
                   className={`px-4 py-2 rounded-lg border ${
                     settingsProvider === 'anthropic'
                       ? 'bg-blue-600 border-blue-600 text-white'
@@ -306,7 +362,17 @@ export default function Home() {
                   Anthropic
                 </button>
                 <button
-                  onClick={() => setSettingsProvider('ollama')}
+                  onClick={() => handleProviderChange('openai')}
+                  className={`px-4 py-2 rounded-lg border ${
+                    settingsProvider === 'openai'
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  OpenAI
+                </button>
+                <button
+                  onClick={() => handleProviderChange('ollama')}
                   className={`px-4 py-2 rounded-lg border ${
                     settingsProvider === 'ollama'
                       ? 'bg-blue-600 border-blue-600 text-white'
@@ -315,22 +381,57 @@ export default function Home() {
                 >
                   Ollama (Local)
                 </button>
+                <button
+                  onClick={() => handleProviderChange('custom')}
+                  className={`px-4 py-2 rounded-lg border ${
+                    settingsProvider === 'custom'
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  Custom (OpenAI)
+                </button>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Click a preset to auto-fill defaults. All fields can be edited freely.
+              </p>
             </div>
 
-            {settingsProvider === 'anthropic' && (
-              <div>
-                <label htmlFor="apiKey" className="block text-sm font-medium text-gray-300 mb-2">
-                  Anthropic API Key
-                </label>
-                <input
-                  id="apiKey"
-                  type="password"
-                  value={settingsApiKey}
-                  onChange={(e) => setSettingsApiKey(e.target.value)}
-                  placeholder="sk-ant-..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            <div>
+              <label htmlFor="baseUrl" className="block text-sm font-medium text-gray-300 mb-2">
+                API Base URL
+              </label>
+              <input
+                id="baseUrl"
+                type="text"
+                value={settingsBaseUrl}
+                onChange={(e) => setSettingsBaseUrl(e.target.value)}
+                placeholder="https://api.example.com/v1"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Most providers use OpenAI-compatible API format. Include /v1 if required.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="apiKey" className="block text-sm font-medium text-gray-300 mb-2">
+                API Key
+              </label>
+              <input
+                id="apiKey"
+                type="password"
+                value={settingsApiKey}
+                onChange={(e) => setSettingsApiKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {settingsProvider === 'ollama' && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Local Ollama usually doesn't require an API key. Leave blank.
+                </p>
+              )}
+              {settingsProvider === 'anthropic' && (
                 <p className="text-xs text-gray-500 mt-2">
                   Get your API key from {' '}
                   <a
@@ -342,55 +443,39 @@ export default function Home() {
                     console.anthropic.com
                   </a>
                 </p>
-              </div>
-            )}
-
-            {settingsProvider === 'ollama' && (
-              <>
-                <div>
-                  <label htmlFor="baseUrl" className="block text-sm font-medium text-gray-300 mb-2">
-                    Ollama Base URL
-                  </label>
-                  <input
-                    id="baseUrl"
-                    type="text"
-                    value={settingsBaseUrl}
-                    onChange={(e) => setSettingsBaseUrl(e.target.value)}
-                    placeholder="http://localhost:11434"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="model" className="block text-sm font-medium text-gray-300 mb-2">
-                    Model Name
-                  </label>
-                  <input
-                    id="model"
-                    type="text"
-                    value={settingsModel}
-                    onChange={(e) => setSettingsModel(e.target.value)}
-                    placeholder="llama3"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Make sure Ollama is running and the model is pulled with <code className="bg-gray-800 px-1 rounded">ollama pull {settingsModel}</code>
-                  </p>
-                </div>
-              </>
-            )}
+              )}
+              {settingsProvider === 'openai' && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Get your API key from {' '}
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
+                    platform.openai.com
+                  </a>
+                </p>
+              )}
+            </div>
 
             <div>
               <label htmlFor="model" className="block text-sm font-medium text-gray-300 mb-2">
-                {settingsProvider === 'anthropic' ? 'Model Name' : 'Model Name (continued)'}
+                Model Name
               </label>
               <input
                 id="model"
                 type="text"
                 value={settingsModel}
                 onChange={(e) => setSettingsModel(e.target.value)}
-                placeholder={settingsProvider === 'anthropic' ? 'claude-3-sonnet-20240229' : 'llama3'}
+                placeholder={PRESETS[settingsProvider].defaultModel}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {settingsProvider === 'ollama' && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Make sure Ollama is running and the model is pulled with <code className="bg-gray-800 px-1 rounded">ollama pull {settingsModel}</code>
+                </p>
+              )}
             </div>
 
             <button

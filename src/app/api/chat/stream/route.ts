@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 // For local mode: the client sends provider and credentials in the request body
 
-type AIProvider = 'anthropic' | 'ollama';
+type AIProvider = 'anthropic' | 'openai' | 'ollama' | 'custom';
 
 interface ValidatedRequest {
   messages: Message[];
@@ -30,14 +30,14 @@ function validateRequest(body: unknown): ValidatedRequest | null {
 
   if (!Array.isArray(b.messages)) return null;
   if (typeof b.apiKey !== 'string') return null;
-  if (b.provider !== 'anthropic' && b.provider !== 'ollama') return null;
+  if (!['anthropic', 'openai', 'ollama', 'custom'].includes(b.provider as string)) return null;
   if (typeof b.baseUrl !== 'string') return null;
   if (typeof b.model !== 'string') return null;
 
   return {
     messages: b.messages,
     apiKey: b.apiKey,
-    provider: b.provider,
+    provider: b.provider as AIProvider,
     baseUrl: b.baseUrl,
     model: b.model,
   };
@@ -75,23 +75,21 @@ export async function POST(req: Request) {
     return result.toTextStreamResponse();
   }
 
-  if (provider === 'ollama') {
-    // Ollama uses OpenAI-compatible API
-    const openai = createOpenAI({
-      apiKey: apiKey || 'ollama', // Ollama doesn't require API key by default
-      baseURL: baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`,
-    });
+  // All other providers use OpenAI-compatible API
+  // This includes: openai, ollama, custom (DeepSeek, Gemini, Tongyi, Wenxin, etc.)
+  const effectiveBaseUrl = baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl}/v1`;
+  const openai = createOpenAI({
+    apiKey: apiKey || 'ollama', // Ollama doesn't require API key by default
+    baseURL: effectiveBaseUrl,
+  });
 
-    const result = await streamText({
-      model: openai(model || 'llama3'),
-      system: SYSTEM_PROMPT,
-      messages: aiMessages,
-      maxOutputTokens: 1024,
-      temperature: 0.7,
-    });
+  const result = await streamText({
+    model: openai(model),
+    system: SYSTEM_PROMPT,
+    messages: aiMessages,
+    maxOutputTokens: 1024,
+    temperature: 0.7,
+  });
 
-    return result.toTextStreamResponse();
-  }
-
-  return new Response('Unsupported provider', { status: 400 });
+  return result.toTextStreamResponse();
 }
