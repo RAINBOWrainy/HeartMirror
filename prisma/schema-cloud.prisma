@@ -1,16 +1,17 @@
-// Local mode schema - SQLite for fully local self-hosted
+// Cloud mode schema - PostgreSQL for hosted deployment
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Conversation {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
+  userId    String
   // Encrypted content containing the array of messages
   // Format when decrypted: JSON array of { role, content, timestamp }
   encryptedContent Bytes
@@ -18,4 +19,6 @@ model Conversation {
   iv Bytes
   // Authentication tag for authenticated encryption
   authTag Bytes
+
+  @@index([userId])
 }

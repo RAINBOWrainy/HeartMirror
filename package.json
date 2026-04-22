@@ -7,8 +7,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "if [ \"$DEPLOY_MODE\" = \"\" ]; then export DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev",
+    "build": "if [ \"$DEPLOY_MODE\" = \"\" ]; then export DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -21,6 +21,7 @@
     "@ai-sdk/anthropic": "^3.0.71",
     "@ai-sdk/openai": "^3.0.53",
     "@anthropic-ai/sdk": "^0.90.0",
+    "@prisma/adapter-better-sqlite3": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "@vercel/analytics": "^2.0.1",
     "ai": "^6.0.168",

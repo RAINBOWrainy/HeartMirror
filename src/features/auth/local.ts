@@ -3,6 +3,9 @@ import { deriveKey } from '@/features/database/shared/encryption';
 const PASSWORD_HASH_KEY = 'heartmirror-password-hash';
 const SALT_KEY = 'heartmirror-salt';
 
+// Store the current unlocked password in memory after verification
+let currentPassword: string | null = null;
+
 /**
  * Set a password for local mode
  * Returns the derived key
@@ -20,6 +23,9 @@ export async function setLocalPassword(password: string): Promise<Buffer> {
   const hashHex = Buffer.from(hashBuffer).toString('hex');
   localStorage.setItem(PASSWORD_HASH_KEY, hashHex);
 
+  // Store password in memory for database encryption/decryption
+  currentPassword = password;
+
   return key;
 }
 
@@ -28,7 +34,10 @@ export async function setLocalPassword(password: string): Promise<Buffer> {
  */
 export async function verifyLocalPassword(password: string): Promise<boolean> {
   const savedSalt = localStorage.getItem(SALT_KEY);
-  if (!savedSalt) return true; // No password set
+  if (!savedSalt) {
+    currentPassword = password;
+    return true; // No password set
+  }
 
   const salt = Buffer.from(savedSalt, 'hex');
   const key = deriveKey(password, salt);
@@ -39,7 +48,12 @@ export async function verifyLocalPassword(password: string): Promise<boolean> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', key.buffer as ArrayBuffer);
   const computedHash = Buffer.from(hashBuffer).toString('hex');
 
-  return computedHash === storedHash;
+  if (computedHash === storedHash) {
+    currentPassword = password;
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -50,9 +64,17 @@ export function hasLocalPassword(): boolean {
 }
 
 /**
+ * Get the current unlocked password (after verification)
+ */
+export function getLocalPassword(): string | null {
+  return currentPassword;
+}
+
+/**
  * Clear password (disable protection)
  */
 export function clearLocalPassword(): void {
   localStorage.removeItem(PASSWORD_HASH_KEY);
   localStorage.removeItem(SALT_KEY);
+  currentPassword = null;
 }
