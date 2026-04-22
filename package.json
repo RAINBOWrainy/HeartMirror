@@ -7,11 +7,11 @@
     "doc": "docs"
   },
   "scripts": {
-    "dev": "if [ \"$DEPLOY_MODE\" = \"\" ]; then export DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev",
-    "build": "if [ \"$DEPLOY_MODE\" = \"\" ]; then export DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
+    "dev": "DEPLOY_MODE=${DEPLOY_MODE:-local} && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev",
+    "build": "DEPLOY_MODE=${DEPLOY_MODE:-local} && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx vitest run"
   },
   "type": "module",
   "keywords": [],
