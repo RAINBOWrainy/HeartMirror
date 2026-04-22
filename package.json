@@ -7,9 +7,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "dev": "DEPLOY_MODE=${DEPLOY_MODE:-local} && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev",
+    "dev": "DEPLOY_MODE=${DEPLOY_MODE:-local} && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev -p 3003",
     "build": "DEPLOY_MODE=${DEPLOY_MODE:-local} && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
-    "start": "next start",
+    "start": "next start -p 3003",
     "lint": "next lint",
     "test": "npx vitest run"
   },

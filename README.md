@@ -55,7 +55,7 @@ npx prisma generate
 npm run dev
 ```
 
-打开浏览器访问 [http://localhost:3000](http://localhost:3000)
+打开浏览器访问 [http://localhost:3003](http://localhost:3003)
 
 ### 配置 AI
 
