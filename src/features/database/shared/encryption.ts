@@ -5,7 +5,6 @@ const IV_LENGTH = 12;
 const SALT_LENGTH = 32;
 const ITERATIONS = 100000;
 const KEY_LENGTH = 32; // 256 bits
-const TAG_LENGTH = 16;
 
 export interface EncryptedData {
   ciphertext: Buffer;

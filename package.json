@@ -7,8 +7,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "dev": "DEPLOY_MODE=${DEPLOY_MODE:-local} && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev -p 3003",
-    "build": "DEPLOY_MODE=${DEPLOY_MODE:-local} && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
+    "dev": "if [ -z \"$DEPLOY_MODE\" ]; then DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev -p 3003",
+    "build": "if [ -z \"$DEPLOY_MODE\" ]; then DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
     "start": "next start -p 3003",
     "lint": "next lint",
     "test": "npx vitest run"
@@ -32,14 +32,20 @@
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
+    "@eslint/compat": "^2.0.5",
+    "@eslint/eslintrc": "^3.3.5",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
     "better-sqlite3": "^12.9.0",
+    "eslint": "^10.2.1",
+    "eslint-config-next": "^16.2.4",
     "jsdom": "^29.0.2",
     "playwright": "^1.59.1",
     "postcss": "^8.5.10",

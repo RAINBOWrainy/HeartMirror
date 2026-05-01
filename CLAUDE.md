@@ -30,3 +30,9 @@ Key routing rules:
 - When fixing a bug, write a regression test
 - When adding a conditional (if/else), write tests for BOTH paths
 - Never commit code that makes existing tests fail
+
+## Health Stack
+
+- typecheck: tsc --noEmit
+- lint: next lint
+- test: npx vitest run
