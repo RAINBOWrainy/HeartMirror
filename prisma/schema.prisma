@@ -6,6 +6,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Conversation {
@@ -18,4 +19,13 @@ model Conversation {
   iv Bytes
   // Authentication tag for authenticated encryption
   authTag Bytes
+  // Salt used for PBKDF2 key derivation during encryption
+  salt Bytes
+
+  // === Encrypted Preview (Fast List Loading) ===
+  // Small encrypted preview for sidebar - avoids decrypting entire conversation
+  previewCiphertext Bytes?
+  previewIv         Bytes?
+  previewAuthTag    Bytes?
+  previewSalt       Bytes?
 }

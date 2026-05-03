@@ -17,6 +17,7 @@ export async function GET(
       encryptedContent: true,
       iv: true,
       authTag: true,
+      salt: true,
     },
   });
 
@@ -30,6 +31,7 @@ export async function GET(
     encryptedContent: Buffer.from(conversation.encryptedContent).toString('base64'),
     iv: Buffer.from(conversation.iv).toString('base64'),
     authTag: Buffer.from(conversation.authTag).toString('base64'),
+    salt: Buffer.from(conversation.salt).toString('base64'),
   });
 }
 

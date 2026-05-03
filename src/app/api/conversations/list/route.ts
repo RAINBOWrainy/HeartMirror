@@ -14,15 +14,29 @@ export async function GET() {
     select: {
       id: true,
       createdAt: true,
+      // Select encrypted preview fields for fast list loading
+      // Server never decrypts - just passes encrypted bytes to client
+      previewCiphertext: true,
+      previewIv: true,
+      previewAuthTag: true,
+      previewSalt: true,
     },
   });
 
-  // Server doesn't see the content, just returns metadata
-  // Client decrypts to get preview
   return NextResponse.json({
     conversations: conversations.map(c => ({
       id: c.id,
       createdAt: c.createdAt.toISOString(),
+      // Include encrypted preview - client decrypts locally
+      // This avoids O(n) full conversation decryption during list
+      encryptedPreview: c.previewCiphertext
+        ? {
+            ciphertext: Buffer.from(c.previewCiphertext).toString('base64'),
+            iv: Buffer.from(c.previewIv).toString('base64'),
+            authTag: Buffer.from(c.previewAuthTag).toString('base64'),
+            salt: Buffer.from(c.previewSalt).toString('base64'),
+          }
+        : null,
     })),
   });
 }

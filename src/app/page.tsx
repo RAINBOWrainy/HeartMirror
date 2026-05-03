@@ -434,7 +434,7 @@ export default function Home() {
                 value={unlockPassword}
                 onChange={(e) => setUnlockPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary"
+                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
                 onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
               />
               {passwordError && (
@@ -444,7 +444,7 @@ export default function Home() {
 
             <button
               onClick={handleUnlock}
-              className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100"
+              className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
             >
               Unlock
             </button>
@@ -482,7 +482,7 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleProviderChange('anthropic')}
-                  className={`px-4 py-2 rounded-md border ${
+                  className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'anthropic'
                       ? 'bg-accent-primary border-accent-primary text-white'
                       : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
@@ -492,7 +492,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => handleProviderChange('openai')}
-                  className={`px-4 py-2 rounded-md border ${
+                  className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'openai'
                       ? 'bg-accent-primary border-accent-primary text-white'
                       : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
@@ -502,7 +502,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => handleProviderChange('ollama')}
-                  className={`px-4 py-2 rounded-md border ${
+                  className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'ollama'
                       ? 'bg-accent-primary border-accent-primary text-white'
                       : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
@@ -512,7 +512,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => handleProviderChange('custom')}
-                  className={`px-4 py-2 rounded-md border ${
+                  className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'custom'
                       ? 'bg-accent-primary border-accent-primary text-white'
                       : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
@@ -536,7 +536,7 @@ export default function Home() {
                 value={settingsBaseUrl}
                 onChange={(e) => setSettingsBaseUrl(e.target.value)}
                 placeholder="https://api.example.com/v1"
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary"
+                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
               />
               <p className="text-xs text-base-muted mt-2">
                 Most providers use OpenAI-compatible API format. Include /v1 if required.
@@ -553,7 +553,7 @@ export default function Home() {
                 value={settingsApiKey}
                 onChange={(e) => setSettingsApiKey(e.target.value)}
                 placeholder="sk-..."
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary"
+                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
               />
               {settingsProvider === 'ollama' && (
                 <p className="text-xs text-base-muted mt-2">
@@ -567,7 +567,7 @@ export default function Home() {
                     href="https://console.anthropic.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-accent-primary hover:underline"
+                    className="text-accent-primary underline hover:no-underline"
                   >
                     console.anthropic.com
                   </a>
@@ -580,7 +580,7 @@ export default function Home() {
                     href="https://platform.openai.com/api-keys"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-accent-primary hover:underline"
+                    className="text-accent-primary underline hover:no-underline"
                   >
                     platform.openai.com
                   </a>
@@ -598,7 +598,7 @@ export default function Home() {
                 value={settingsModel}
                 onChange={(e) => setSettingsModel(e.target.value)}
                 placeholder={PRESETS[settingsProvider].defaultModel}
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary"
+                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
               />
               {settingsProvider === 'ollama' && (
                 <p className="text-xs text-base-muted mt-2">
@@ -609,7 +609,7 @@ export default function Home() {
 
             <button
               onClick={saveSettings}
-              className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100"
+              className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
             >
               Save and Continue
             </button>
@@ -648,7 +648,7 @@ export default function Home() {
           <div className="p-3">
             <button
               onClick={createNewConversation}
-              className="w-full bg-accent-primary hover:bg-blue-700 text-white rounded-md px-3 py-2 text-sm font-medium transition-colors duration-100"
+              className="w-full bg-accent-primary hover:bg-blue-700 text-white rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-100 min-h-[44px]"
             >
               + New Conversation
             </button>

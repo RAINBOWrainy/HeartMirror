@@ -1,0 +1,44 @@
+name: Auto Sync to GitHub
+
+on:
+  # 每天UTC 0点自动运行
+  schedule:
+    - cron: '0 0 * * *'
+
+  # 允许手动触发
+  workflow_dispatch:
+
+  # 每次推送到main时触发
+  push:
+    branches: [ main ]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build verification
+        run: npm run build
+        env:
+          DATABASE_URL: file:./dev.db
+
+      - name: Verify success
+        run: echo "✅ All checks passed - code is ready for production"
