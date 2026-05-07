@@ -96,6 +96,21 @@ export function encryptJson<T>(obj: T, password: string): EncryptedData {
 }
 
 /**
+ * Encrypt a preview string for fast sidebar list loading
+ * Uses the same encryption mechanism but optimized for small strings
+ */
+export function encryptPreview(preview: string, password: string): EncryptedData {
+  return encrypt(preview, password);
+}
+
+/**
+ * Decrypt an encrypted preview string
+ */
+export function decryptPreview(data: EncryptedData, password: string): string {
+  return decrypt(data, password);
+}
+
+/**
  * Decrypt to a JSON object
  */
 export function decryptJson<T>(data: EncryptedData, password: string): T {

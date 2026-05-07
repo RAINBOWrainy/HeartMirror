@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 
-const filename = process.env.DATABASE_URL?.replace('file:', '') || './prisma/dev.db';
-const adapter = new PrismaBetterSqlite3({ url: filename });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 export async function GET() {
   const conversations = await prisma.conversation.findMany({
@@ -24,12 +21,19 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    conversations: conversations.map(c => ({
+    conversations: conversations.map((c: {
+      id: string;
+      createdAt: Date;
+      previewCiphertext: Buffer | null;
+      previewIv: Buffer | null;
+      previewAuthTag: Buffer | null;
+      previewSalt: Buffer | null;
+    }) => ({
       id: c.id,
       createdAt: c.createdAt.toISOString(),
       // Include encrypted preview - client decrypts locally
       // This avoids O(n) full conversation decryption during list
-      encryptedPreview: c.previewCiphertext
+      encryptedPreview: c.previewCiphertext && c.previewIv && c.previewAuthTag && c.previewSalt
         ? {
             ciphertext: Buffer.from(c.previewCiphertext).toString('base64'),
             iv: Buffer.from(c.previewIv).toString('base64'),
