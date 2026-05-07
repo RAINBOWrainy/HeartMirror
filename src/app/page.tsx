@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import * as localAuth from '@/features/auth/local';
-import * as localDb from '@/features/database/local';
+import { dbClient } from '@/features/database/shared/client';
 import type { Message } from '@/features/ai/shared/types';
-import type { ConversationInfo } from '@/features/database/local';
+import type { ConversationInfo } from '@/features/database/shared/client';
 
 const API_KEY_STORAGE_KEY = 'heartmirror-api-key';
 const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
@@ -76,7 +76,7 @@ export default function Home() {
     const password = localAuth.getLocalPassword();
     if (!password) return;
     try {
-      const list = await localDb.listConversations(password);
+      const list = await dbClient.listConversations();
       setConversations(list);
     } catch (err) {
       console.error('Failed to load conversations:', err);
@@ -88,7 +88,7 @@ export default function Home() {
     const password = localAuth.getLocalPassword();
     if (!password) return;
     try {
-      const loadedMessages = await localDb.loadConversation(id, password);
+      const loadedMessages = await dbClient.loadConversation(id);
       setMessages(loadedMessages);
       setCurrentConversationId(id);
       localStorage.setItem(CURRENT_CONVERSATION_KEY, id);
@@ -114,7 +114,7 @@ export default function Home() {
       return;
     }
     try {
-      await localDb.deleteConversation(id);
+      await dbClient.deleteConversation(id);
       if (id === currentConversationId) {
         createNewConversation();
       }
@@ -131,7 +131,7 @@ export default function Home() {
     const password = localAuth.getLocalPassword();
     if (!password) return;
     try {
-      const newId = await localDb.saveConversation(messages, password, currentConversationId || undefined);
+      const newId = await dbClient.saveConversation(messages, password, currentConversationId || undefined);
       if (!currentConversationId) {
         setCurrentConversationId(newId);
         localStorage.setItem(CURRENT_CONVERSATION_KEY, newId);
@@ -274,26 +274,6 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          apiKey,
-          provider,
-          baseUrl,
-          model,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response');
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = '';
-
       const assistantMessage: Message = {
         role: 'assistant',
         content: '',
@@ -301,16 +281,20 @@ export default function Home() {
       };
       setMessages(prev => [...prev, assistantMessage]);
 
-      while (true) {
-        const { done, value } = await reader!.read();
-        if (done) break;
-        fullResponse += decoder.decode(value);
-        setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1].content = fullResponse;
-          return newMessages;
-        });
-      }
+      // Use unified chat API (works in both browser and Tauri modes)
+      const response = await dbClient.chatCompletion({
+        messages: [...messages, userMessage],
+        apiKey,
+        provider,
+        baseUrl,
+        model,
+      });
+
+      setMessages(prev => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1].content = response;
+        return newMessages;
+      });
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -335,7 +319,7 @@ export default function Home() {
       return;
     }
     try {
-      await localDb.deleteAllConversations();
+      await dbClient.deleteAllConversations();
       setMessages([]);
       setCurrentConversationId(null);
       localStorage.removeItem(CURRENT_CONVERSATION_KEY);
@@ -380,7 +364,7 @@ export default function Home() {
           // Import all conversations
           for (const conv of data.conversations) {
             if (Array.isArray(conv.messages) && conv.messages.length > 0) {
-              await localDb.saveConversation(conv.messages, password);
+              await dbClient.saveConversation(conv.messages, password);
             }
           }
           await loadConversationsList();

@@ -4,10 +4,18 @@ This file tracks deferred features and future improvements. Items are ordered by
 
 ## P1 - High Priority
 
-### Multiple conversation threads
-- **Why:** Currently only one conversation at a time in local mode. Users often want to keep different conversation threads separate for different moods or topics.
-- **Current state:** Sidebar UI is already implemented, it just needs the full CRUD flow hooked up.
-- **Effort:** M (about 30-45 minutes with CC+gstack)
+### ✅ Multiple conversation threads (COMPLETED)
+- Full CRUD flow implemented and working
+- Sidebar with create/load/delete conversation
+- Encrypted preview metadata for fast list loading
+- Two-phase migration system
+
+### ✅ Tauri desktop app packaging (COMPLETED)
+- Full Rust backend with SQLite database
+- AES-256-GCM encryption in Rust
+- Chat API via Rust reqwest client
+- Dual-mode client abstraction (browser + Tauri
+- GitHub Actions CI configured
 
 ### Cloud mode implementation
 - **Why:** Allows non-technical users to use HeartMirror without self-hosting. Data is still end-to-end encrypted on the server.

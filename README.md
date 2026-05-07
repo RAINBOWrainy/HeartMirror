@@ -226,4 +226,102 @@ MIT License — 详见 [LICENSE](LICENSE)
 
 ---
 
+---
+
+## 📦 Desktop App (Tauri)
+
+HeartMirror can be built as a native desktop app using Tauri with **full offline support**.
+
+### Architecture
+
+HeartMirror uses a dual-mode architecture that automatically adapts to its environment:
+
+| Feature | Browser Mode | Tauri Desktop Mode |
+|---------|-------------|--------------------|
+| Database | SQLite via Next.js API | SQLite via Rust backend |
+| Encryption | Browser Web Crypto | AES-256-GCM via Rust `aes-gcm` |
+| Chat API | Next.js API route | Rust `reqwest` HTTP client |
+| Storage | Browser localStorage | OS-native app data directory |
+
+### Prerequisites
+
+- Node.js 18+
+- **Rust 1.60+** (for Tauri backend)
+- OS-specific dependencies:
+  - **Windows**: Microsoft Visual Studio C++ Build Tools + WebView2
+  - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+  - **Linux**: `sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
+
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run Tauri dev mode (native app window opens)
+npm run tauri:dev
+```
+
+### Build Production Binary
+
+```bash
+# Build for your current platform
+npm run tauri:build
+```
+
+Output files will be in `src-tauri/target/release/bundle/`:
+- **Windows**: `.msi` installer + standalone `.exe`
+- **macOS**: `.app` + `.dmg` disk image
+- **Linux**: `.deb` package + `.AppImage`
+
+### Tauri CLI
+
+```bash
+# Info about your system and Tauri setup
+npm run tauri info
+
+# Build for specific target
+npm run tauri build -- --target x86_64-pc-windows-msvc
+```
+
+### App Data Location
+
+- **Windows**: `%APPDATA%\HeartMirror\heartmirror.db`
+- **macOS**: `~/Library/Application Support/HeartMirror/heartmirror.db`
+- **Linux**: `~/.config/HeartMirror/heartmirror.db`
+
+---
+
+## 🚀 How to Release
+
+### Creating a New Release
+
+1. **Tag the version**:
+   ```bash
+   git tag -a v1.0.0 -m "Release v1.0.0"
+   git push origin v1.0.0
+   ```
+
+2. **GitHub Actions automatically**:
+   - Runs tests and linter
+   - Builds the web app
+   - Creates a draft release with artifacts
+
+3. **Publish**:
+   - Go to GitHub Releases
+   - Edit the draft release notes
+   - Publish!
+
+### Manual Release Build
+
+```bash
+# Build web app
+DEPLOY_MODE=local npm run build
+
+# Build Tauri desktop app
+npm run tauri:build
+```
+
+---
+
 **祝你好心情。** 💙

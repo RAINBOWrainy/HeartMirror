@@ -9,9 +9,13 @@
   "scripts": {
     "dev": "if [ -z \"$DEPLOY_MODE\" ]; then DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && next dev -p 3003",
     "build": "if [ -z \"$DEPLOY_MODE\" ]; then DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
+    "build:static": "if [ -z \"$DEPLOY_MODE\" ]; then DEPLOY_MODE=local; fi && cp prisma/schema-$DEPLOY_MODE.prisma prisma/schema.prisma && npx prisma generate && next build",
     "start": "next start -p 3003",
     "lint": "next lint",
-    "test": "npx vitest run"
+    "test": "npx vitest run",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "type": "module",
   "keywords": [],
@@ -23,6 +27,7 @@
     "@anthropic-ai/sdk": "^0.90.0",
     "@prisma/adapter-better-sqlite3": "^7.7.0",
     "@prisma/client": "^7.7.0",
+    "@tauri-apps/api": "^1.5.3",
     "@vercel/analytics": "^2.0.1",
     "ai": "^6.0.168",
     "next": "^16.2.4",
@@ -34,6 +39,7 @@
   "devDependencies": {
     "@eslint/compat": "^2.0.5",
     "@eslint/eslintrc": "^3.3.5",
+    "@tauri-apps/cli": "^1.5.11",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/better-sqlite3": "^7.6.13",
