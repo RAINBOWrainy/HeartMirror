@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "prisma:copy": "node -e \"const fs = require('fs'); const mode = process.env.DEPLOY_MODE || 'local'; fs.copyFileSync(`prisma/schema-${mode}.prisma`, 'prisma/schema.prisma');\"",
+    "prisma:copy": "node scripts/copy-prisma-schema.js",
     "dev": "npm run prisma:copy && next dev -p 3003",
     "build": "npm run prisma:copy && npx prisma generate && next build",
     "build:static": "npm run prisma:copy && npx prisma generate && next build",
