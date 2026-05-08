@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "prisma:copy": "node scripts/copy-prisma-schema.js",
+    "prisma:copy": "node scripts/copy-prisma-schema.cjs",
     "dev": "npm run prisma:copy && next dev -p 3003",
     "build": "npm run prisma:copy && npx prisma generate && next build",
     "build:static": "npm run prisma:copy && npx prisma generate && next build",
