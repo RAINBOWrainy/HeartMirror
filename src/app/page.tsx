@@ -89,6 +89,7 @@ export default function Home() {
 
   const loadCloudSettings = async () => {
     try {
+      setIsLoadingSettings(true);
       const res = await fetch('/api/settings', {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
@@ -103,6 +104,9 @@ export default function Home() {
         } else {
           setShowSettings(true);
         }
+      } else {
+        console.error('Failed to load cloud settings:', res.status);
+        setShowSettings(true);
       }
     } catch (err) {
       console.error('Failed to load cloud settings:', err);
@@ -804,10 +808,10 @@ export default function Home() {
           <div className="p-3 border-t border-base-border">
             <button
               onClick={() => {
-                setSettingsApiKey(apiKey);
-                setSettingsProvider(provider);
-                setSettingsBaseUrl(baseUrl);
-                setSettingsModel(model);
+                setSettingsApiKey(apiKey || '');
+                setSettingsProvider(provider || 'anthropic');
+                setSettingsBaseUrl(baseUrl || PRESETS.anthropic.baseUrl);
+                setSettingsModel(model || PRESETS.anthropic.defaultModel);
                 setShowSettings(true);
               }}
               className="w-full text-left px-3 py-2 text-sm text-base-muted hover:text-base-text hover:bg-base-bg rounded-md transition-colors"
@@ -861,10 +865,10 @@ export default function Home() {
           )}
           <button
             onClick={() => {
-              setSettingsApiKey(apiKey);
-              setSettingsProvider(provider);
-              setSettingsBaseUrl(baseUrl);
-              setSettingsModel(model);
+              setSettingsApiKey(apiKey || '');
+              setSettingsProvider(provider || 'anthropic');
+              setSettingsBaseUrl(baseUrl || PRESETS.anthropic.baseUrl);
+              setSettingsModel(model || PRESETS.anthropic.defaultModel);
               setShowSettings(true);
             }}
             className="text-sm text-base-muted hover:text-base-text px-3 py-1 rounded-md hover:bg-base-surface transition-colors duration-100"
