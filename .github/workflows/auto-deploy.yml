@@ -46,7 +46,10 @@ jobs:
           DATABASE_URL: file:./dev.db
 
       - name: Run PostgreSQL RLS tests (cloud mode)
-        run: npm test -- -t "RLS"
+        run: |
+          cp prisma/schema-cloud.prisma prisma/schema.prisma
+          npx prisma generate
+          npm test -- -t "RLS"
         env:
           DEPLOY_MODE: cloud
           DATABASE_URL: postgresql://test:test@localhost:5432/heartmirror_test
