@@ -49,6 +49,7 @@ jobs:
         run: |
           cp prisma/schema-cloud.prisma prisma/schema.prisma
           npx prisma generate
+          npx prisma migrate deploy
           npm test -- -t "RLS"
         env:
           DEPLOY_MODE: cloud
