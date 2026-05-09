@@ -57,7 +57,7 @@ export interface TrackerConfig {
 }
 
 /** Standardized test types */
-export type StandardizedTestType = 'phq-9' | 'gad-7';
+export type StandardizedTestType = 'phq-9' | 'gad-7' | 'conversational';
 
 /** Result of a standardized test (PHQ-9 or GAD-7) */
 export interface StandardizedTestResult {

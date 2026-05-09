@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
+import { CrisisSupportModal } from '@/components/CrisisSupport';
 import { phq9Questions, phq9Options, calculatePHQ9 } from '@/components/assessments/PHQ9';
 import { gad7Questions, gad7Options, calculateGAD7 } from '@/components/assessments/GAD7';
 import type { StandardizedTestType, StandardizedTestResult } from '@/features/tracker/types';
@@ -14,6 +15,70 @@ import type { Message } from '@/features/ai/shared/types';
 type AssessmentType = 'conversational' | 'standardized' | null;
 type StandardizedTest = 'phq-9' | 'gad-7' | 'eds' | 'oq-45' | 'wsas' | null;
 type Screen = 'select-type' | 'select-test' | 'test' | 'result' | 'settings' | 'conversational';
+
+const CONVERSATIONAL_SYSTEM_PROMPT_ZH = `你叫HeartMirror，是一位温暖、善解人意的AI心理健康陪伴助手。你的任务是：
+
+1. 用自然的对话方式了解用户的心理状态
+2. 开始时温柔地询问最近有什么让你感到焦虑、难过或者困扰的事情
+3. 根据用户的回答，用对话的形式深入了解情况（睡眠、工作、人际关系、情绪等）
+4. 保持5-7轮对话，然后用温柔的方式做一个总结
+5. 总结要包括：整体心情评分(1-10)、主要感受、可能的原因、简单的自我关爱建议
+
+对话风格：
+- 像朋友聊天一样自然，不要像医生问诊
+- 可以根据时间调整开场（比如深夜就问"这么晚还没睡，是不是有什么心事？"）
+- 如果用户不想说，不要强迫，温柔地换个方式接近
+- 观察用户情绪变化，适时表达理解和共情
+- 用温暖的语气，偶尔可以有一些轻松的互动
+
+评估标准：
+- 心情评分(1-10)：1=非常低落，10=非常好
+- 识别主要情绪：焦虑、沮丧、孤独、压力大、迷茫等
+- 识别相关生活领域：睡眠、工作、人际关系、家庭、健康等
+
+危机识别：
+- 如果用户提到自我伤害或自杀念头，立即提供危机热线信息
+
+总结格式（当对话足够后自动生成）：
+【评估总结】
+心情评分：X/10
+主要感受：[情绪描述]
+可能原因：[简要分析]
+建议：[1-2个简单的自我关爱方法]
+
+记住：你不是要替代专业心理治疗，而是在用户需要倾诉时提供一个安全的空间。`;
+
+const CONVERSATIONAL_SYSTEM_PROMPT_EN = `You are HeartMirror, a warm and empathetic AI mental health companion. Your task is:
+
+1. Get to know the user's mental state through natural conversation
+2. Gently ask what's been making them feel anxious, sad, or troubled at the start
+3. Based on their responses, explore deeper (sleep, work, relationships, emotions) through conversation
+4. Keep 5-7 turns of dialogue, then gently provide a summary
+5. Summary should include: overall mood score (1-10), main feelings, possible reasons, simple self-care suggestions
+
+Conversation style:
+- Natural like chatting with a friend, not like a doctor's interrogation
+- Adjust opening based on time (e.g., late night: "Still up so late, is something on your mind?")
+- If user doesn't want to talk, don't force, gently approach another way
+- Watch for emotional changes, express understanding and empathy
+- Warm tone, occasional light interaction is fine
+
+Assessment criteria:
+- Mood score (1-10): 1=very low, 10=excellent
+- Identify main emotions: anxious, depressed, lonely, stressed, confused, etc.
+- Identify related life areas: sleep, work, relationships, family, health, etc.
+
+Crisis recognition:
+- If user mentions self-harm or suicidal thoughts, immediately provide crisis hotline info
+
+Summary format (auto-generated when conversation is sufficient):
+【Assessment Summary】
+Mood Score: X/10
+Main Feelings: [emotion description]
+Possible Reasons: [brief analysis]
+Suggestions: [1-2 simple self-care methods]
+
+Remember: you're not replacing professional mental health treatment, but providing a safe space when users need to talk.`;
 
 const API_KEY_STORAGE_KEY = 'heartmirror-api-key';
 const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
@@ -246,6 +311,9 @@ export default function AssessmentPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationTurns, setConversationTurns] = useState(0);
+  const [conversationSummary, setConversationSummary] = useState<string | null>(null);
+  const [showCrisisModal, setShowCrisisModal] = useState(false);
   const [settingsProvider, setSettingsProvider] = useState<'anthropic' | 'openai' | 'ollama' | 'custom'>('anthropic');
   const [settingsBaseUrl, setSettingsBaseUrl] = useState(PRESETS.anthropic.baseUrl);
   const [settingsModel, setSettingsModel] = useState(PRESETS.anthropic.defaultModel);
@@ -311,16 +379,9 @@ export default function AssessmentPage() {
         setShowSettings(true);
       } else {
         setScreen('conversational');
-        if (messages.length === 0) {
-          const welcomeMsg: Message = {
-            role: 'assistant',
-            content: locale === 'zh'
-              ? '你好，我是HeartMirror的AI助手。今天你想聊些什么？如果你感到不安或有任何心理压力，我可以倾听并帮助你整理思绪。\n\n你也可以选择进行标准化的心理测试来更好地了解自己的状态。'
-              : "Hello, I'm the HeartMirror AI assistant. What would you like to talk about today? If you're feeling uneasy or have any mental stress, I can listen and help you organize your thoughts.\n\nYou can also choose to take a standardized mental health test to better understand your current state.",
-            timestamp: Date.now(),
-          };
-          setMessages([welcomeMsg]);
-        }
+        setMessages([]);
+        setInput('');
+        setConversationTurns(0);
       }
     } else {
       setScreen('select-test');
@@ -343,6 +404,7 @@ export default function AssessmentPage() {
     } else {
       const calculator = getTestCalculator(standardizedTest);
       const result = calculator(newAnswers);
+      const crisisTriggered = standardizedTest === 'phq-9' && newAnswers[8] > 0;
       const testResult: StandardizedTestResult = {
         id: crypto.randomUUID(),
         createdAt: Date.now(),
@@ -352,9 +414,13 @@ export default function AssessmentPage() {
         totalScore: result.total,
         severity: locale === 'zh' ? result.severityZh : result.severity,
         interpretation: locale === 'zh' ? result.interpretationZh : result.interpretation,
-        crisisTriggered: standardizedTest === 'phq-9' && newAnswers[8] > 0,
+        crisisTriggered,
       };
       setTestResult(testResult);
+      // Show crisis modal if moderate or worse
+      if (result.total >= 15 || crisisTriggered) {
+        setShowCrisisModal(true);
+      }
       // Save to localStorage for dashboard
       const ASSESSMENTS_KEY = 'heartmirror-assessment-results';
       const stored = localStorage.getItem(ASSESSMENTS_KEY);
@@ -368,12 +434,27 @@ export default function AssessmentPage() {
   const handleSend = async () => {
     if (!input.trim() || isLoading || !apiKey) return;
     const userMessage: Message = { role: 'user', content: input.trim(), timestamp: Date.now() };
+    const newTurns = conversationTurns + 1;
+    setConversationTurns(newTurns);
+
+    // Build messages with system prompt
+    const systemPrompt = locale === 'zh' ? CONVERSATIONAL_SYSTEM_PROMPT_ZH : CONVERSATIONAL_SYSTEM_PROMPT_EN;
+    const allMessages = [
+      { role: 'system' as const, content: systemPrompt, timestamp: Date.now() },
+      ...messages,
+      userMessage,
+    ];
+
+    // If 5+ turns and user hasn't asked for summary yet, prompt for summary
+    const shouldSuggestSummary = newTurns >= 5 && !input.toLowerCase().includes('总结') && !input.toLowerCase().includes('summary');
+
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     try {
       const assistantMessage: Message = { role: 'assistant', content: '', timestamp: Date.now() };
       setMessages(prev => [...prev, assistantMessage]);
+
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
@@ -381,7 +462,7 @@ export default function AssessmentPage() {
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage],
+          messages: allMessages,
           provider,
           baseUrl,
           model,
@@ -404,9 +485,105 @@ export default function AssessmentPage() {
           });
         }
       }
+
+      // After response, if enough turns and no summary requested, suggest it
+      if (shouldSuggestSummary && newTurns >= 5) {
+        const suggestMsg: Message = {
+          role: 'assistant',
+          content: locale === 'zh'
+            ? '\n\n我们已经聊了几轮了，我对你的情况有了些了解。如果你愿意的话，我可以为你做一个简短的总结，帮助你更好地整理一下现在的感受。要现在总结吗？'
+            : '\n\nWe\'ve chatted for a few rounds now, and I have a better understanding of how you\'re doing. If you\'d like, I can provide a brief summary to help you organize your current feelings. Would you like a summary now?',
+          timestamp: Date.now(),
+        };
+        setMessages(prev => [...prev, suggestMsg]);
+      }
     } catch (error) {
       console.error('Error:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: locale === 'zh' ? '连接出现问题，请重试。' : 'Connection error. Please try again.', timestamp: Date.now() }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRequestSummary = async () => {
+    if (!apiKey) return;
+    setIsLoading(true);
+
+    const summaryPrompt = locale === 'zh'
+      ? '请根据我们之前的对话，做一个温柔的总结：1) 整体心情评分(1-10) 2) 主要感受 3) 可能的原因 4) 简单建议。用【评估总结】开头。'
+      : 'Based on our conversation, please provide a gentle summary: 1) Overall mood score (1-10) 2) Main feelings 3) Possible reasons 4) Simple suggestions. Start with [Assessment Summary].';
+
+    const userMessage: Message = { role: 'user', content: summaryPrompt, timestamp: Date.now() };
+    const systemPrompt = locale === 'zh' ? CONVERSATIONAL_SYSTEM_PROMPT_ZH : CONVERSATIONAL_SYSTEM_PROMPT_EN;
+
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      const assistantMessage: Message = { role: 'assistant', content: '', timestamp: Date.now() };
+      setMessages(prev => [...prev, assistantMessage]);
+
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt, timestamp: Date.now() },
+            ...messages,
+            userMessage,
+          ],
+          provider,
+          baseUrl,
+          model,
+        }),
+      });
+      if (!response.ok) throw new Error('API request failed');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          fullContent += chunk;
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = fullContent;
+            return newMessages;
+          });
+        }
+      }
+
+      // Parse mood score from summary if found
+      const moodMatch = fullContent.match(/心情评分[：:]\s*(\d+)|Mood Score[：:]\s*(\d+)/i);
+      if (moodMatch) {
+        const moodScore = parseInt(moodMatch[1] || moodMatch[2]);
+        const testResult: StandardizedTestResult = {
+          id: crypto.randomUUID(),
+          createdAt: Date.now(),
+          type: 'conversational',
+          status: 'completed',
+          rawScores: [moodScore],
+          totalScore: moodScore,
+          severity: moodScore >= 7 ? '良好' : moodScore >= 5 ? '一般' : '需要关注',
+          interpretation: fullContent,
+          crisisTriggered: false,
+        };
+
+        // Save to localStorage
+        const ASSESSMENTS_KEY = 'heartmirror-assessment-results';
+        const stored = localStorage.getItem(ASSESSMENTS_KEY);
+        const existing = stored ? JSON.parse(stored) : [];
+        existing.unshift(testResult);
+        localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(existing));
+        setConversationSummary(fullContent);
+      }
+    } catch (error) {
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -563,6 +740,15 @@ export default function AssessmentPage() {
             <div ref={messagesEndRef} />
           </div>
           <div className="border-t p-4" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
+            {conversationTurns >= 5 && (
+              <div className="mb-3 flex justify-center">
+                <button onClick={handleRequestSummary} disabled={isLoading}
+                  className="text-sm px-4 py-2 rounded-lg border transition-colors"
+                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                  📋 {locale === 'zh' ? '请求评估总结' : 'Request Assessment Summary'}
+                </button>
+              </div>
+            )}
             <div className="flex gap-2 items-end">
               <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
                 placeholder={locale === 'zh' ? '输入消息...' : 'Type your message...'}
@@ -604,8 +790,8 @@ export default function AssessmentPage() {
                   <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
                     {locale === 'zh' ? test.descriptionZh : test.description}
                   </p>
-                  <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {test.questions} {locale === 'zh' ? '题' : 'questions'} | {locale === 'zh' ? '来源' : 'Source'}: {test.source}
+                  <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>
+                    {test.questions} {locale === 'zh' ? '题' : 'questions'} | {locale === 'zh' ? '来源' : 'Source'}: <a href={test.source} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">{test.source.replace('https://', '')}</a>
                   </p>
                 </button>
               ))}
@@ -709,6 +895,7 @@ export default function AssessmentPage() {
             </div>
           </div>
         </div>
+        <CrisisSupportModal isOpen={showCrisisModal} onClose={() => setShowCrisisModal(false)} severity={testResult?.severity} />
       </div>
     );
   }
@@ -719,6 +906,7 @@ export default function AssessmentPage() {
       <div className="ml-[200px] flex items-center justify-center min-h-screen">
         <p>{t(locale, 'common.loading')}</p>
       </div>
+      <CrisisSupportModal isOpen={showCrisisModal} onClose={() => setShowCrisisModal(false)} />
     </div>
   );
 }

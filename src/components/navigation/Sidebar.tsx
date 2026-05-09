@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { CrisisBanner } from '@/components/CrisisSupport';
 
 const navItems = [
   { href: '/', icon: '💬', labelKey: 'chat', labelZh: '聊天' },
@@ -54,7 +55,7 @@ export function Sidebar({ locale = 'zh' }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 bottom-0 z-50 transition-transform duration-200 ease-out border-r`}
+        className={`fixed left-0 top-0 bottom-0 z-50 transition-transform duration-200 ease-out border-r flex flex-col`}
         style={{
           width: isOpen ? '200px' : '0',
           backgroundColor: 'var(--surface)',
@@ -88,7 +89,6 @@ export function Sidebar({ locale = 'zh' }: SidebarProps) {
                     color: active ? 'white' : 'var(--text)',
                   }}
                   onClick={() => {
-                    // Auto-close on mobile if needed
                     if (window.innerWidth < 768) {
                       setIsOpen(false);
                     }
@@ -103,12 +103,8 @@ export function Sidebar({ locale = 'zh' }: SidebarProps) {
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>
-            <p className="text-xs text-center" style={{ color: 'var(--muted)' }}>
-              {locale === 'zh' ? '不能替代专业医疗' : 'Not a substitute for professional care'}
-            </p>
-          </div>
+          {/* Crisis Hotline Banner */}
+          <CrisisBanner locale={locale as 'zh' | 'en'} />
         </div>
       </aside>
     </>
