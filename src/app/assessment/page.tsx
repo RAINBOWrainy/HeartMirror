@@ -355,6 +355,12 @@ export default function AssessmentPage() {
         crisisTriggered: standardizedTest === 'phq-9' && newAnswers[8] > 0,
       };
       setTestResult(testResult);
+      // Save to localStorage for dashboard
+      const ASSESSMENTS_KEY = 'heartmirror-assessment-results';
+      const stored = localStorage.getItem(ASSESSMENTS_KEY);
+      const existing = stored ? JSON.parse(stored) : [];
+      existing.unshift(testResult);
+      localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(existing));
       setScreen('result');
     }
   };
@@ -370,10 +376,12 @@ export default function AssessmentPage() {
       setMessages(prev => [...prev, assistantMessage]);
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
         body: JSON.stringify({
           messages: [...messages, userMessage],
-          apiKey,
           provider,
           baseUrl,
           model,

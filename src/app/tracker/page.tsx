@@ -13,110 +13,22 @@ const ASSESSMENTS_KEY = 'heartmirror-assessment-results';
 const MOOD_LABELS_ZH = ['很低落', '低落', '有些低落', '略低', '一般', '略好', '不错', '良好', '很好', '非常好'];
 const MOOD_LABELS_EN = ['Very Low', 'Low', 'Somewhat Low', 'Slightly Low', 'Neutral', 'Slightly Better', 'Good', 'Very Good', 'Great', 'Excellent'];
 
-const MINDFULNESS_EXERCISES = [
-  {
-    id: 'breathing',
-    icon: '🌬️',
-    nameZh: '深呼吸练习',
-    nameEn: 'Breathing Exercise',
-    descriptionZh: '4-7-8 呼吸法：吸气4秒，屏息7秒，呼气8秒，重复3次',
-    descriptionEn: '4-7-8 Breathing: Inhale 4s, hold 7s, exhale 8s. Repeat 3 times.',
-    duration: '3 min',
-    category: 'breathing',
-  },
-  {
-    id: 'body-scan',
-    icon: '🧘',
-    nameZh: '身体扫描',
-    nameEn: 'Body Scan',
-    descriptionZh: '从脚趾到头顶，依次感受身体每个部位的放松',
-    descriptionEn: 'Scan from toes to head, notice sensations in each body part.',
-    duration: '5 min',
-    category: 'relaxation',
-  },
-  {
-    id: 'gratitude',
-    icon: '🙏',
-    nameZh: '感恩冥想',
-    nameEn: 'Gratitude Meditation',
-    descriptionZh: '闭眼想想3件让你感激的事，感受温暖的情绪',
-    descriptionEn: 'Think of 3 things you are grateful for. Feel the warmth.',
-    duration: '3 min',
-    category: 'mindfulness',
-  },
-  {
-    id: 'grounding',
-    icon: '🌍',
-    nameZh: '5-4-3-2-1 接地练习',
-    nameEn: '5-4-3-2-1 Grounding',
-    descriptionZh: '说出5样看到的东西、4样触摸、3样听到、2样闻到、1样尝到',
-    descriptionEn: 'Name 5 things you see, 4 you touch, 3 you hear, 2 you smell, 1 you taste.',
-    duration: '5 min',
-    category: 'grounding',
-  },
-  {
-    id: 'self-compassion',
-    icon: '💚',
-    nameZh: '自我慈悲',
-    nameEn: 'Self-Compassion Break',
-    descriptionZh: '觉察痛苦情绪，用温柔的话语安慰自己',
-    descriptionEn: 'Notice pain, talk to yourself with kindness.',
-    duration: '4 min',
-    category: 'compassion',
-  },
-  {
-    id: 'progressive-relaxation',
-    icon: '😌',
-    nameZh: '渐进式肌肉放松',
-    nameEn: 'Progressive Relaxation',
-    descriptionZh: '依次紧张和放松全身肌肉群，从脚到头',
-    descriptionEn: 'Tense and release each muscle group from feet to head.',
-    duration: '10 min',
-    category: 'relaxation',
-  },
-  {
-    id: 'loving-kindness',
-    icon: '💕',
-    nameZh: '慈心禅修',
-    nameEn: 'Loving-Kindness',
-    descriptionZh: '向自己、亲人、陌生人传递善意和祝福',
-    descriptionEn: 'Send goodwill to yourself, loved ones, and strangers.',
-    duration: '6 min',
-    category: 'mindfulness',
-  },
-  {
-    id: 'thought-observation',
-    icon: '💭',
-    nameZh: '观察想法',
-    nameEn: 'Thought Observation',
-    descriptionZh: '像天空观察云朵一样，观察流过的想法，不评判',
-    descriptionEn: 'Watch thoughts pass like clouds in the sky, without judgment.',
-    duration: '5 min',
-    category: 'mindfulness',
-  },
-];
-
-const TAG_CATEGORIES: Record<string, { icon: string; impact: 'positive' | 'negative' | 'neutral' }> = {
-  sleep: { icon: '😴', impact: 'positive' },
-  exercise: { icon: '🏃', impact: 'positive' },
-  social: { icon: '👥', impact: 'positive' },
-  mindfulness: { icon: '🧘', impact: 'positive' },
-  diet: { icon: '🥗', impact: 'positive' },
-  medication: { icon: '💊', impact: 'positive' },
-  work: { icon: '💼', impact: 'negative' },
-  relationships: { icon: '💔', impact: 'negative' },
-  family: { icon: '👨‍👩‍👧', impact: 'neutral' },
-  alone: { icon: '🧍', impact: 'neutral' },
+const TAG_IMPACT: Record<string, 'positive' | 'negative'> = {
+  sleep: 'positive',
+  exercise: 'positive',
+  social: 'positive',
+  mindfulness: 'positive',
+  diet: 'positive',
+  medication: 'positive',
+  work: 'negative',
+  relationships: 'negative',
 };
 
-export default function KanbanPage() {
+export default function DashboardPage() {
   const { locale } = useLocale();
   const [journalEntries, setJournalEntries] = useState<MoodJournalEntry[]>([]);
   const [assessmentResults, setAssessmentResults] = useState<StandardizedTestResult[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showExercise, setShowExercise] = useState<typeof MINDFULNESS_EXERCISES[0] | null>(null);
-  const [exerciseActive, setExerciseActive] = useState(false);
-  const [exercisePhase, setExercisePhase] = useState(0);
 
   useEffect(() => {
     const storedJournal = localStorage.getItem(JOURNAL_KEY);
@@ -133,17 +45,7 @@ export default function KanbanPage() {
     }
   }, []);
 
-  // Get today's entries
-  const todayEntries = journalEntries.filter(e => {
-    const d = new Date(e.createdAt);
-    return d.toDateString() === selectedDate.toDateString();
-  });
-
-  const todayMoodAvg = todayEntries.length > 0
-    ? todayEntries.reduce((sum, e) => sum + e.moodScore, 0) / todayEntries.length
-    : null;
-
-  // Get entries for current week (for calendar view)
+  // Get entries for current week
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -156,48 +58,42 @@ export default function KanbanPage() {
     return dayEntries.reduce((sum, e) => sum + e.moodScore, 0) / dayEntries.length;
   };
 
-  // Analyze patterns
-  const analyzeDay = () => {
-    if (todayEntries.length === 0) return null;
-    const tagCounts: Record<string, number> = {};
-    const activities: string[] = [];
-    todayEntries.forEach(e => {
-      e.tags.forEach(tag => {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      });
-    });
-    Object.entries(tagCounts).forEach(([tag, count]) => {
-      const cat = TAG_CATEGORIES[tag];
-      if (cat && count > 0) {
-        activities.push(`${cat.icon} ${locale === 'zh' ? tag : tag}`);
-      }
-    });
-    return activities;
-  };
+  const todayEntries = journalEntries.filter(e => {
+    const d = new Date(e.createdAt);
+    return d.toDateString() === selectedDate.toDateString();
+  });
 
-  const todayActivities = analyzeDay();
-
-  // Get suggested exercises based on mood
-  const getSuggestedExercises = () => {
-    if (!todayMoodAvg) return MINDFULNESS_EXERCISES.slice(0, 3);
-    if (todayMoodAvg <= 4) {
-      return MINDFULNESS_EXERCISES.filter(e => ['breathing', 'grounding', 'self-compassion'].includes(e.id));
-    }
-    if (todayMoodAvg <= 6) {
-      return MINDFULNESS_EXERCISES.filter(e => ['body-scan', 'progressive-relaxation', 'gratitude'].includes(e.id));
-    }
-    return MINDFULNESS_EXERCISES.filter(e => ['mindfulness', 'loving-kindness'].includes(e.id));
-  };
-
-  const suggestedExercises = getSuggestedExercises();
-
-  const startExercise = () => {
-    setExerciseActive(true);
-    setExercisePhase(0);
-  };
+  const todayMoodAvg = todayEntries.length > 0
+    ? todayEntries.reduce((sum, e) => sum + e.moodScore, 0) / todayEntries.length
+    : null;
 
   const getMoodLabel = (score: number) => {
     return locale === 'zh' ? MOOD_LABELS_ZH[score - 1] : MOOD_LABELS_EN[score - 1];
+  };
+
+  const getTagIcon = (tag: string) => {
+    const icons: Record<string, string> = {
+      sleep: '😴', work: '💼', relationships: '💕', family: '👨‍👩‍👧',
+      exercise: '🏃', diet: '🥗', social: '👥', alone: '🧍',
+      mindfulness: '🧘', medication: '💊',
+    };
+    return icons[tag] || '📌';
+  };
+
+  // Calculate overall mood trend (last 7 days)
+  const overallMood = weekDays.reduce((acc, day) => {
+    const mood = getMoodForDate(day);
+    return mood !== null ? acc + mood : acc;
+  }, 0) / 7;
+
+  const getOverallStatus = () => {
+    if (isNaN(overallMood) || todayMoodAvg === null) {
+      return locale === 'zh' ? '暂无数据' : 'No data yet';
+    }
+    if (todayMoodAvg >= 7) return locale === 'zh' ? '状态良好' : 'Doing well';
+    if (todayMoodAvg >= 5) return locale === 'zh' ? '状态一般' : 'Getting by';
+    if (todayMoodAvg >= 3) return locale === 'zh' ? '需要关注' : 'Needs attention';
+    return locale === 'zh' ? '建议寻求支持' : 'Consider reaching out';
   };
 
   return (
@@ -205,230 +101,209 @@ export default function KanbanPage() {
       <Sidebar locale={locale} />
       <div className="ml-[200px] flex flex-col min-h-screen">
         {/* Header */}
-        <div className="sticky top-0 p-4 border-b" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
+        <div className="p-4 border-b" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-semibold">{locale === 'zh' ? '看板' : 'Dashboard'}</h1>
               <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                {locale === 'zh' ? '心理健康追踪与分析' : 'Mental Health Tracking & Analysis'}
+                {locale === 'zh' ? '心理健康追踪' : 'Mental Health Tracking'}
               </p>
             </div>
-            <Link href="/assessment" className="text-white rounded px-4 py-2 text-sm font-medium"
-              style={{ backgroundColor: 'var(--accent)' }}>
-              + {locale === 'zh' ? '新评估' : 'New Assessment'}
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/exercises" className="text-sm px-3 py-2 rounded border"
+                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+                🧘 {locale === 'zh' ? '正念训练' : 'Exercises'}
+              </Link>
+              <Link href="/assessment" className="text-sm px-3 py-2 rounded text-white font-medium"
+                style={{ backgroundColor: 'var(--accent)' }}>
+                + {locale === 'zh' ? '新评估' : 'Assessment'}
+              </Link>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {/* Today's Overview */}
-          <div className="mb-6">
-            <h2 className="text-sm font-medium mb-3" style={{ color: 'var(--muted)' }}>
-              {locale === 'zh' ? '今日概览' : "Today's Overview"}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Mood Score */}
-              <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-2xl">😊</span>
-                  <div>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      {locale === 'zh' ? '平均心情' : 'Average Mood'}
-                    </p>
-                    {todayMoodAvg ? (
-                      <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>
-                        {todayMoodAvg.toFixed(1)}/10
-                      </p>
-                    ) : (
-                      <p className="text-lg" style={{ color: 'var(--muted)' }}>
-                        {locale === 'zh' ? '暂无数据' : 'No data'}
-                      </p>
-                    )}
-                  </div>
+        <div className="flex-1 p-6 overflow-y-auto">
+          {/* Status Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Overall Status */}
+            <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">😊</span>
+                <div>
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>{locale === 'zh' ? '今日状态' : 'Today'}</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>{getOverallStatus()}</p>
                 </div>
               </div>
-
-              {/* Entries Count */}
-              <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-2xl">📔</span>
+              {todayMoodAvg ? (
+                <div className="flex items-center gap-2">
+                  <div className="text-3xl font-bold" style={{ color: 'var(--accent)' }}>{todayMoodAvg.toFixed(1)}</div>
                   <div>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      {locale === 'zh' ? '日记条目' : 'Journal Entries'}
-                    </p>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>
-                      {todayEntries.length}
-                    </p>
+                    <div className="text-sm" style={{ color: 'var(--muted)' }}>/10</div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>{getMoodLabel(Math.round(todayMoodAvg))}</div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                  {locale === 'zh' ? '今天还没有记录' : 'No entries today'}
+                </p>
+              )}
+            </div>
 
-              {/* Activities */}
-              <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-2xl">📊</span>
-                  <div>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      {locale === 'zh' ? '今日活动' : "Today's Activities"}
-                    </p>
-                    {todayActivities && todayActivities.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {todayActivities.slice(0, 4).map((a, i) => (
-                          <span key={i} className="text-xs px-2 py-0.5 rounded"
-                            style={{ backgroundColor: 'var(--bg)', color: 'var(--muted)' }}>
-                            {a}
-                          </span>
-                        ))}
+            {/* Week Calendar */}
+            <div className="p-6 rounded-xl border md:col-span-2" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-medium mb-4" style={{ color: 'var(--muted)' }}>
+                {locale === 'zh' ? '本周心情' : 'This Week'}
+              </h3>
+              <div className="grid grid-cols-7 gap-2">
+                {weekDays.map((day, i) => {
+                  const mood = getMoodForDate(day);
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  const isSelected = day.toDateString() === selectedDate.toDateString();
+                  return (
+                    <button key={i} onClick={() => setSelectedDate(day)}
+                      className="p-3 rounded-lg border text-center transition-all"
+                      style={{
+                        backgroundColor: isSelected ? 'var(--accent)' : 'var(--bg)',
+                        borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                        color: isSelected ? 'white' : 'var(--text)',
+                      }}>
+                      <p className="text-xs mb-1" style={{ color: isSelected ? 'white' : 'var(--muted)' }}>
+                        {day.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short' }).slice(0, 2)}
+                      </p>
+                      {mood !== null ? (
+                        <>
+                          <p className="text-lg font-bold">{Math.round(mood)}</p>
+                          <div className="h-1 rounded-full mt-1 mx-auto w-8"
+                            style={{ backgroundColor: isSelected ? 'white' : 'var(--accent)' }} />
+                        </>
+                      ) : (
+                        <p className="text-lg">-</p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Today's Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Journal Entries */}
+            <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                  {locale === 'zh' ? '今日日记' : "Today's Journal"}
+                </h3>
+                <Link href="/journal" className="text-xs" style={{ color: 'var(--accent)' }}>
+                  {locale === 'zh' ? '写日记' : 'Write Entry'}
+                </Link>
+              </div>
+              {todayEntries.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-3xl mb-2">📔</p>
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                    {locale === 'zh' ? '今天还没有日记' : 'No journal entries today'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {todayEntries.slice(0, 3).map(entry => (
+                    <div key={entry.id} className="p-3 rounded-lg border"
+                      style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{entry.moodScore}/10</span>
+                        <span className="text-xs" style={{ color: 'var(--muted)' }}>{getMoodLabel(entry.moodScore)}</span>
                       </div>
-                    ) : (
-                      <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        {locale === 'zh' ? '暂无' : 'None'}
-                      </p>
-                    )}
-                  </div>
+                      {entry.textEntry && (
+                        <p className="text-sm line-clamp-2">{entry.textEntry}</p>
+                      )}
+                      {entry.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {entry.tags.map(tag => (
+                            <span key={tag} className="text-xs px-2 py-0.5 rounded"
+                              style={{ backgroundColor: 'var(--surface)', color: 'var(--muted)' }}>
+                              {getTagIcon(tag)} {locale === 'zh' ? tag : tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
+              )}
+            </div>
+
+            {/* Recent Assessments */}
+            <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                  {locale === 'zh' ? '近期评估' : 'Recent Assessments'}
+                </h3>
+                <Link href="/assessment" className="text-xs" style={{ color: 'var(--accent)' }}>
+                  {locale === 'zh' ? '新评估' : 'New'}
+                </Link>
               </div>
-            </div>
-          </div>
-
-          {/* Week Calendar */}
-          <div className="mb-6">
-            <h2 className="text-sm font-medium mb-3" style={{ color: 'var(--muted)' }}>
-              {locale === 'zh' ? '本周心情' : 'This Week'}
-            </h2>
-            <div className="grid grid-cols-7 gap-2">
-              {weekDays.map((day, i) => {
-                const mood = getMoodForDate(day);
-                const isToday = day.toDateString() === new Date().toDateString();
-                const isSelected = day.toDateString() === selectedDate.toDateString();
-                return (
-                  <button key={i} onClick={() => setSelectedDate(day)}
-                    className="p-3 rounded-lg border text-center transition-colors"
-                    style={{
-                      backgroundColor: isSelected ? 'var(--accent)' : 'var(--surface)',
-                      borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
-                      color: isSelected ? 'white' : 'var(--text)',
-                    }}>
-                    <p className="text-xs mb-1" style={{ color: isSelected ? 'white' : 'var(--muted)' }}>
-                      {day.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short' }).slice(0, 2)}
-                    </p>
-                    {mood ? (
-                      <>
-                        <p className="text-lg font-bold">{Math.round(mood)}</p>
-                        <div className="h-1 rounded-full mt-1" style={{
-                          backgroundColor: isSelected ? 'white' : 'var(--accent)',
-                          width: `${(mood / 10) * 100}%`,
-                          margin: '0 auto',
-                        }} />
-                      </>
-                    ) : (
-                      <p className="text-lg">-</p>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Mindfulness Exercises */}
-          <div className="mb-6">
-            <h2 className="text-sm font-medium mb-3" style={{ color: 'var(--muted)' }}>
-              {locale === 'zh' ? '正念练习推荐' : 'Recommended Mindfulness Exercises'}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {suggestedExercises.map(ex => (
-                <button key={ex.id} onClick={() => { setShowExercise(ex); setExerciseActive(false); }}
-                  className="p-4 rounded-lg border text-left transition-colors hover:border-accent-primary"
-                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xl">{ex.icon}</span>
-                    <span className="text-sm font-medium">
-                      {locale === 'zh' ? ex.nameZh : ex.nameEn}
-                    </span>
-                  </div>
-                  <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {locale === 'zh' ? ex.descriptionZh : ex.descriptionEn}
+              {assessmentResults.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-3xl mb-2">📋</p>
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                    {locale === 'zh' ? '还没有评估记录' : 'No assessments yet'}
                   </p>
-                  <p className="text-xs mt-2" style={{ color: 'var(--accent)' }}>⏱ {ex.duration}</p>
-                </button>
-              ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {assessmentResults.slice(0, 3).map(result => (
+                    <div key={result.id} className="p-3 rounded-lg border"
+                      style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-sm font-medium">{result.type.toUpperCase()}</span>
+                          <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                            {new Date(result.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{result.totalScore}</span>
+                          <p className="text-xs" style={{ color: 'var(--muted)' }}>{result.severity}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* All Exercises */}
-          <div>
-            <h2 className="text-sm font-medium mb-3" style={{ color: 'var(--muted)' }}>
-              {locale === 'zh' ? '全部练习' : 'All Exercises'}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {MINDFULNESS_EXERCISES.map(ex => (
-                <button key={ex.id} onClick={() => { setShowExercise(ex); setExerciseActive(false); }}
-                  className="p-4 rounded-lg border text-left transition-colors hover:border-accent-primary"
-                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xl">{ex.icon}</span>
-                    <span className="text-sm font-medium">
-                      {locale === 'zh' ? ex.nameZh : ex.nameEn}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded ml-auto"
-                      style={{ backgroundColor: 'var(--bg)', color: 'var(--muted)' }}>
-                      {ex.duration}
-                    </span>
-                  </div>
-                  <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {locale === 'zh' ? ex.descriptionZh : ex.descriptionEn}
-                  </p>
-                </button>
+          {/* Suggested Exercises */}
+          <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                {locale === 'zh' ? '推荐练习' : 'Suggested Exercises'}
+              </h3>
+              <Link href="/exercises" className="text-xs font-medium px-3 py-1.5 rounded"
+                style={{ backgroundColor: 'var(--accent)', color: 'white' }}>
+                {locale === 'zh' ? '查看全部' : 'View All'}
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { id: 'breathing', icon: '🌬️', name: locale === 'zh' ? '深呼吸' : 'Breathing', desc: locale === 'zh' ? '快速放松' : 'Quick relax' },
+                { id: 'grounding', icon: '🌍', name: locale === 'zh' ? '接地练习' : 'Grounding', desc: locale === 'zh' ? '缓解焦虑' : 'Calm anxiety' },
+                { id: 'gratitude', icon: '🙏', name: locale === 'zh' ? '感恩冥想' : 'Gratitude', desc: locale === 'zh' ? '提升幸福感' : 'Boost mood' },
+                { id: 'body-scan', icon: '🧘', name: locale === 'zh' ? '身体扫描' : 'Body Scan', desc: locale === 'zh' ? '释放紧张' : 'Release tension' },
+              ].map(ex => (
+                <Link key={ex.id} href="/exercises"
+                  className="p-4 rounded-lg border text-center transition-colors hover:border-accent-primary"
+                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
+                  <span className="text-2xl mb-2 block">{ex.icon}</span>
+                  <p className="text-sm font-medium">{ex.name}</p>
+                  <p className="text-xs" style={{ color: 'var(--muted)' }}>{ex.desc}</p>
+                </Link>
               ))}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Exercise Modal */}
-      {showExercise && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-50"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-lg p-6 w-full max-w-md"
-            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderWidth: '1px', borderStyle: 'solid' }}>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <span className="text-2xl">{showExercise.icon}</span>
-                  {locale === 'zh' ? showExercise.nameZh : showExercise.nameEn}
-                </h2>
-                <p className="text-xs" style={{ color: 'var(--muted)' }}>⏱ {showExercise.duration}</p>
-              </div>
-              <button onClick={() => { setShowExercise(null); setExerciseActive(false); }}
-                className="text-2xl leading-none" style={{ color: 'var(--muted)' }}>×</button>
-            </div>
-            <p className="text-sm mb-6" style={{ color: 'var(--text)' }}>
-              {locale === 'zh' ? showExercise.descriptionZh : showExercise.descriptionEn}
-            </p>
-            {!exerciseActive ? (
-              <button onClick={startExercise}
-                className="w-full text-white rounded px-4 py-3 font-medium"
-                style={{ backgroundColor: 'var(--accent)' }}>
-                {locale === 'zh' ? '开始练习' : 'Start Exercise'}
-              </button>
-            ) : (
-              <div className="text-center">
-                <div className="text-4xl mb-4 animate-pulse">
-                  {exercisePhase % 2 === 0 ? '🌬️' : '😌'}
-                </div>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  {locale === 'zh' ? '练习进行中...' : 'In progress...'}
-                </p>
-                <button onClick={() => { setShowExercise(null); setExerciseActive(false); }}
-                  className="mt-4 text-sm px-4 py-2 rounded border"
-                  style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-                  {locale === 'zh' ? '结束' : 'End'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
