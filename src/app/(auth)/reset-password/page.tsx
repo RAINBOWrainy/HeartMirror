@@ -66,28 +66,28 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
+        <div className="bg-[var(--surface)] rounded-lg p-8 border border-[var(--border)]">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">HeartMirror</h1>
-            <p className="text-white/70">Create new password</p>
+            <h1 className="text-3xl font-semibold text-[var(--text)] mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>HeartMirror</h1>
+            <p className="text-[var(--muted)]">Create new password</p>
           </div>
 
           {status === 'success' ? (
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-[var(--success)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">Password Reset!</h2>
-              <p className="text-white/70 mb-6">
+              <h2 className="text-xl font-semibold text-[var(--text)] mb-2">Password Reset!</h2>
+              <p className="text-[var(--muted)] mb-6">
                 Your password has been successfully reset. You can now sign in with your new password.
               </p>
               <Link
                 href="/login"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+                className="inline-block px-6 py-3 bg-[var(--accent)] text-white font-medium rounded-lg hover:bg-[var(--accent-hover)] transition-colors"
               >
                 Sign In
               </Link>
@@ -95,14 +95,14 @@ function ResetPasswordForm() {
           ) : (
             <>
               {status === 'error' && (
-                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-red-200 text-sm mb-4">
+                <div className="bg-[var(--error)]/10 border border-[var(--error)]/50 rounded-lg p-3 text-[var(--error)] text-sm mb-4">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-white/80 mb-2">
+                  <label htmlFor="password" className="block text-sm font-medium text-[var(--text)] mb-2">
                     New Password
                   </label>
                   <input
@@ -112,13 +112,13 @@ function ResetPasswordForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                     placeholder="At least 8 characters"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-white/80 mb-2">
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-[var(--text)] mb-2">
                     Confirm Password
                   </label>
                   <input
@@ -128,7 +128,7 @@ function ResetPasswordForm() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                     placeholder="Confirm your password"
                   />
                 </div>
@@ -136,7 +136,7 @@ function ResetPasswordForm() {
                 <button
                   type="submit"
                   disabled={status === 'loading' || !password}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg shadow-lg hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full py-3 px-4 bg-[var(--accent)] text-white font-medium rounded-lg hover:bg-[var(--accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {status === 'loading' ? 'Resetting...' : 'Reset Password'}
                 </button>
@@ -145,7 +145,7 @@ function ResetPasswordForm() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="text-white/70 hover:text-white text-sm transition-colors"
+                  className="text-[var(--muted)] hover:text-[var(--text)] text-sm transition-colors"
                 >
                   Back to Sign In
                 </Link>

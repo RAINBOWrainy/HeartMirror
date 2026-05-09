@@ -34,47 +34,47 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
+        <div className="bg-[var(--surface)] rounded-lg p-8 border border-[var(--border)]">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">HeartMirror</h1>
-            <p className="text-white/70">Reset your password</p>
+            <h1 className="text-3xl font-semibold text-[var(--text)] mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>HeartMirror</h1>
+            <p className="text-[var(--muted)]">Reset your password</p>
           </div>
 
           {status === 'success' ? (
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-[var(--success)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">Check your email</h2>
-              <p className="text-white/70 mb-6">
+              <h2 className="text-xl font-semibold text-[var(--text)] mb-2">Check your email</h2>
+              <p className="text-[var(--muted)] mb-6">
                 If an account exists with this email, we've sent password reset instructions.
               </p>
               <Link
                 href="/login"
-                className="inline-block px-6 py-3 bg-white/10 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
+                className="inline-block px-6 py-3 bg-[var(--accent)] text-white font-medium rounded-lg hover:bg-[var(--accent-hover)] transition-colors"
               >
                 Back to Login
               </Link>
             </div>
           ) : (
             <>
-              <p className="text-white/70 mb-6 text-sm">
+              <p className="text-[var(--muted)] mb-6 text-sm">
                 Enter your email address and we'll send you a link to reset your password.
               </p>
 
               {status === 'error' && (
-                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-red-200 text-sm mb-4">
+                <div className="bg-[var(--error)]/10 border border-[var(--error)]/50 rounded-lg p-3 text-[var(--error)] text-sm mb-4">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-white/80 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-[var(--text)] mb-2">
                     Email
                   </label>
                   <input
@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={status === 'loading'}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg shadow-lg hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full py-3 px-4 bg-[var(--accent)] text-white font-medium rounded-lg hover:bg-[var(--accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {status === 'loading' ? 'Sending...' : 'Send Reset Link'}
                 </button>
@@ -100,9 +100,9 @@ export default function ForgotPasswordPage() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="text-white/70 hover:text-white text-sm transition-colors"
+                  className="text-[var(--muted)] hover:text-[var(--text)] text-sm transition-colors"
                 >
-                  Remember your password? <span className="text-purple-300 hover:text-purple-200">Sign in</span>
+                  Remember your password? Sign in
                 </Link>
               </div>
             </>
