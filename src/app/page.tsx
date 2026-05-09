@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import * as localAuth from '@/features/auth/local';
 import { dbClient } from '@/features/database/shared/client';
+import { cloudClient } from '@/features/database/cloud-client';
 import type { Message } from '@/features/ai/shared/types';
 import type { ConversationInfo } from '@/features/database/shared/client';
+import { useAuth, getAuthToken } from '@/contexts/AuthContext';
 
 const API_KEY_STORAGE_KEY = 'heartmirror-api-key';
 const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
@@ -14,6 +16,9 @@ const MODEL_STORAGE_KEY = 'heartmirror-model';
 const CURRENT_CONVERSATION_KEY = 'heartmirror-current-conversation';
 
 type AIProvider = 'anthropic' | 'openai' | 'ollama' | 'custom';
+
+// Check if we're in cloud mode (authenticated)
+const isCloudMode = typeof window !== 'undefined' && !!getAuthToken();
 
 const PRESETS = {
   anthropic: {
@@ -59,6 +64,75 @@ export default function Home() {
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auth context for cloud mode
+  const { user, isAuthenticated } = useAuth();
+
+  // Check for cloud mode and load settings
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // In cloud mode, load API key from cloud settings
+      loadCloudSettings();
+    } else if (localAuth.hasLocalPassword()) {
+      // Local mode with password protection
+      setIsLocked(true);
+    } else {
+      // Load local settings
+      loadLocalSettings();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadCloudSettings = async () => {
+    try {
+      const res = await fetch('/api/settings', {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.apiKey) {
+          setApiKey(data.apiKey);
+          setProvider(data.provider || 'anthropic');
+          setBaseUrl(data.baseUrl || PRESETS.anthropic.baseUrl);
+          setModel(data.model || PRESETS.anthropic.defaultModel);
+        } else {
+          setShowSettings(true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load cloud settings:', err);
+      setShowSettings(true);
+    }
+  };
+
+  const loadLocalSettings = () => {
+    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    const savedProvider = localStorage.getItem(PROVIDER_STORAGE_KEY) as AIProvider | null;
+    const savedBaseUrl = localStorage.getItem(BASE_URL_STORAGE_KEY);
+    const savedModel = localStorage.getItem(MODEL_STORAGE_KEY);
+    const savedCurrentConversation = localStorage.getItem(CURRENT_CONVERSATION_KEY);
+
+    if (savedApiKey) setApiKey(savedApiKey);
+    if (savedProvider) {
+      setProvider(savedProvider);
+      if (savedBaseUrl) {
+        setBaseUrl(savedBaseUrl);
+      } else {
+        setBaseUrl(PRESETS[savedProvider].baseUrl);
+      }
+      if (savedModel) {
+        setModel(savedModel);
+      } else {
+        setModel(PRESETS[savedProvider].defaultModel);
+      }
+    }
+    if (savedBaseUrl) setBaseUrl(savedBaseUrl);
+    if (savedModel) setModel(savedModel);
+    if (savedCurrentConversation) setCurrentConversationId(savedCurrentConversation);
+
+    if (!savedApiKey) {
+      setShowSettings(true);
+    }
+  };
 
   // Update defaults when preset changes
   const handleProviderChange = (newProvider: AIProvider) => {
