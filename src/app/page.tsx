@@ -5,7 +5,6 @@ import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import * as localAuth from '@/features/auth/local';
 import { dbClient } from '@/features/database/shared/client';
-import { cloudClient } from '@/features/database/cloud-client';
 import type { Message } from '@/features/ai/shared/types';
 import type { ConversationInfo } from '@/features/database/shared/client';
 import { useAuth, getAuthToken } from '@/contexts/AuthContext';
@@ -17,9 +16,6 @@ const MODEL_STORAGE_KEY = 'heartmirror-model';
 const CURRENT_CONVERSATION_KEY = 'heartmirror-current-conversation';
 
 type AIProvider = 'anthropic' | 'openai' | 'ollama' | 'custom';
-
-// Check if we're in cloud mode (authenticated)
-const isCloudMode = typeof window !== 'undefined' && !!getAuthToken();
 
 const PRESETS = {
   anthropic: {
@@ -229,43 +225,6 @@ export default function Home() {
       console.error('Failed to save conversation:', err);
     }
   };
-
-  // Check for password protection on mount and load saved settings
-  useEffect(() => {
-    if (localAuth.hasLocalPassword()) {
-      setIsLocked(true);
-    } else {
-      // Load settings from localStorage
-      const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-      const savedProvider = localStorage.getItem(PROVIDER_STORAGE_KEY) as AIProvider | null;
-      const savedBaseUrl = localStorage.getItem(BASE_URL_STORAGE_KEY);
-      const savedModel = localStorage.getItem(MODEL_STORAGE_KEY);
-      const savedCurrentConversation = localStorage.getItem(CURRENT_CONVERSATION_KEY);
-
-      if (savedApiKey) setApiKey(savedApiKey);
-      if (savedProvider) {
-        setProvider(savedProvider);
-        // If no saved base URL, use preset default
-        if (savedBaseUrl) {
-          setBaseUrl(savedBaseUrl);
-        } else {
-          setBaseUrl(PRESETS[savedProvider].baseUrl);
-        }
-        if (savedModel) {
-          setModel(savedModel);
-        } else {
-          setModel(PRESETS[savedProvider].defaultModel);
-        }
-      }
-      if (savedBaseUrl) setBaseUrl(savedBaseUrl);
-      if (savedModel) setModel(savedModel);
-      if (savedCurrentConversation) setCurrentConversationId(savedCurrentConversation);
-
-      if (!savedApiKey) {
-        setShowSettings(true);
-      }
-    }
-  }, []);
 
   // After unlock, load conversations and last selected conversation
   useEffect(() => {
@@ -561,14 +520,6 @@ export default function Home() {
   }
 
   if (showSettings || !apiKey) {
-    // Load current settings when opening
-    if (apiKey) {
-      setSettingsApiKey(apiKey);
-      setSettingsProvider(provider);
-      setSettingsBaseUrl(baseUrl);
-      setSettingsModel(model);
-    }
-
     return (
       <div className="min-h-screen bg-base-bg flex items-center justify-center p-4">
         <div className="bg-base-surface border border-base-border rounded-lg p-6 w-full max-w-md">

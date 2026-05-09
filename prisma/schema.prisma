@@ -10,13 +10,21 @@ datasource db {
 }
 
 model Conversation {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now())
+  userId           String?
   // Encrypted content containing the array of messages
   // Format when decrypted: JSON array of { role, content, timestamp }
   encryptedContent Bytes
   // Initialization vector for AES-256-GCM
-  iv Bytes
+  iv               Bytes
   // Authentication tag for authenticated encryption
-  authTag Bytes
+  authTag          Bytes
+  // PBKDF2 salt for key derivation
+  salt             Bytes
+  // Encrypted preview (first message snippet) for conversation list
+  previewCiphertext Bytes?
+  previewIv         Bytes?
+  previewAuthTag    Bytes?
+  previewSalt       Bytes?
 }
