@@ -54,6 +54,7 @@ export const cloudClient = {
       encryptedContent: string
       iv: string
       authTag: string
+      salt: string
     }
   ): Promise<string> {
     await fetchWithAuth('/api/conversations/save', {

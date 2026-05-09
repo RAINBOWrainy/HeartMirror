@@ -77,7 +77,8 @@ export class CloudDatabaseServer {
     id: string,
     encryptedContent: Buffer,
     iv: Buffer,
-    authTag: Buffer
+    authTag: Buffer,
+    salt: Buffer,
   ): Promise<string> {
     await this.prisma.conversation.upsert({
       where: { id },
@@ -85,13 +86,15 @@ export class CloudDatabaseServer {
         encryptedContent,
         iv,
         authTag,
+        salt,
       },
       create: {
         id,
-        userId: this.userId, // RLS context from constructor
+        userId: this.userId,
         encryptedContent,
         iv,
         authTag,
+        salt,
       },
     })
 
@@ -154,6 +157,7 @@ export const cloudClient = {
       encryptedContent: string
       iv: string
       authTag: string
+      salt: string
     },
     _password: string, // Unused in cloud mode - encryption already happened client-side
     _existingId?: string
