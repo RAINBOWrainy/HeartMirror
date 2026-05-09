@@ -18,10 +18,12 @@ if (!databaseUrl) {
   // @ts-ignore - PrismaClient with user property only exists in cloud schema
   let prisma: any
 
-  const user1Id = 'user-1-test-id'
-  const user2Id = 'user-2-test-id'
-  const user1ConversationId = 'conv-1-test-id'
-  const user2ConversationId = 'conv-2-test-id'
+  // Generate unique IDs using timestamp to avoid conflicts
+  const ts = Date.now()
+  const user1Id = `user-1-${ts}`
+  const user2Id = `user-2-${ts}`
+  const user1ConversationId = `conv-1-${ts}`
+  const user2ConversationId = `conv-2-${ts}`
 
   beforeAll(async () => {
     const { PrismaClient } = await import('@prisma/client')
@@ -66,7 +68,7 @@ if (!databaseUrl) {
       await prisma.user.create({
         data: {
           id: user1Id,
-          email: 'user1@test.com',
+          email: `${user1Id}@test.com`,
           encryptedDek: Buffer.from('test-encrypted-dek-1'),
           dekSalt: Buffer.from('test-dek-salt-1'),
           dekIv: Buffer.from('test-dek-iv-1'),
@@ -79,7 +81,7 @@ if (!databaseUrl) {
       await prisma.user.create({
         data: {
           id: user2Id,
-          email: 'user2@test.com',
+          email: `${user2Id}@test.com`,
           encryptedDek: Buffer.from('test-encrypted-dek-2'),
           dekSalt: Buffer.from('test-dek-salt-2'),
           dekIv: Buffer.from('test-dek-iv-2'),
@@ -119,9 +121,10 @@ if (!databaseUrl) {
     })
 
     it('should allow user1 to read their own conversation with RLS', async () => {
+      const convId = `rls-own-${Date.now()}`
       await prisma.conversation.create({
         data: {
-          id: user1ConversationId,
+          id: convId,
           userId: user1Id,
           encryptedContent: Buffer.from('user1-content'),
           iv: Buffer.from('user1-iv'),
@@ -130,17 +133,18 @@ if (!databaseUrl) {
       })
 
       const conversation = await withRLSContext(user1Id, () =>
-        prisma.conversation.findUnique({ where: { id: user1ConversationId } })
+        prisma.conversation.findUnique({ where: { id: convId } })
       )
 
       expect(conversation).not.toBeNull()
-      expect((conversation as any)?.id).toBe(user1ConversationId)
+      expect((conversation as any)?.id).toBe(convId)
     })
 
     it('should deny user1 access to user2 conversation with RLS', async () => {
+      const convId = `rls-other-${Date.now()}`
       await prisma.conversation.create({
         data: {
-          id: user2ConversationId,
+          id: convId,
           userId: user2Id,
           encryptedContent: Buffer.from('user2-content'),
           iv: Buffer.from('user2-iv'),
@@ -149,16 +153,17 @@ if (!databaseUrl) {
       })
 
       const conversation = await withRLSContext(user1Id, () =>
-        prisma.conversation.findUnique({ where: { id: user2ConversationId } })
+        prisma.conversation.findUnique({ where: { id: convId } })
       )
 
       expect(conversation).toBeNull()
     })
 
     it('should allow user2 to read their own conversation with RLS', async () => {
+      const convId = `rls-own-2-${Date.now()}`
       await prisma.conversation.create({
         data: {
-          id: user2ConversationId,
+          id: convId,
           userId: user2Id,
           encryptedContent: Buffer.from('user2-content'),
           iv: Buffer.from('user2-iv'),
@@ -167,17 +172,18 @@ if (!databaseUrl) {
       })
 
       const conversation = await withRLSContext(user2Id, () =>
-        prisma.conversation.findUnique({ where: { id: user2ConversationId } })
+        prisma.conversation.findUnique({ where: { id: convId } })
       )
 
       expect(conversation).not.toBeNull()
-      expect((conversation as any)?.id).toBe(user2ConversationId)
+      expect((conversation as any)?.id).toBe(convId)
     })
 
     it('should deny user2 access to user1 conversation with RLS', async () => {
+      const convId = `rls-other-2-${Date.now()}`
       await prisma.conversation.create({
         data: {
-          id: user1ConversationId,
+          id: convId,
           userId: user1Id,
           encryptedContent: Buffer.from('user1-content'),
           iv: Buffer.from('user1-iv'),
@@ -186,16 +192,17 @@ if (!databaseUrl) {
       })
 
       const conversation = await withRLSContext(user2Id, () =>
-        prisma.conversation.findUnique({ where: { id: user1ConversationId } })
+        prisma.conversation.findUnique({ where: { id: convId } })
       )
 
       expect(conversation).toBeNull()
     })
 
     it('should deny user1 delete of user2 conversation', async () => {
+      const convId = `rls-del-${Date.now()}`
       await prisma.conversation.create({
         data: {
-          id: user2ConversationId,
+          id: convId,
           userId: user2Id,
           encryptedContent: Buffer.from('user2-content'),
           iv: Buffer.from('user2-iv'),
@@ -205,15 +212,16 @@ if (!databaseUrl) {
 
       await expect(
         withRLSContext(user1Id, () =>
-          prisma.conversation.delete({ where: { id: user2ConversationId } })
+          prisma.conversation.delete({ where: { id: convId } })
         )
       ).rejects.toThrow()
     })
 
     it('should deny user1 update of user2 conversation', async () => {
+      const convId = `rls-upd-${Date.now()}`
       await prisma.conversation.create({
         data: {
-          id: user2ConversationId,
+          id: convId,
           userId: user2Id,
           encryptedContent: Buffer.from('user2-content'),
           iv: Buffer.from('user2-iv'),
@@ -224,7 +232,7 @@ if (!databaseUrl) {
       await expect(
         withRLSContext(user1Id, () =>
           prisma.conversation.update({
-            where: { id: user2ConversationId },
+            where: { id: convId },
             data: { encryptedContent: Buffer.from('hacked') },
           })
         )
