@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 const navItems = [
   { href: '/', icon: '💬', labelKey: 'chat', labelZh: '聊天' },
   { href: '/assessment', icon: '📋', labelKey: 'assessment', labelZh: '评估' },
-  { href: '/tracker', icon: '📊', labelKey: 'tracker', labelZh: '趋势' },
+  { href: '/tracker', icon: '📊', labelKey: 'dashboard', labelZh: '看板' },
   { href: '/journal', icon: '📔', labelKey: 'journal', labelZh: '日记' },
   { href: '/settings', icon: '⚙️', labelKey: 'settings', labelZh: '设置' },
 ] as const;

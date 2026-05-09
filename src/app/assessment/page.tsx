@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
@@ -11,10 +12,218 @@ import type { StandardizedTestType, StandardizedTestResult } from '@/features/tr
 import type { Message } from '@/features/ai/shared/types';
 
 type AssessmentType = 'conversational' | 'standardized' | null;
-type StandardizedTest = 'phq-9' | 'gad-7' | null;
-type Screen = 'select-type' | 'select-test' | 'test' | 'result' | 'settings';
+type StandardizedTest = 'phq-9' | 'gad-7' | 'eds' | 'oq-45' | 'wsas' | null;
+type Screen = 'select-type' | 'select-test' | 'test' | 'result' | 'settings' | 'conversational';
 
 const API_KEY_STORAGE_KEY = 'heartmirror-api-key';
+const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
+const BASE_URL_STORAGE_KEY = 'heartmirror-base-url';
+const MODEL_STORAGE_KEY = 'heartmirror-model';
+
+const PRESETS = {
+  anthropic: { baseUrl: 'https://api.anthropic.com', defaultModel: 'claude-3-sonnet-20240229', requiresApiKey: true },
+  openai: { baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o', requiresApiKey: true },
+  ollama: { baseUrl: 'http://localhost:11434/v1', defaultModel: 'llama3', requiresApiKey: false },
+  custom: { baseUrl: '', defaultModel: '', requiresApiKey: true },
+};
+
+const STANDARDIZED_TESTS = [
+  {
+    id: 'phq-9' as const,
+    name: 'PHQ-9',
+    nameZh: '抑郁症筛查量表',
+    icon: '📊',
+    description: 'Patient Health Questionnaire-9',
+    descriptionZh: '评估过去两周的抑郁症状严重程度',
+    source: 'https://www.phqscreeners.com/',
+    questions: 9,
+    maxScore: 27,
+  },
+  {
+    id: 'gad-7' as const,
+    name: 'GAD-7',
+    nameZh: '焦虑障碍自评量表',
+    icon: '😰',
+    description: 'Generalized Anxiety Disorder-7',
+    descriptionZh: '评估过去两周的焦虑症状严重程度',
+    source: 'https://www.phqscreeners.com/',
+    questions: 7,
+    maxScore: 21,
+  },
+  {
+    id: 'eds' as const,
+    name: 'EDS',
+    nameZh: '情感困难量表',
+    icon: '💔',
+    description: 'Ewing Depression Scale',
+    descriptionZh: '评估情感和身体抑郁症状',
+    source: 'https://www.sciencedirect.com/science/article/pii/S1064748812603181',
+    questions: 12,
+    maxScore: 48,
+  },
+  {
+    id: 'oq-45' as const,
+    name: 'OQ-45',
+    nameZh: '结果问卷-45',
+    icon: '📋',
+    description: 'Outcome Questionnaire-45',
+    descriptionZh: '评估心理状态和治疗进展',
+    source: 'https://www.sWINstitute.org/oq45/',
+    questions: 45,
+    maxScore: 180,
+  },
+  {
+    id: 'wsas' as const,
+    name: 'WSAS',
+    nameZh: '工作与社会适应量表',
+    icon: '💼',
+    description: 'Work and Social Adjustment Scale',
+    descriptionZh: '评估工作和社会功能损害程度',
+    source: 'https://www.psyctc.org/praz/',
+    questions: 5,
+    maxScore: 40,
+  },
+];
+
+// EDS Questions (simplified version based on Ewing depression scale)
+const edsQuestions = [
+  { question: { en: 'How often have you felt that life was not worth living?', zh: '你多久感觉一次生命不值得活下去？' } },
+  { question: { en: 'How often have you felt depressed?', zh: '你多久感觉一次沮丧？' } },
+  { question: { en: 'How often have you had crying spells?', zh: '你多久哭一次？' } },
+  { question: { en: 'How often have you felt hopeless?', zh: '你多久感觉一次绝望？' } },
+  { question: { en: 'How often have you felt pessimistic about the future?', zh: '你多久对未来悲观一次？' } },
+  { question: { en: 'How often have you felt irritable?', zh: '你多久感觉一次烦躁？' } },
+  { question: { en: 'How often have you had loss of appetite?', zh: '你多久食欲减退一次？' } },
+  { question: { en: 'How often have you had trouble sleeping?', zh: '你多久失眠一次？' } },
+  { question: { en: 'How often have you felt tired?', zh: '你多久感觉一次疲倦？' } },
+  { question: { en: 'How often have you had physical aches and pains?', zh: '你多久身体疼痛一次？' } },
+  { question: { en: 'How often have you lost interest in activities?', zh: '你多久对活动失去兴趣一次？' } },
+  { question: { en: 'How often have you had difficulty concentrating?', zh: '你多久注意力不集中一次？' } },
+];
+
+const edsOptions = [
+  { value: 0, labelKey: 'assessment.optionNever' },
+  { value: 1, labelKey: 'assessment.optionRarely' },
+  { value: 2, labelKey: 'assessment.optionSometimes' },
+  { value: 3, labelKey: 'assessment.optionOften' },
+  { value: 4, labelKey: 'assessment.optionAlways' },
+];
+
+const calculateEDS = (scores: number[]) => {
+  const total = scores.reduce((a, b) => a + b, 0);
+  let severity = 'Minimal';
+  let severityZh = '极轻微';
+  let interpretation = 'No significant emotional difficulties detected.';
+  let interpretationZh = '未检测到明显的情感困难。';
+  if (total >= 20) { severity = 'Severe'; severityZh = '重度'; interpretation = 'Significant emotional distress requiring professional attention.'; interpretationZh = '需要专业关注的显著情感困扰。'; }
+  else if (total >= 12) { severity = 'Moderate'; severityZh = '中度'; interpretation = 'Moderate emotional difficulties that may benefit from support.'; interpretationZh = '中等情感困难，可能需要支持。'; }
+  else if (total >= 6) { severity = 'Mild'; severityZh = '轻度'; interpretation = 'Mild symptoms that can be managed with self-care.'; interpretationZh = '轻微症状，可以通过自我护理管理。'; }
+  return { total, severity, severityZh, interpretation, interpretationZh };
+};
+
+// WSAS Questions
+const wsasQuestions = [
+  { question: { en: 'Work impairment: How much are you unable to work as well as you would like?', zh: '工作损害：你无法按自己想要的方式工作的程度？' } },
+  { question: { en: 'Home management impairment: How much is your home management impaired?', zh: '家务管理损害：你的家务管理受损程度？' } },
+  { question: { en: 'Social leisure impairment: How much is your social leisure time impaired?', zh: '社交休闲损害：你的社交休闲时间受损程度？' } },
+  { question: { en: 'Private leisure impairment: How much is your private leisure activities impaired?', zh: '私人休闲损害：你的私人休闲活动受损程度？' } },
+  { question: { en: 'Family and friendship impairment: How much is your ability to form and maintain close relationships impaired?', zh: '家庭友谊损害：你形成和维持亲密关系的能力受损程度？' } },
+];
+
+const wsasOptions = [
+  { value: 0, labelKey: 'assessment.wsas0' },
+  { value: 1, labelKey: 'assessment.wsas1' },
+  { value: 2, labelKey: 'assessment.wsas2' },
+  { value: 3, labelKey: 'assessment.wsas3' },
+  { value: 4, labelKey: 'assessment.wsas4' },
+  { value: 5, labelKey: 'assessment.wsas5' },
+  { value: 6, labelKey: 'assessment.wsas6' },
+  { value: 7, labelKey: 'assessment.wsas7' },
+  { value: 8, labelKey: 'assessment.wsas8' },
+];
+
+const calculateWSAS = (scores: number[]) => {
+  const total = scores.reduce((a, b) => a + b, 0);
+  let severity = 'No impairment';
+  let severityZh = '无损害';
+  let interpretation = 'No significant functional impairment.';
+  let interpretationZh = '无显著功能损害。';
+  if (total >= 20) { severity = 'Severe impairment'; severityZh = '严重损害'; interpretation = 'Severe impairment in work and social functioning. Professional help recommended.'; interpretationZh = '工作和社交功能严重受损。建议寻求专业帮助。'; }
+  else if (total >= 10) { severity = 'Moderate impairment'; severityZh = '中度损害'; interpretation = 'Moderate functional impairment affecting daily life.'; interpretationZh = '影响日常生活的中度功能损害。'; }
+  else if (total >= 5) { severity = 'Mild impairment'; severityZh = '轻度损害'; interpretation = 'Mild impairment that may benefit from support.'; interpretationZh = '可能需要支持轻度损害。'; }
+  return { total, severity, severityZh, interpretation, interpretationZh };
+};
+
+// OQ-45 Questions (simplified set for screening)
+const oq45Questions = [
+  { question: { en: 'I feel no hope about my future.', zh: '我对未来感到没有希望。' } },
+  { question: { en: 'I feel lonely.', zh: '我感到孤独。' } },
+  { question: { en: 'I am worried about my health.', zh: '我担心我的健康。' } },
+  { question: { en: 'I have trouble sleeping.', zh: '我有睡眠问题。' } },
+  { question: { en: 'I feel nervous.', zh: '我感到紧张。' } },
+  { question: { en: 'I feel sad.', zh: '我感到悲伤。' } },
+  { question: { en: 'I feel worthless.', zh: '我感到无价值。' } },
+  { question: { en: 'I have trouble concentrating.', zh: '我难以集中注意力。' } },
+  { question: { en: 'I have conflicts with others.', zh: '我与他人有冲突。' } },
+  { question: { en: 'I am satisfied with my life.', zh: '我对生活感到满意。' } },
+  { question: { en: 'I feel anxious about being with people.', zh: '与人在一起时我感到焦虑。' } },
+  { question: { en: 'I feel like I want to give up.', zh: '我想放弃。' } },
+  { question: { en: 'I feel irritation or anger.', zh: '我感到烦躁或愤怒。' } },
+  { question: { en: 'I am able to complete tasks.', zh: '我能够完成任务。' } },
+  { question: { en: 'I enjoy being with people.', zh: '我喜欢与人在一起。' } },
+  { question: { en: 'I feel fatigued.', zh: '我感到疲倦。' } },
+  { question: { en: 'I feel motivated.', zh: '我感到有动力。' } },
+  { question: { en: 'I feel hopeless about relationships.', zh: '我对人际关系感到绝望。' } },
+  { question: { en: 'I have good appetite.', zh: '我有好胃口。' } },
+  { question: { en: 'I feel comfortable with my family.', zh: '我和家人相处舒适。' } },
+  { question: { en: 'I feel loved and wanted.', zh: '我感到被爱和被需要。' } },
+  { question: { en: 'I have enough energy for daily activities.', zh: '我有足够的精力进行日常活动。' } },
+  { question: { en: 'I feel my life is meaningful.', zh: '我感到我的生活有意义。' } },
+  { question: { en: 'I can laugh and see the humor in things.', zh: '我能笑并看到事物中的幽默。' } },
+];
+
+const oq45Options = [
+  { value: 0, labelKey: 'assessment.optionNever' },
+  { value: 1, labelKey: 'assessment.optionRarely' },
+  { value: 2, labelKey: 'assessment.optionSometimes' },
+  { value: 3, labelKey: 'assessment.optionOften' },
+  { value: 4, labelKey: 'assessment.optionAlways' },
+];
+
+const calculateOQ45 = (scores: number[]) => {
+  const total = scores.reduce((a, b) => a + b, 0);
+  const avg = total / scores.length;
+  let severity = 'Normal';
+  let severityZh = '正常';
+  let interpretation = 'Symptoms within normal range.';
+  let interpretationZh = '症状在正常范围内。';
+  if (avg >= 3) { severity = 'Significant distress'; severityZh = '显著困扰'; interpretation = 'High levels of distress. Professional consultation recommended.'; interpretationZh = '高度困扰。建议专业咨询。'; }
+  else if (avg >= 2) { severity = 'Moderate distress'; severityZh = '中度困扰'; interpretation = 'Moderate symptoms that may benefit from support.'; interpretationZh = '可能需要支持的中等症状。'; }
+  else if (avg >= 1) { severity = 'Mild distress'; severityZh = '轻度困扰'; interpretation = 'Mild symptoms that can be addressed with self-care.'; interpretationZh = '可以通过自我护理解决的轻微症状。'; }
+  return { total, severity, severityZh, interpretation, interpretationZh };
+};
+
+const getTestQuestions = (test: StandardizedTest) => {
+  switch (test) {
+    case 'phq-9': return { questions: phq9Questions, options: phq9Options, maxScore: 27 };
+    case 'gad-7': return { questions: gad7Questions, options: gad7Options, maxScore: 21 };
+    case 'eds': return { questions: edsQuestions, options: edsOptions, maxScore: 48 };
+    case 'oq-45': return { questions: oq45Questions, options: oq45Options, maxScore: 100 };
+    case 'wsas': return { questions: wsasQuestions, options: wsasOptions, maxScore: 40 };
+    default: return { questions: phq9Questions, options: phq9Options, maxScore: 27 };
+  }
+};
+
+const getTestCalculator = (test: StandardizedTest) => {
+  switch (test) {
+    case 'phq-9': return calculatePHQ9;
+    case 'gad-7': return calculateGAD7;
+    case 'eds': return calculateEDS;
+    case 'oq-45': return calculateOQ45;
+    case 'wsas': return calculateWSAS;
+    default: return calculatePHQ9;
+  }
+};
 
 export default function AssessmentPage() {
   const { locale } = useLocale();
@@ -22,10 +231,13 @@ export default function AssessmentPage() {
   const [standardizedTest, setStandardizedTest] = useState<StandardizedTest>(null);
   const [screen, setScreen] = useState<Screen>('select-type');
   const [apiKey, setApiKey] = useState<string>('');
+  const [provider, setProvider] = useState<'anthropic' | 'openai' | 'ollama' | 'custom'>('anthropic');
+  const [baseUrl, setBaseUrl] = useState(PRESETS.anthropic.baseUrl);
+  const [model, setModel] = useState(PRESETS.anthropic.defaultModel);
   const [showSettings, setShowSettings] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
-  // PHQ-9/GAD-7 state
+  // PHQ-9/GAD-7/EDS/OQ-45/WSAS state
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [testResult, setTestResult] = useState<StandardizedTestResult | null>(null);
@@ -34,22 +246,82 @@ export default function AssessmentPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [settingsProvider, setSettingsProvider] = useState<'anthropic' | 'openai' | 'ollama' | 'custom'>('anthropic');
+  const [settingsBaseUrl, setSettingsBaseUrl] = useState(PRESETS.anthropic.baseUrl);
+  const [settingsModel, setSettingsModel] = useState(PRESETS.anthropic.defaultModel);
+  const [settingsApiKey, setSettingsApiKey] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    const savedProvider = localStorage.getItem(PROVIDER_STORAGE_KEY) as 'anthropic' | 'openai' | 'ollama' | 'custom' | null;
+    const savedBaseUrl = localStorage.getItem(BASE_URL_STORAGE_KEY);
+    const savedModel = localStorage.getItem(MODEL_STORAGE_KEY);
     if (savedApiKey) {
       setApiKey(savedApiKey);
-      setIsLoadingSettings(false);
-    } else {
+      setSettingsApiKey(savedApiKey);
+    }
+    if (savedProvider) {
+      setProvider(savedProvider);
+      setSettingsProvider(savedProvider);
+      setBaseUrl(savedBaseUrl || PRESETS[savedProvider].baseUrl);
+      setModel(savedModel || PRESETS[savedProvider].defaultModel);
+    }
+    setIsLoadingSettings(false);
+    if (!savedApiKey) {
       setShowSettings(true);
-      setIsLoadingSettings(false);
     }
   }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleProviderChange = (newProvider: 'anthropic' | 'openai' | 'ollama' | 'custom') => {
+    setSettingsProvider(newProvider);
+    const preset = PRESETS[newProvider];
+    setSettingsBaseUrl(preset.baseUrl);
+    setSettingsModel(preset.defaultModel);
+    if (!preset.requiresApiKey) setSettingsApiKey('');
+  };
+
+  const handleSaveSettings = () => {
+    const preset = PRESETS[settingsProvider];
+    if (preset.requiresApiKey && !settingsApiKey.trim()) {
+      alert(locale === 'zh' ? '请输入API密钥' : 'API key is required');
+      return;
+    }
+    setApiKey(settingsApiKey.trim());
+    setProvider(settingsProvider);
+    setBaseUrl(settingsBaseUrl.trim());
+    setModel(settingsModel.trim());
+    localStorage.setItem(API_KEY_STORAGE_KEY, settingsApiKey.trim());
+    localStorage.setItem(PROVIDER_STORAGE_KEY, settingsProvider);
+    localStorage.setItem(BASE_URL_STORAGE_KEY, settingsBaseUrl.trim());
+    localStorage.setItem(MODEL_STORAGE_KEY, settingsModel.trim());
+    setShowSettings(false);
+    setScreen('select-type');
+  };
 
   const handleSelectType = (type: AssessmentType) => {
     setAssessmentType(type);
     if (type === 'conversational') {
-      setScreen('settings');
+      if (!apiKey) {
+        setShowSettings(true);
+      } else {
+        setScreen('conversational');
+        if (messages.length === 0) {
+          const welcomeMsg: Message = {
+            role: 'assistant',
+            content: locale === 'zh'
+              ? '你好，我是HeartMirror的AI助手。今天你想聊些什么？如果你感到不安或有任何心理压力，我可以倾听并帮助你整理思绪。\n\n你也可以选择进行标准化的心理测试来更好地了解自己的状态。'
+              : "Hello, I'm the HeartMirror AI assistant. What would you like to talk about today? If you're feeling uneasy or have any mental stress, I can listen and help you organize your thoughts.\n\nYou can also choose to take a standardized mental health test to better understand your current state.",
+            timestamp: Date.now(),
+          };
+          setMessages([welcomeMsg]);
+        }
+      }
     } else {
       setScreen('select-test');
     }
@@ -65,17 +337,12 @@ export default function AssessmentPage() {
   const handleAnswer = (score: number) => {
     const newAnswers = [...answers, score];
     setAnswers(newAnswers);
-
-    const questions = standardizedTest === 'phq-9' ? phq9Questions : gad7Questions;
-
+    const { questions } = getTestQuestions(standardizedTest);
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      // Test complete - calculate result
-      const result = standardizedTest === 'phq-9'
-        ? calculatePHQ9(newAnswers)
-        : calculateGAD7(newAnswers);
-
+      const calculator = getTestCalculator(standardizedTest);
+      const result = calculator(newAnswers);
       const testResult: StandardizedTestResult = {
         id: crypto.randomUUID(),
         createdAt: Date.now(),
@@ -87,17 +354,61 @@ export default function AssessmentPage() {
         interpretation: locale === 'zh' ? result.interpretationZh : result.interpretation,
         crisisTriggered: standardizedTest === 'phq-9' && newAnswers[8] > 0,
       };
-
       setTestResult(testResult);
       setScreen('result');
     }
   };
 
-  const handleSaveSettings = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem(API_KEY_STORAGE_KEY, key);
-    setShowSettings(false);
-    setScreen('select-type');
+  const handleSend = async () => {
+    if (!input.trim() || isLoading || !apiKey) return;
+    const userMessage: Message = { role: 'user', content: input.trim(), timestamp: Date.now() };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    try {
+      const assistantMessage: Message = { role: 'assistant', content: '', timestamp: Date.now() };
+      setMessages(prev => [...prev, assistantMessage]);
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          apiKey,
+          provider,
+          baseUrl,
+          model,
+        }),
+      });
+      if (!response.ok) throw new Error('API request failed');
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          fullContent += chunk;
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = fullContent;
+            return newMessages;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: locale === 'zh' ? '连接出现问题，请重试。' : 'Connection error. Please try again.', timestamp: Date.now() }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const startNew = () => {
@@ -109,7 +420,6 @@ export default function AssessmentPage() {
     setScreen('select-type');
   };
 
-  // Loading
   if (isLoadingSettings) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
@@ -118,44 +428,57 @@ export default function AssessmentPage() {
     );
   }
 
-  // Settings screen
   if (showSettings) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         <Sidebar locale={locale} />
         <div className="ml-[200px] flex items-center justify-center p-4 min-h-screen">
           <div className="w-full max-w-md p-6 rounded-lg border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="text-xl font-semibold mb-2">{t(locale, 'settings.title')}</h2>
-          <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
-            {locale === 'zh' ? '请配置您的AI服务商以开始评估' : 'Configure your AI provider to start the assessment'}
-          </p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">{t(locale, 'settings.apiKey')}</label>
-              <input
-                type="password"
-                id="apiKeyInput"
-                placeholder="sk-..."
-                className="w-full px-3 py-2.5 rounded border text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
-                style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
+            <h2 className="text-xl font-semibold mb-2">{t(locale, 'settings.aiProvider')}</h2>
+            <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
+              {locale === 'zh' ? '配置您的AI服务商以开始评估' : 'Configure your AI provider to start the assessment'}
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">{locale === 'zh' ? 'AI服务商预设' : 'AI Provider'}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['anthropic', 'openai', 'ollama', 'custom'] as const).map(p => (
+                    <button key={p} onClick={() => handleProviderChange(p)}
+                      className="px-4 py-2.5 rounded-md border min-h-[44px] text-sm"
+                      style={{
+                        backgroundColor: settingsProvider === p ? 'var(--accent)' : 'var(--surface)',
+                        borderColor: settingsProvider === p ? 'var(--accent)' : 'var(--border)',
+                        color: settingsProvider === p ? 'white' : 'var(--text)',
+                      }}
+                    >{p.charAt(0).toUpperCase() + p.slice(1)}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">{t(locale, 'settings.apiBase')}</label>
+                <input type="text" value={settingsBaseUrl} onChange={e => setSettingsBaseUrl(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded border min-h-[44px]"
+                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">{t(locale, 'settings.apiKey')}</label>
+                <input type="password" value={settingsApiKey} onChange={e => setSettingsApiKey(e.target.value)}
+                  placeholder="sk-..." className="w-full px-3 py-2.5 rounded border min-h-[44px]"
+                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">{t(locale, 'settings.model')}</label>
+                <input type="text" value={settingsModel} onChange={e => setSettingsModel(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded border min-h-[44px]"
+                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+              </div>
+              <button onClick={handleSaveSettings}
+                className="w-full text-white rounded px-4 py-3 font-medium min-h-[44px]"
+                style={{ backgroundColor: 'var(--accent)' }}>{t(locale, 'settings.save')}</button>
             </div>
-            <button
-              onClick={() => {
-                const input = document.getElementById('apiKeyInput') as HTMLInputElement;
-                if (input.value.trim()) {
-                  handleSaveSettings(input.value.trim());
-                }
-              }}
-              className="w-full text-white rounded px-4 py-3 font-medium min-h-[44px]"
-              style={{ backgroundColor: 'var(--accent)' }}
-            >
-              {t(locale, 'settings.save')}
-            </button>
-          </div>
-          <div className="mt-4 text-xs text-center" style={{ color: 'var(--muted)' }}>
-            {locale === 'zh' ? 'HeartMirror 不能替代专业心理健康护理' : 'HeartMirror is not a substitute for professional mental health care.'}
-          </div>
+            <div className="mt-4 text-xs text-center" style={{ color: 'var(--muted)' }}>
+              {locale === 'zh' ? 'HeartMirror 不能替代专业心理健康护理' : 'HeartMirror is not a substitute for professional mental health care.'}
+            </div>
           </div>
         </div>
       </div>
@@ -167,18 +490,14 @@ export default function AssessmentPage() {
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         <Sidebar locale={locale} />
-        <div className="ml-[200px] flex flex-col items-center justify-center p-4 min-h-screen pb-20">
+        <div className="ml-[200px] flex flex-col items-center justify-center p-4 min-h-screen">
           <div className="w-full max-w-lg">
             <h1 className="text-2xl font-semibold text-center mb-2">{t(locale, 'assessment.title')}</h1>
             <p className="text-center mb-8" style={{ color: 'var(--muted)' }}>{t(locale, 'assessment.selectType')}</p>
-
             <div className="grid grid-cols-1 gap-4">
-              {/* Conversational Assessment */}
-              <button
-                onClick={() => handleSelectType('conversational')}
+              <button onClick={() => handleSelectType('conversational')}
                 className="p-6 rounded-lg border text-left transition-colors hover:border-accent-primary"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-              >
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <div className="flex items-center gap-4">
                   <span className="text-4xl">💬</span>
                   <div>
@@ -187,13 +506,9 @@ export default function AssessmentPage() {
                   </div>
                 </div>
               </button>
-
-              {/* Standardized Test */}
-              <button
-                onClick={() => handleSelectType('standardized')}
+              <button onClick={() => handleSelectType('standardized')}
                 className="p-6 rounded-lg border text-left transition-colors hover:border-accent-primary"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-              >
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <div className="flex items-center gap-4">
                   <span className="text-4xl">📋</span>
                   <div>
@@ -205,55 +520,90 @@ export default function AssessmentPage() {
             </div>
           </div>
         </div>
-        <Sidebar locale={locale} />
       </div>
     );
   }
 
-  // Test selection (PHQ-9 or GAD-7)
+  // Conversational assessment
+  if (screen === 'conversational') {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+        <Sidebar locale={locale} />
+        <div className="ml-[200px] flex flex-col h-screen">
+          <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <div>
+              <h1 className="text-lg font-semibold">{t(locale, 'assessment.conversational')}</h1>
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>{locale === 'zh' ? 'AI对话评估' : 'AI Conversational Assessment'}</p>
+            </div>
+            <button onClick={startNew} className="text-sm px-3 py-1.5 rounded" style={{ color: 'var(--muted)' }}>
+              ← {t(locale, 'common.previous')}
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] px-4 py-3 rounded-lg ${msg.role === 'user' ? 'rounded-br-sm' : 'rounded-bl-sm'}`}
+                  style={{ backgroundColor: msg.role === 'user' ? 'var(--accent)' : 'var(--surface)', color: msg.role === 'user' ? 'white' : 'var(--text)' }}>
+                  {msg.role === 'assistant' ? (
+                    <div className="prose prose-invert max-w-none text-sm"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+                  ) : (
+                    <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+          <div className="border-t p-4" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
+            <div className="flex gap-2 items-end">
+              <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
+                placeholder={locale === 'zh' ? '输入消息...' : 'Type your message...'}
+                className="flex-1 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 resize-none min-h-[44px] text-sm"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
+                disabled={isLoading} rows={1} />
+              <button onClick={handleSend} disabled={!input.trim() || isLoading}
+                className="text-white rounded-lg px-4 py-2 min-h-[44px] min-w-[44px] font-medium disabled:opacity-50"
+                style={{ backgroundColor: 'var(--accent)' }}>
+                {isLoading ? '...' : (locale === 'zh' ? '发送' : 'Send')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Test selection
   if (screen === 'select-test') {
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         <Sidebar locale={locale} />
-        <div className="ml-[200px] flex flex-col items-center justify-center p-4 min-h-screen pb-20">
-          <div className="w-full max-w-lg">
+        <div className="ml-[200px] flex flex-col items-center justify-center p-4 min-h-screen">
+          <div className="w-full max-w-2xl">
             <h2 className="text-xl font-semibold text-center mb-8">{t(locale, 'assessment.standardized')}</h2>
-
-            <div className="grid grid-cols-1 gap-4">
-              <button
-                onClick={() => handleSelectTest('phq-9')}
-                className="p-6 rounded-lg border text-left transition-colors hover:border-accent-primary"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl">📊</span>
-                  <div>
-                    <h3 className="text-lg font-semibold">{t(locale, 'assessment.phq9')}</h3>
-                    <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>{t(locale, 'assessment.phq9Desc')}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {STANDARDIZED_TESTS.map(test => (
+                <button key={test.id} onClick={() => handleSelectTest(test.id)}
+                  className="p-5 rounded-lg border text-left transition-colors hover:border-accent-primary"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-3xl">{test.icon}</span>
+                    <div>
+                      <h3 className="text-base font-semibold">{locale === 'zh' ? test.nameZh : test.name}</h3>
+                      <p className="text-xs" style={{ color: 'var(--muted)' }}>{test.name}</p>
+                    </div>
                   </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleSelectTest('gad-7')}
-                className="p-6 rounded-lg border text-left transition-colors hover:border-accent-primary"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl">😰</span>
-                  <div>
-                    <h3 className="text-lg font-semibold">{t(locale, 'assessment.gad7')}</h3>
-                    <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>{t(locale, 'assessment.gad7Desc')}</p>
-                  </div>
-                </div>
-              </button>
+                  <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
+                    {locale === 'zh' ? test.descriptionZh : test.description}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                    {test.questions} {locale === 'zh' ? '题' : 'questions'} | {locale === 'zh' ? '来源' : 'Source'}: {test.source}
+                  </p>
+                </button>
+              ))}
             </div>
-
-            <button
-              onClick={() => setScreen('select-type')}
-              className="mt-6 w-full py-3 text-sm"
-              style={{ color: 'var(--muted)' }}
-            >
+            <button onClick={() => setScreen('select-type')}
+              className="mt-6 w-full py-3 text-sm" style={{ color: 'var(--muted)' }}>
               ← {t(locale, 'common.previous')}
             </button>
           </div>
@@ -263,57 +613,41 @@ export default function AssessmentPage() {
   }
 
   // Test questions screen
-  if (screen === 'test') {
-    const questions = standardizedTest === 'phq-9' ? phq9Questions : gad7Questions;
-    const options = standardizedTest === 'phq-9' ? phq9Options : gad7Options;
+  if (screen === 'test' && standardizedTest) {
+    const { questions, options, maxScore } = getTestQuestions(standardizedTest);
+    const testInfo = STANDARDIZED_TESTS.find(t => t.id === standardizedTest);
     const question = questions[currentQuestion];
     const questionText = locale === 'zh' ? question.question.zh : question.question.en;
 
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         <Sidebar locale={locale} />
-        <div className="ml-[200px] flex flex-col min-h-screen pb-20">
-          {/* Header */}
+        <div className="ml-[200px] flex flex-col min-h-screen">
           <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between mb-2">
-              <button
-                onClick={() => setScreen('select-test')}
-                className="text-sm"
-                style={{ color: 'var(--muted)' }}
-              >
+              <button onClick={() => setScreen('select-test')} className="text-sm" style={{ color: 'var(--muted)' }}>
                 ← {t(locale, 'common.backToChat')}
               </button>
               <span className="text-sm" style={{ color: 'var(--muted)' }}>
                 {t(locale, 'assessment.question')} {currentQuestion + 1} {t(locale, 'assessment.of')} {questions.length}
               </span>
             </div>
-            {/* Progress bar */}
             <div className="h-1 rounded-full" style={{ backgroundColor: 'var(--border)' }}>
-              <div
-                className="h-1 rounded-full transition-all duration-300"
-                style={{
-                  backgroundColor: 'var(--accent)',
-                  width: `${((currentQuestion + 1) / questions.length) * 100}%`
-                }}
-              />
+              <div className="h-1 rounded-full transition-all duration-300"
+                style={{ backgroundColor: 'var(--accent)', width: `${((currentQuestion + 1) / questions.length) * 100}%` }} />
+            </div>
+            <div className="mt-2 text-center">
+              <span className="text-sm font-medium">{testInfo ? (locale === 'zh' ? testInfo.nameZh : testInfo.name) : standardizedTest}</span>
             </div>
           </div>
-
-          {/* Question */}
           <div className="flex-1 flex flex-col items-center justify-center p-6">
-            <h2 className="text-xl font-medium text-center mb-8 max-w-md">
-              {questionText}
-            </h2>
-
+            <h2 className="text-xl font-medium text-center mb-8 max-w-md">{questionText}</h2>
             <div className="w-full max-w-md space-y-3">
               {options.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleAnswer(option.value)}
+                <button key={option.value} onClick={() => handleAnswer(option.value)}
                   className="w-full p-4 rounded-lg border text-left transition-colors hover:border-accent-primary"
-                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
-                >
-                  {t(locale, `assessment.${option.labelKey}`)}
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  {t(locale, option.labelKey)}
                 </button>
               ))}
             </div>
@@ -325,78 +659,52 @@ export default function AssessmentPage() {
 
   // Result screen
   if (screen === 'result' && testResult) {
+    const testInfo = STANDARDIZED_TESTS.find(t => t.id === standardizedTest);
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         <Sidebar locale={locale} />
-        <div className="ml-[200px] flex flex-col items-center justify-center p-4 min-h-screen pb-20">
+        <div className="ml-[200px] flex flex-col items-center justify-center p-4 min-h-screen">
           <div className="w-full max-w-md">
-          <h2 className="text-xl font-semibold text-center mb-2">{t(locale, 'result.title')}</h2>
-          <p className="text-center mb-8" style={{ color: 'var(--muted)' }}>
-            {standardizedTest === 'phq-9' ? t(locale, 'assessment.phq9') : t(locale, 'assessment.gad7')}
-          </p>
-
-          {/* Score display */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-32 h-32 rounded-full border-4" style={{ borderColor: 'var(--accent)' }}>
-              <div>
-                <div className="text-4xl font-bold">{testResult.totalScore}</div>
-                <div className="text-sm" style={{ color: 'var(--muted)' }}>
-                  /{standardizedTest === 'phq-9' ? '27' : '21'}
+            <h2 className="text-xl font-semibold text-center mb-2">{t(locale, 'result.title')}</h2>
+            <p className="text-center mb-8" style={{ color: 'var(--muted)' }}>
+              {testInfo ? (locale === 'zh' ? testInfo.nameZh : testInfo.name) : standardizedTest}
+            </p>
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-32 h-32 rounded-full border-4"
+                style={{ borderColor: 'var(--accent)' }}>
+                <div>
+                  <div className="text-4xl font-bold">{testResult.totalScore}</div>
+                  <div className="text-sm" style={{ color: 'var(--muted)' }}>/{testInfo?.maxScore || 27}</div>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Severity */}
-          <div className="text-center mb-6">
-            <p className="text-lg font-semibold" style={{ color: 'var(--accent)' }}>
-              {t(locale, 'assessment.severity')}: {testResult.severity}
-            </p>
-          </div>
-
-          {/* Interpretation */}
-          <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-            <p className="text-sm">{testResult.interpretation}</p>
-          </div>
-
-          {/* Crisis warning */}
-          {testResult.crisisTriggered && (
-            <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--error)' }}>
-              <p className="text-sm" style={{ color: 'var(--error)' }}>
-                {locale === 'zh'
-                  ? '根据你的回答，你可能需要寻求专业帮助。请考虑联系心理健康专业人士。'
-                  : 'Based on your responses, you may need professional help. Please consider reaching out to a mental health professional.'}
-              </p>
-              <p className="text-sm mt-2" style={{ color: 'var(--error)' }}>
-                {t(locale, 'assessment.crisisHotline')}
+            <div className="text-center mb-6">
+              <p className="text-lg font-semibold" style={{ color: 'var(--accent)' }}>
+                {t(locale, 'assessment.severity')}: {testResult.severity}
               </p>
             </div>
-          )}
-
-          {/* Actions */}
-          <div className="space-y-3">
-            <button
-              onClick={startNew}
-              className="w-full text-white rounded px-4 py-3 font-medium"
-              style={{ backgroundColor: 'var(--accent)' }}
-            >
-              {t(locale, 'assessment.startNew')}
-            </button>
-            <button
-              onClick={() => setScreen('select-type')}
-              className="w-full py-3 text-sm"
-              style={{ color: 'var(--muted)' }}
-            >
-              {t(locale, 'assessment.title')}
-            </button>
-          </div>
+            <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <p className="text-sm">{testResult.interpretation}</p>
+            </div>
+            {testResult.crisisTriggered && (
+              <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--error)' }}>
+                <p className="text-sm" style={{ color: 'var(--error)' }}>
+                  {locale === 'zh' ? '根据你的回答，你可能需要寻求专业帮助。请考虑联系心理健康专业人士。' : 'Based on your responses, you may need professional help. Please consider reaching out to a mental health professional.'}
+                </p>
+              </div>
+            )}
+            <div className="space-y-3">
+              <button onClick={startNew} className="w-full text-white rounded px-4 py-3 font-medium"
+                style={{ backgroundColor: 'var(--accent)' }}>{t(locale, 'assessment.startNew')}</button>
+              <button onClick={() => setScreen('select-type')} className="w-full py-3 text-sm"
+                style={{ color: 'var(--muted)' }}>{t(locale, 'assessment.title')}</button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Fallback
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       <Sidebar locale={locale} />
