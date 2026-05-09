@@ -5,44 +5,39 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { id, encryptedContent, iv, authTag, salt, encryptedPreview } = body;
+  const { id, encryptedContent, iv, authTag } = body;
 
   const encryptedContentBuffer = Buffer.from(encryptedContent, 'base64');
   const ivBuffer = Buffer.from(iv, 'base64');
   const authTagBuffer = Buffer.from(authTag, 'base64');
-  const saltBuffer = Buffer.from(salt, 'base64');
 
-  const updateData: Record<string, Buffer> = {
-    encryptedContent: encryptedContentBuffer,
-    iv: ivBuffer,
-    authTag: authTagBuffer,
-    salt: saltBuffer,
-  };
+  // Cloud mode: userId from JWT middleware sets RLS context
+  const userId = request.headers.get('x-user-id');
 
-  // Add preview fields if provided (backward compatible)
-  if (encryptedPreview) {
-    updateData.previewCiphertext = Buffer.from(encryptedPreview.ciphertext, 'base64');
-    updateData.previewIv = Buffer.from(encryptedPreview.iv, 'base64');
-    updateData.previewAuthTag = Buffer.from(encryptedPreview.authTag, 'base64');
-    updateData.previewSalt = Buffer.from(encryptedPreview.salt, 'base64');
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Server just stores the encrypted bytes - can't read content
+  // Set RLS context for this transaction
+  await prisma.$executeRaw`SET app.current_user_id = ${userId}`;
+
   await prisma.conversation.upsert({
     where: { id },
-    update: updateData,
-    create: {
-      id,
+    update: {
       encryptedContent: encryptedContentBuffer,
       iv: ivBuffer,
       authTag: authTagBuffer,
-      salt: saltBuffer,
-      previewCiphertext: encryptedPreview ? Buffer.from(encryptedPreview.ciphertext, 'base64') : null,
-      previewIv: encryptedPreview ? Buffer.from(encryptedPreview.iv, 'base64') : null,
-      previewAuthTag: encryptedPreview ? Buffer.from(encryptedPreview.authTag, 'base64') : null,
-      previewSalt: encryptedPreview ? Buffer.from(encryptedPreview.salt, 'base64') : null,
+    },
+    create: {
+      id,
+      userId,
+      encryptedContent: encryptedContentBuffer,
+      iv: ivBuffer,
+      authTag: authTagBuffer,
     },
   });
+
+  await prisma.$executeRaw`RESET app.current_user_id`;
 
   return NextResponse.json({ id, success: true });
 }

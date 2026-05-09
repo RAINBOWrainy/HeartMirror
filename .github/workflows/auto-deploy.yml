@@ -10,6 +10,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: heartmirror_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,10 +40,25 @@ jobs:
       - name: Run TypeScript type check
         run: npx tsc --noEmit
 
-      - name: Run tests
+      - name: Run SQLite tests (local mode)
         run: npm test
+        env:
+          DATABASE_URL: file:./dev.db
 
-      - name: Build Next.js app
+      - name: Run PostgreSQL RLS tests (cloud mode)
+        run: npm test -- --grep "RLS"
+        env:
+          DEPLOY_MODE: cloud
+          DATABASE_URL: postgresql://test:test@localhost:5432/heartmirror_test
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/heartmirror_test
+
+      - name: Build Next.js app (local mode)
         run: npm run build
         env:
           DATABASE_URL: file:./dev.db
+
+      - name: Build Next.js app (cloud mode)
+        run: npm run build
+        env:
+          DEPLOY_MODE: cloud
+          DATABASE_URL: postgresql://test:test@localhost:5432/heartmirror_test

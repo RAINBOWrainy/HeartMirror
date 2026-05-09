@@ -18,9 +18,88 @@ This file tracks deferred features and future improvements. Items are ordered by
 - GitHub Actions CI configured
 
 ### Cloud mode implementation
-- **Why:** Allows non-technical users to use HeartMirror without self-hosting. Data is still end-to-end encrypted on the server.
-- **Current state:** Directory scaffolding and Prisma schema done, just need to implement the feature modules.
-- **Effort:** M (about 1-2 hours)
+- **Why:** Allows non-technical users to use HeartMirror without self-hosting. Data is still end-to-end encrypted on the server. Zero-knowledge architecture - server never sees passwords or plaintext conversations.
+- **Current state:** Architecture fully designed, ready for implementation. See `~/.gstack/projects/HeartMirror/rainbow-cloud-design-20260423.md`
+- **Effort:** M (about 5 hours total, broken down below)
+- **Priority:** NEXT
+
+### Cloud Mode Task Breakdown
+
+#### 1. Database Schema + Migrations
+- Add PostgreSQL datasource alongside SQLite in `prisma/schema.prisma`
+- Add User model with encrypted DEK container fields
+- Add RLS policy raw SQL migration
+- Add conversation foreign key + cascade delete
+- **Effort:** 30min
+
+#### 2. Next.js Middleware Auth
+- Create `src/middleware.ts` - single enforcement point for ALL routes
+- RS256 JWT verification with public key
+- Route whitelist: /api/auth/*, static assets
+- Inject userId into request headers for downstream handlers
+- **Effort:** 20min
+
+#### 3. Auth API Endpoint
+- Create `src/app/api/auth/[action]/route.ts` (login, signup, forgot, reset)
+- Client-side PBKDF2 (600k iterations) in Web Worker
+- Timing-safe password verification using existing crypto primitives
+- Email verification + password reset with Resend
+- 7-day JWT expiration, RS256 signed
+- **Effort:** 45min
+
+#### 4. RLS-Enabled Database Client
+- Create `src/features/database/cloud.ts`
+- Prisma Client with RLS row-level security enabled
+- Multi-tenant query wrapper (auto-adds userId filter)
+- Conversation CRUD with RLS enforcement tests
+- **Effort:** 30min
+
+#### 5. Client-Side Crypto Library
+- Create `src/lib/crypto/client.ts`
+- PBKDF2 key derivation (600k iterations) in Web Worker
+- AES-256-GCM encryption/decryption of conversations before API send
+- DEK/KEK container handling
+- Memory zeroization best-effort (document JS limitations)
+- **Effort:** 45min
+
+#### 6. API Key Header Migration
+- Move `apiKey` from request body to `Authorization: Bearer <key>` header
+- Update all existing API routes to read from header instead of body
+- Update frontend chat API client
+- **Critical:** Vercel automatically redacts Authorization headers from logs
+- **Effort:** 10min
+
+#### 7. Mode Switch + Migration Wizard
+- Auto-detect mode based on environment (local build → local mode, deployed → cloud mode)
+- No explicit toggle - prevents accidental data loss
+- Migration wizard on first cloud login: "Import your local conversations?"
+- One-click local → cloud migration using existing import/export format
+- **Effort:** 60min
+
+#### 8. Rate Limiting with Upstash Redis
+- Login endpoint: 5 requests/minute per IP
+- Chat endpoint: 60 requests/minute per user
+- Password reset: 1 request/15 minutes per email
+- Fail-open gracefully if Redis is temporarily down
+- **Effort:** 30min
+
+#### 9. Test Infrastructure
+- Add PostgreSQL Testcontainer to `vitest.config.ts`
+- Add PostgreSQL service to CI workflow
+- RLS enforcement tests (user A cannot access user B data)
+- Middleware auth tests
+- Client-side crypto tests
+- Import/export migration tests
+- **Effort:** 60min
+
+#### 10. Documentation + Environment Setup
+- Update README with cloud mode architecture
+- Document environment variables needed
+- Generate RS256 key pair instructions
+- Update deployment guide
+- **Effort:** 30min
+
+**Total Cloud Mode Effort:** ~5 hours / ~30 minutes with Claude Code
 
 ## P2 - Medium Priority
 

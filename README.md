@@ -96,6 +96,81 @@ DEPLOY_MODE=local npm run build
 
 ---
 
+## ☁️ 云端模式
+
+云端模式让你可以在任何设备上访问你的对话，无需配置 API Key。
+
+### 安全架构
+
+- **零知识设计**：密码和加密密钥永远不会发送到服务器
+- **客户端加密**：所有加密发生在浏览器中
+- **DEK/KEK 架构**：数据加密密钥(DEK)由密钥加密密钥(KEK)保护
+- **RS256 JWT**：使用非对称加密，更安全
+- **行级安全(RLS)**：数据库层强制用户数据隔离
+
+### 快速开始（云端模式）
+
+```bash
+# 1. 复制环境变量模板
+cp .env.example .env.local
+
+# 2. 编辑 .env.local 填写:
+#    - DATABASE_URL (PostgreSQL)
+#    - JWT_PRIVATE_KEY / JWT_PUBLIC_KEY
+#    - UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN
+#    - RESEND_API_KEY
+
+# 3. 启动 PostgreSQL (Docker)
+docker run -d --name heartmirror-postgres -p 5432:5432 \
+  -e POSTGRES_USER=test \
+  -e POSTGRES_PASSWORD=test \
+  -e POSTGRES_DB=heartmirror \
+  postgres:16-alpine
+
+# 4. 运行数据库迁移
+DEPLOY_MODE=cloud npx prisma migrate deploy
+
+# 5. 启动开发服务器
+DEPLOY_MODE=cloud npm run dev
+```
+
+### 环境变量说明
+
+| 变量 | 说明 | 必需 |
+|------|------|------|
+| `DATABASE_URL` | PostgreSQL 连接字符串 | 是 |
+| `JWT_PRIVATE_KEY` | RSA 私钥 (用于签名 JWT) | 是 |
+| `JWT_PUBLIC_KEY` | RSA 公钥 (用于验证 JWT) | 是 |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis URL (速率限制) | 是 |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis Token | 是 |
+| `RESEND_API_KEY` | Resend API Key (邮件验证) | 是 |
+| `NEXT_PUBLIC_APP_URL` | 应用 URL (邮件链接用) | 是 |
+
+### 构建云端版本
+
+```bash
+DEPLOY_MODE=cloud npm run build
+```
+
+### 部署到 Vercel
+
+```bash
+# 设置环境变量 (在 Vercel Dashboard 中)
+DEPLOY_MODE=cloud
+DATABASE_URL=<your-postgres-url>
+JWT_PRIVATE_KEY=<your-private-key>
+JWT_PUBLIC_KEY=<your-public-key>
+UPSTASH_REDIS_REST_URL=<your-redis-url>
+UPSTASH_REDIS_REST_TOKEN=<your-redis-token>
+RESEND_API_KEY=<your-resend-key>
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+
+# 部署
+vercel --prod
+```
+
+---
+
 ## 🏗️ 架构说明
 
 ### 功能模块分离

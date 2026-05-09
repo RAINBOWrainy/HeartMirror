@@ -14,7 +14,6 @@ export async function GET(
       encryptedContent: true,
       iv: true,
       authTag: true,
-      salt: true,
     },
   });
 
@@ -23,12 +22,11 @@ export async function GET(
   }
 
   // Server sends encrypted bytes as base64 to client
-  // Client handles decryption
+  // Client handles decryption with DEK stored in memory
   return NextResponse.json({
     encryptedContent: Buffer.from(conversation.encryptedContent).toString('base64'),
     iv: Buffer.from(conversation.iv).toString('base64'),
     authTag: Buffer.from(conversation.authTag).toString('base64'),
-    salt: Buffer.from(conversation.salt).toString('base64'),
   });
 }
 

@@ -180,10 +180,12 @@ const browserClient: DatabaseClient = {
   async chatCompletion(request: ChatRequest): Promise<string> {
     const response = await fetch('/api/chat/stream', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${request.apiKey}`,
+      },
       body: JSON.stringify({
         messages: request.messages,
-        apiKey: request.apiKey,
         provider: request.provider,
         baseUrl: request.baseUrl,
         model: request.model,

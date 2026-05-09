@@ -1,4 +1,5 @@
-// Cloud mode schema - PostgreSQL for hosted deployment
+// HeartMirror Schema - Cloud mode (PostgreSQL)
+// For local mode, use schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -6,19 +7,37 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  encryptedDek      Bytes
+  dekSalt           Bytes
+  dekIv             Bytes
+  dekAuthTag        Bytes
+  passwordVerifier  Bytes
+  salt              Bytes
+  createdAt         DateTime  @default(now())
+  lastLogin         DateTime?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  emailVerified     Boolean   @default(false)
+  verificationToken String?
+
+  conversations Conversation[]
 }
 
 model Conversation {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
   userId    String
-  // Encrypted content containing the array of messages
-  // Format when decrypted: JSON array of { role, content, timestamp }
+  createdAt DateTime @default(now())
   encryptedContent Bytes
-  // Initialization vector for AES-256-GCM
-  iv Bytes
-  // Authentication tag for authenticated encryption
-  authTag Bytes
+  iv               Bytes
+  authTag          Bytes
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

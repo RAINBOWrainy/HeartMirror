@@ -3,10 +3,13 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { SYSTEM_PROMPT, prepareConversationContext } from '@/features/ai/shared/prompt-engineering';
 import type { Message } from '@/features/ai/shared/types';
+import { rateLimits, getClientIP, checkRateLimit, createRateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-// For local mode: the client sends provider and credentials in the request body
+// API key is sent in Authorization header (Bearer <key>)
+// Vercel automatically redacts Authorization headers from logs
+// This prevents accidental leakage of user API keys
 
 type AIProvider = 'anthropic' | 'openai' | 'ollama' | 'custom';
 
@@ -18,25 +21,24 @@ interface ValidatedRequest {
   model: string;
 }
 
-function validateRequest(body: unknown): ValidatedRequest | null {
+function validateRequest(body: unknown, apiKey: string): ValidatedRequest | null {
   if (!body || typeof body !== 'object') return null;
   const b = body as {
     messages?: unknown;
-    apiKey?: unknown;
     provider?: unknown;
     baseUrl?: unknown;
     model?: unknown;
   };
 
   if (!Array.isArray(b.messages)) return null;
-  if (typeof b.apiKey !== 'string') return null;
+  if (typeof apiKey !== 'string') return null;
   if (!['anthropic', 'openai', 'ollama', 'custom'].includes(b.provider as string)) return null;
   if (typeof b.baseUrl !== 'string') return null;
   if (typeof b.model !== 'string') return null;
 
   return {
     messages: b.messages,
-    apiKey: b.apiKey,
+    apiKey,
     provider: b.provider as AIProvider,
     baseUrl: b.baseUrl,
     model: b.model,
@@ -44,14 +46,25 @@ function validateRequest(body: unknown): ValidatedRequest | null {
 }
 
 export async function POST(req: Request) {
+  // Rate limit check
+  const clientIP = getClientIP(req)
+  const rateLimitResult = await checkRateLimit(rateLimits.chat, clientIP)
+  if (!rateLimitResult.success) {
+    return createRateLimitResponse(rateLimitResult.reset)
+  }
+
+  // Extract API key from Authorization header (never logged by Vercel)
+  const authHeader = req.headers.get('authorization');
+  const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
   const body = await req.json();
-  const validated = validateRequest(body);
+  const validated = validateRequest(body, apiKey);
 
   if (!validated) {
     return new Response('Invalid request', { status: 400 });
   }
 
-  const { messages, apiKey, provider, baseUrl, model } = validated;
+  const { messages, provider, baseUrl, model } = validated;
 
   // Format messages for AI API
   const aiMessages = prepareConversationContext(messages).map(m => ({

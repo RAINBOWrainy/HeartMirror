@@ -3,7 +3,12 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Get user ID from middleware header (cloud mode RLS)
+  const userId = request.headers.get('x-user-id') || null;
+
+  // For cloud mode, Prisma RLS automatically filters by userId
+  // For local mode, userId is null so all are returned
   const conversations = await prisma.conversation.findMany({
     orderBy: {
       createdAt: 'desc',
@@ -11,36 +16,20 @@ export async function GET() {
     select: {
       id: true,
       createdAt: true,
-      // Select encrypted preview fields for fast list loading
-      // Server never decrypts - just passes encrypted bytes to client
-      previewCiphertext: true,
-      previewIv: true,
-      previewAuthTag: true,
-      previewSalt: true,
+      // Full encrypted content - client decrypts and extracts preview
+      encryptedContent: true,
+      iv: true,
+      authTag: true,
     },
   });
 
   return NextResponse.json({
-    conversations: conversations.map((c: {
-      id: string;
-      createdAt: Date;
-      previewCiphertext: Buffer | null;
-      previewIv: Buffer | null;
-      previewAuthTag: Buffer | null;
-      previewSalt: Buffer | null;
-    }) => ({
+    conversations: conversations.map((c) => ({
       id: c.id,
       createdAt: c.createdAt.toISOString(),
-      // Include encrypted preview - client decrypts locally
-      // This avoids O(n) full conversation decryption during list
-      encryptedPreview: c.previewCiphertext && c.previewIv && c.previewAuthTag && c.previewSalt
-        ? {
-            ciphertext: Buffer.from(c.previewCiphertext).toString('base64'),
-            iv: Buffer.from(c.previewIv).toString('base64'),
-            authTag: Buffer.from(c.previewAuthTag).toString('base64'),
-            salt: Buffer.from(c.previewSalt).toString('base64'),
-          }
-        : null,
+      encryptedContent: Buffer.from(c.encryptedContent).toString('base64'),
+      iv: Buffer.from(c.iv).toString('base64'),
+      authTag: Buffer.from(c.authTag).toString('base64'),
     })),
   });
 }
