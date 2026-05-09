@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     select: {
       id: true,
       createdAt: true,
+      type: true,
       // Full encrypted content - client decrypts and extracts preview
       encryptedContent: true,
       iv: true,
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     conversations: conversations.map((c) => ({
       id: c.id,
       createdAt: c.createdAt.toISOString(),
+      type: c.type || 'chat',
       encryptedContent: Buffer.from(c.encryptedContent).toString('base64'),
       iv: Buffer.from(c.iv).toString('base64'),
       authTag: Buffer.from(c.authTag).toString('base64'),

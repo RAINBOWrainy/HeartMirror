@@ -8,6 +8,9 @@ import { dbClient } from '@/features/database/shared/client';
 import type { Message } from '@/features/ai/shared/types';
 import type { ConversationInfo } from '@/features/database/shared/client';
 import { useAuth, getAuthToken } from '@/contexts/AuthContext';
+import { useLocale } from '@/lib/i18n/LocaleContext';
+import { t } from '@/lib/i18n/translations';
+import { Sidebar } from '@/components/navigation/Sidebar';
 
 const API_KEY_STORAGE_KEY = 'heartmirror-api-key';
 const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
@@ -65,6 +68,7 @@ export default function Home() {
 
   // Auth context for cloud mode
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { locale } = useLocale();
 
   // Check for cloud mode and load settings (only after auth context is ready)
   useEffect(() => {
@@ -470,39 +474,41 @@ export default function Home() {
   // Password unlock screen
   if (isLocked) {
     return (
-      <div className="min-h-screen bg-base-bg flex items-center justify-center p-4">
-        <div className="bg-base-surface border border-base-border rounded-lg p-6 w-full max-w-md">
-          <h2 className="text-xl font-semibold font-display text-base-text mb-4">
-            Unlock HeartMirror
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+        <div className="w-full max-w-md p-6 rounded-lg border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <h2 className="text-xl font-semibold mb-4">
+            {locale === 'zh' ? '解锁 HeartMirror' : 'Unlock HeartMirror'}
           </h2>
-          <p className="text-base-muted mb-6">
-            This instance is password protected. Enter your password to continue.
+          <p className="mb-6" style={{ color: 'var(--muted)' }}>
+            {locale === 'zh' ? '此应用受密码保护。请输入密码继续。' : 'This instance is password protected. Enter your password to continue.'}
           </p>
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-base-text mb-2">
-                Password
+              <label htmlFor="password" className="block text-sm font-medium mb-2">
+                {locale === 'zh' ? '密码' : 'Password'}
               </label>
               <input
                 id="password"
                 type="password"
                 value={unlockPassword}
                 onChange={(e) => setUnlockPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                placeholder={locale === 'zh' ? '输入密码' : 'Enter your password'}
+                className="w-full px-3 py-2.5 rounded border focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }}
                 onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
               />
               {passwordError && (
-                <p className="text-sm text-accent-error mt-2">{passwordError}</p>
+                <p className="text-sm mt-2" style={{ color: 'var(--error)' }}>{passwordError}</p>
               )}
             </div>
 
             <button
               onClick={handleUnlock}
-              className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
+              className="w-full text-white rounded px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
+              style={{ backgroundColor: 'var(--accent)' }}
             >
-              Unlock
+              {t(locale, 'common.unlock')}
             </button>
           </div>
         </div>
@@ -513,36 +519,41 @@ export default function Home() {
   // Settings modal for AI configuration
   if (isLoadingSettings) {
     return (
-      <div className="min-h-screen bg-base-bg flex items-center justify-center">
-        <div className="animate-pulse text-base-muted">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+        <p style={{ color: 'var(--muted)' }}>{t(locale, 'common.loading')}</p>
       </div>
     );
   }
 
   if (showSettings || !apiKey) {
     return (
-      <div className="min-h-screen bg-base-bg flex items-center justify-center p-4">
-        <div className="bg-base-surface border border-base-border rounded-lg p-6 w-full max-w-md">
-          <h2 className="text-xl font-semibold font-display text-base-text mb-4">
-            AI Settings
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+        <div className="w-full max-w-md p-6 rounded-lg border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <h2 className="text-xl font-semibold mb-2">
+            {t(locale, 'settings.aiProvider')}
           </h2>
-          <p className="text-base-muted mb-6">
-            Configure your AI provider.
+          <p className="mb-6" style={{ color: 'var(--muted)' }}>
+            {locale === 'zh' ? '配置您的AI服务商' : 'Configure your AI provider.'}
           </p>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-base-text mb-2">
-                AI Provider Preset
+              <label className="block text-sm font-medium mb-2">
+                {locale === 'zh' ? 'AI服务商预设' : 'AI Provider Preset'}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleProviderChange('anthropic')}
                   className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'anthropic'
-                      ? 'bg-accent-primary border-accent-primary text-white'
-                      : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
+                      ? 'text-white'
+                      : ''
                   }`}
+                  style={{
+                    backgroundColor: settingsProvider === 'anthropic' ? 'var(--accent)' : 'var(--surface)',
+                    borderColor: settingsProvider === 'anthropic' ? 'var(--accent)' : 'var(--border)',
+                    color: settingsProvider === 'anthropic' ? 'white' : 'var(--muted)',
+                  }}
                 >
                   Anthropic
                 </button>
@@ -550,9 +561,14 @@ export default function Home() {
                   onClick={() => handleProviderChange('openai')}
                   className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'openai'
-                      ? 'bg-accent-primary border-accent-primary text-white'
-                      : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
+                      ? 'text-white'
+                      : ''
                   }`}
+                  style={{
+                    backgroundColor: settingsProvider === 'openai' ? 'var(--accent)' : 'var(--surface)',
+                    borderColor: settingsProvider === 'openai' ? 'var(--accent)' : 'var(--border)',
+                    color: settingsProvider === 'openai' ? 'white' : 'var(--muted)',
+                  }}
                 >
                   OpenAI
                 </button>
@@ -560,31 +576,41 @@ export default function Home() {
                   onClick={() => handleProviderChange('ollama')}
                   className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'ollama'
-                      ? 'bg-accent-primary border-accent-primary text-white'
-                      : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
+                      ? 'text-white'
+                      : ''
                   }`}
+                  style={{
+                    backgroundColor: settingsProvider === 'ollama' ? 'var(--accent)' : 'var(--surface)',
+                    borderColor: settingsProvider === 'ollama' ? 'var(--accent)' : 'var(--border)',
+                    color: settingsProvider === 'ollama' ? 'white' : 'var(--muted)',
+                  }}
                 >
-                  Ollama (Local)
+                  Ollama
                 </button>
                 <button
                   onClick={() => handleProviderChange('custom')}
                   className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
                     settingsProvider === 'custom'
-                      ? 'bg-accent-primary border-accent-primary text-white'
-                      : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
+                      ? 'text-white'
+                      : ''
                   }`}
+                  style={{
+                    backgroundColor: settingsProvider === 'custom' ? 'var(--accent)' : 'var(--surface)',
+                    borderColor: settingsProvider === 'custom' ? 'var(--accent)' : 'var(--border)',
+                    color: settingsProvider === 'custom' ? 'white' : 'var(--muted)',
+                  }}
                 >
-                  Custom (OpenAI)
+                  Custom
                 </button>
               </div>
-              <p className="text-xs text-base-muted mt-2">
-                Click a preset to auto-fill defaults. All fields can be edited freely.
+              <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+                {locale === 'zh' ? '点击预设自动填充默认设置，所有字段均可自由编辑' : 'Click a preset to auto-fill defaults. All fields can be edited freely.'}
               </p>
             </div>
 
             <div>
-              <label htmlFor="baseUrl" className="block text-sm font-medium text-base-text mb-2">
-                API Base URL
+              <label htmlFor="baseUrl" className="block text-sm font-medium mb-2">
+                {t(locale, 'settings.apiBase')}
               </label>
               <input
                 id="baseUrl"
@@ -592,16 +618,14 @@ export default function Home() {
                 value={settingsBaseUrl}
                 onChange={(e) => setSettingsBaseUrl(e.target.value)}
                 placeholder="https://api.example.com/v1"
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                className="w-full px-3 py-2.5 rounded border focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }}
               />
-              <p className="text-xs text-base-muted mt-2">
-                Most providers use OpenAI-compatible API format. Include /v1 if required.
-              </p>
             </div>
 
             <div>
-              <label htmlFor="apiKey" className="block text-sm font-medium text-base-text mb-2">
-                API Key
+              <label htmlFor="apiKey" className="block text-sm font-medium mb-2">
+                {t(locale, 'settings.apiKey')}
               </label>
               <input
                 id="apiKey"
@@ -609,44 +633,14 @@ export default function Home() {
                 value={settingsApiKey}
                 onChange={(e) => setSettingsApiKey(e.target.value)}
                 placeholder="sk-..."
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                className="w-full px-3 py-2.5 rounded border focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }}
               />
-              {settingsProvider === 'ollama' && (
-                <p className="text-xs text-base-muted mt-2">
-                  Local Ollama usually doesn't require an API key. Leave blank.
-                </p>
-              )}
-              {settingsProvider === 'anthropic' && (
-                <p className="text-xs text-base-muted mt-2">
-                  Get your API key from {' '}
-                  <a
-                    href="https://console.anthropic.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent-primary underline hover:no-underline"
-                  >
-                    console.anthropic.com
-                  </a>
-                </p>
-              )}
-              {settingsProvider === 'openai' && (
-                <p className="text-xs text-base-muted mt-2">
-                  Get your API key from {' '}
-                  <a
-                    href="https://platform.openai.com/api-keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent-primary underline hover:no-underline"
-                  >
-                    platform.openai.com
-                  </a>
-                </p>
-              )}
             </div>
 
             <div>
-              <label htmlFor="model" className="block text-sm font-medium text-base-text mb-2">
-                Model Name
+              <label htmlFor="model" className="block text-sm font-medium mb-2">
+                {t(locale, 'settings.model')}
               </label>
               <input
                 id="model"
@@ -654,33 +648,31 @@ export default function Home() {
                 value={settingsModel}
                 onChange={(e) => setSettingsModel(e.target.value)}
                 placeholder={PRESETS[settingsProvider].defaultModel}
-                className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                className="w-full px-3 py-2.5 rounded border focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+                style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }}
               />
-              {settingsProvider === 'ollama' && (
-                <p className="text-xs text-base-muted mt-2">
-                  Make sure Ollama is running and the model is pulled with <code className="bg-base-bg px-1 rounded-sm">ollama pull {settingsModel}</code>
-                </p>
-              )}
             </div>
 
             <button
               onClick={saveSettings}
-              className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
+              className="w-full text-white rounded px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
+              style={{ backgroundColor: 'var(--accent)' }}
             >
-              Save Settings
+              {t(locale, 'settings.save')}
             </button>
 
             {apiKey && (
               <button
                 onClick={() => setShowSettings(false)}
-                className="w-full mt-2 text-base-muted hover:text-base-text text-sm py-2"
+                className="w-full mt-2 text-sm py-2"
+                style={{ color: 'var(--muted)' }}
               >
-                Cancel
+                {t(locale, 'common.cancel')}
               </button>
             )}
 
-            <div className="mt-4 text-xs text-base-muted text-center">
-              HeartMirror is not a substitute for professional mental health care.
+            <div className="mt-4 text-xs text-center" style={{ color: 'var(--muted)' }}>
+              {locale === 'zh' ? 'HeartMirror 不能替代专业心理健康护理' : 'HeartMirror is not a substitute for professional mental health care.'}
             </div>
           </div>
         </div>
@@ -689,117 +681,22 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-base-bg text-base-text">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar - Conversation list */}
-      <aside
-        className={`fixed md:static z-50 w-[280px] h-full bg-base-surface border-r border-base-border transition-transform duration-150 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-base-border">
-            <h1 className="text-xl font-display font-semibold text-base-text">HeartMirror</h1>
-            <p className="text-xs text-base-muted">AI companion for 2AM spiraling</p>
-          </div>
-
-          <div className="p-3">
-            <button
-              onClick={createNewConversation}
-              className="w-full bg-accent-primary hover:bg-blue-700 text-white rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-100 min-h-[44px]"
-            >
-              + New Conversation
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-2">
-            {conversations.length === 0 ? (
-              <div className="text-center text-base-muted text-sm py-8">
-                No conversations yet.
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => loadConversation(conv.id)}
-                    className={`p-3 rounded-md cursor-pointer transition-colors duration-100 ${
-                      conv.id === currentConversationId
-                        ? 'bg-base-bg border-l-2 border-accent-primary'
-                        : 'hover:bg-base-bg'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="text-sm font-medium text-base-text truncate">
-                        {conv.preview || 'Empty conversation'}
-                      </p>
-                      <button
-                        onClick={(e) => handleDeleteConversation(conv.id, e)}
-                        className="text-base-muted hover:text-accent-error opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                        aria-label="Delete conversation"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <p className="text-xs text-base-muted mt-1">
-                      {formatDate(new Date(conv.createdAt))}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="p-3 border-t border-base-border">
-            <Link
-              href="/settings"
-              className="w-full text-left px-3 py-2 text-sm text-base-muted hover:text-base-text hover:bg-base-bg rounded-md transition-colors flex items-center gap-2"
-            >
-              ⚙️ Settings
-            </Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main content - Chat area */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Mobile top bar with menu toggle */}
-        <div className="md:hidden px-4 py-2 flex items-center border-b border-base-border">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-base-muted hover:text-base-text p-2 -ml-2"
-            aria-label="Open conversations sidebar"
-          >
-            ☰
-          </button>
-          <span className="ml-2 font-display font-medium text-base-text">
-            {currentConversationId ? (
-              conversations.find(c => c.id === currentConversationId)?.preview.slice(0, 20) + '...'
-            ) : (
-              'New Conversation'
-            )}
-          </span>
-        </div>
-
-        {/* Desktop top bar */}
-        <div className="hidden md:flex px-4 py-2 justify-end gap-2 border-b border-base-border">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+      <Sidebar locale={locale} />
+      <div className="ml-[200px] flex flex-col h-screen">
+        {/* Top bar */}
+        <div className="px-4 py-2 flex justify-end gap-2 border-b" style={{ borderColor: 'var(--border)' }}>
           {messages.length > 0 && (
             <>
               <button
                 onClick={handleExport}
-                className="text-sm text-base-muted hover:text-base-text px-3 py-1 rounded-md hover:bg-base-surface transition-colors duration-100"
+                className="text-sm px-3 py-1 rounded-md transition-colors duration-100"
+                style={{ color: 'var(--muted)' }}
               >
-                Export
+                {t(locale, 'home.export')}
               </button>
-              <label className="text-sm text-base-muted hover:text-base-text px-3 py-1 rounded-md hover:bg-base-surface transition-colors duration-100 cursor-pointer">
-                Import
+              <label className="text-sm px-3 py-1 rounded-md transition-colors duration-100 cursor-pointer" style={{ color: 'var(--muted)' }}>
+                {t(locale, 'home.import')}
                 <input
                   type="file"
                   accept=".json"
@@ -811,9 +708,10 @@ export default function Home() {
           )}
           <Link
             href="/settings"
-            className="text-sm text-base-muted hover:text-base-text px-3 py-1 rounded-md hover:bg-base-surface transition-colors duration-100"
+            className="text-sm px-3 py-1 rounded-md transition-colors duration-100"
+            style={{ color: 'var(--muted)' }}
           >
-            Settings
+            {t(locale, 'nav.settings')}
           </Link>
         </div>
 
@@ -824,9 +722,13 @@ export default function Home() {
           aria-label="Conversation history"
         >
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-base-muted">
-              <p className="text-lg">It's just you and me right now.</p>
-              <p className="text-md">What's on your mind?</p>
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <p className="text-lg" style={{ color: 'var(--muted)' }}>
+                {locale === 'zh' ? '这里只有你和我。' : "It's just you and me right now."}
+              </p>
+              <p className="text-md" style={{ color: 'var(--muted)' }}>
+                {locale === 'zh' ? '有什么想说的吗？' : "What's on your mind?"}
+              </p>
             </div>
           ) : (
             messages.map((msg, i) => (
@@ -837,9 +739,13 @@ export default function Home() {
                 <div
                   className={`max-w-[85%] px-4 py-3 rounded-lg ${
                     msg.role === 'user'
-                      ? 'bg-accent-primary text-white rounded-br-sm'
-                      : 'bg-base-surface text-base-text rounded-bl-sm'
+                      ? 'rounded-br-sm'
+                      : 'rounded-bl-sm'
                   }`}
+                  style={{
+                    backgroundColor: msg.role === 'user' ? 'var(--accent)' : 'var(--surface)',
+                    color: msg.role === 'user' ? 'white' : 'var(--text)',
+                  }}
                 >
                   {msg.role === 'assistant' ? (
                     <div className="prose prose-invert max-w-none prose-p:my-1 prose-headings:my-2">
@@ -853,7 +759,8 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => navigator.clipboard.writeText(msg.content)}
-                  className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 bg-base-border hover:bg-base-muted text-base-text p-1 rounded-sm text-xs"
+                  className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 p-1 rounded-sm text-xs"
+                  style={{ backgroundColor: 'var(--border)', color: 'var(--text)' }}
                   aria-label="Copy message"
                   title="Copy message"
                 >
@@ -865,7 +772,7 @@ export default function Home() {
           <div ref={messagesEndRef} />
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-base-surface px-4 py-3 rounded-lg rounded-bl-sm">
+              <div className="px-4 py-3 rounded-lg" style={{ backgroundColor: 'var(--surface)' }}>
                 <span className="animate-pulse">...</span>
               </div>
             </div>
@@ -873,43 +780,46 @@ export default function Home() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-base-border p-4 bg-base-bg sticky bottom-0">
+        <div className="border-t p-4" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
           <div className="flex gap-2 items-end">
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message here..."
-              className="flex-1 bg-base-bg border border-base-border rounded-lg px-3 py-2 text-base-text placeholder-base-muted focus:outline-none focus:ring-2 focus:ring-accent-primary resize-none min-h-[44px]"
+              placeholder={locale === 'zh' ? '输入消息...' : 'Type your message here...'}
+              className="flex-1 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 resize-none min-h-[44px]"
+              style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text)' }}
               disabled={isLoading}
               rows={1}
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-4 py-2 min-h-[44px] min-w-[44px] font-medium transition-colors duration-100"
+              className="text-white rounded-lg px-4 py-2 min-h-[44px] min-w-[44px] font-medium transition-colors duration-100 disabled:opacity-50"
+              style={{ backgroundColor: 'var(--accent)' }}
             >
-              Send
+              {locale === 'zh' ? '发送' : 'Send'}
             </button>
           </div>
 
           {/* Footer with legal disclaimer and clear button */}
-          <div className="mt-3 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-base-muted">
+          <div className="mt-3 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
             <p>
-              HeartMirror is not a substitute for professional mental health care.
+              {locale === 'zh' ? 'HeartMirror 不能替代专业心理健康护理' : 'HeartMirror is not a substitute for professional mental health care.'}
             </p>
             {conversations.length > 0 && (
               <button
                 onClick={handleClearAll}
-                className="text-base-muted hover:text-base-text underline underline-offset-2"
+                className="underline underline-offset-2"
+                style={{ color: 'var(--muted)' }}
               >
-                Clear all conversations
+                {locale === 'zh' ? '清空所有对话' : 'Clear all conversations'}
               </button>
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -9,16 +9,16 @@ module.exports = {
     extend: {
       colors: {
         base: {
-          bg: '#0a0a0a',
-          surface: '#171717',
-          border: '#262626',
-          muted: '#78716c',
-          text: '#e5e5e5',
+          bg: 'var(--bg)',
+          surface: 'var(--surface)',
+          border: 'var(--border)',
+          muted: 'var(--muted)',
+          text: 'var(--text)',
         },
         accent: {
-          primary: '#3b82f6',
-          error: '#ef4444',
-          success: '#22c55e',
+          primary: 'var(--accent)',
+          error: 'var(--error)',
+          success: 'var(--success)',
         },
       },
       fontFamily: {

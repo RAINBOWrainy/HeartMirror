@@ -9,6 +9,7 @@ export interface ConversationInfo {
   id: string;
   createdAt: string;
   preview: string;
+  type?: 'chat' | 'assessment' | 'phq-9' | 'gad-7' | 'journal';
 }
 
 export interface ChatRequest {
@@ -20,9 +21,9 @@ export interface ChatRequest {
 }
 
 interface DatabaseClient {
-  listConversations(): Promise<ConversationInfo[]>;
+  listConversations(type?: 'chat' | 'assessment' | 'phq-9' | 'gad-7' | 'journal'): Promise<ConversationInfo[]>;
   loadConversation(id: string): Promise<Message[]>;
-  saveConversation(messages: Message[], password: string, existingId?: string): Promise<string>;
+  saveConversation(messages: Message[], password: string, existingId?: string, type?: 'chat' | 'assessment' | 'phq-9' | 'gad-7' | 'journal'): Promise<string>;
   deleteConversation(id: string): Promise<void>;
   deleteAllConversations(): Promise<void>;
   chatCompletion(request: ChatRequest): Promise<string>;
@@ -33,9 +34,11 @@ const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
 // Tauri client implementation (calls Rust backend commands)
 const tauriClient: DatabaseClient = {
-  async listConversations(): Promise<ConversationInfo[]> {
+  async listConversations(type?: 'chat' | 'assessment' | 'phq-9' | 'gad-7' | 'journal'): Promise<ConversationInfo[]> {
     const { invoke } = await import('@tauri-apps/api/tauri');
-    return invoke('list_conversations');
+    const all = await invoke<ConversationInfo[]>('list_conversations');
+    if (!type) return all;
+    return all.filter(c => c.type === type);
   },
 
   async loadConversation(id: string): Promise<Message[]> {
@@ -43,7 +46,7 @@ const tauriClient: DatabaseClient = {
     return invoke('load_conversation', { id });
   },
 
-  async saveConversation(messages: Message[], password: string, existingId?: string): Promise<string> {
+  async saveConversation(messages: Message[], password: string, existingId?: string, type: 'chat' | 'assessment' | 'phq-9' | 'gad-7' | 'journal' = 'chat'): Promise<string> {
     const { invoke } = await import('@tauri-apps/api/tauri');
 
     // Set password in Tauri state if not already set
@@ -58,6 +61,7 @@ const tauriClient: DatabaseClient = {
         id,
         messages,
         preview,
+        type,
       },
     });
   },
@@ -88,7 +92,7 @@ const tauriClient: DatabaseClient = {
 
 // Browser client implementation (calls Next.js API routes)
 const browserClient: DatabaseClient = {
-  async listConversations(): Promise<ConversationInfo[]> {
+  async listConversations(type?: 'chat' | 'assessment' | 'phq-9' | 'gad-7' | 'journal'): Promise<ConversationInfo[]> {
     const password = localStorage.getItem('heartmirror-password') || '';
     const response = await fetch('/api/conversations/list');
     const data = await response.json();
@@ -98,6 +102,10 @@ const browserClient: DatabaseClient = {
     const result: ConversationInfo[] = [];
 
     for (const conv of data.conversations) {
+      // Filter by type if specified
+      const convType = conv.type || 'chat';
+      if (type && convType !== type) continue;
+
       let preview: string;
 
       if (conv.encryptedPreview) {
@@ -113,6 +121,7 @@ const browserClient: DatabaseClient = {
         id: conv.id,
         createdAt: conv.createdAt,
         preview,
+        type: convType,
       });
     }
 
@@ -140,7 +149,7 @@ const browserClient: DatabaseClient = {
     return decryptJson(encryptedData, password);
   },
 
-  async saveConversation(messages: Message[], password: string, existingId?: string): Promise<string> {
+  async saveConversation(messages: Message[], password: string, existingId?: string, type: 'chat' | 'assessment' | 'phq-9' | 'gad-7' | 'journal' = 'chat'): Promise<string> {
     const id = existingId || crypto.randomUUID();
     const { encryptJson, encryptPreview } = await import('./encryption');
 
@@ -159,6 +168,7 @@ const browserClient: DatabaseClient = {
         authTag: encryptedData.tag.toString('base64'),
         salt: encryptedData.salt.toString('base64'),
         encryptedPreview,
+        type,
       }),
     });
 

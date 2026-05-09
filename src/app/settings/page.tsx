@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, getAuthToken } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLocale } from '@/lib/i18n/LocaleContext';
+import { t } from '@/lib/i18n/translations';
+import { FooterNav } from '@/components/navigation/FooterNav';
+import { Sidebar } from '@/components/navigation/Sidebar';
 
 type AIProvider = 'anthropic' | 'openai' | 'ollama' | 'custom';
 
@@ -38,6 +43,9 @@ const PRESETS = {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { locale, setLocale } = useLocale();
+
   const [apiKey, setApiKey] = useState('');
   const [provider, setProvider] = useState<AIProvider>('anthropic');
   const [baseUrl, setBaseUrl] = useState(PRESETS.anthropic.baseUrl);
@@ -101,15 +109,15 @@ export default function SettingsPage() {
   const handleSave = async () => {
     const preset = PRESETS[provider];
     if (preset.requiresApiKey && !apiKey.trim()) {
-      setMessage(`${provider === 'custom' ? 'API key' : 'API key is required for ' + provider}`);
+      setMessage(locale === 'zh' ? '请输入API密钥' : 'API key is required');
       return;
     }
     if (!baseUrl.trim()) {
-      setMessage('Base URL is required');
+      setMessage(locale === 'zh' ? '请输入API地址' : 'Base URL is required');
       return;
     }
     if (!model.trim()) {
-      setMessage('Model name is required');
+      setMessage(locale === 'zh' ? '请输入模型名称' : 'Model name is required');
       return;
     }
 
@@ -137,89 +145,167 @@ export default function SettingsPage() {
         localStorage.setItem(BASE_URL_STORAGE_KEY, baseUrl.trim());
         localStorage.setItem(MODEL_STORAGE_KEY, model.trim());
       }
-      setMessage('Settings saved!');
+      setMessage(locale === 'zh' ? '设置已保存！' : 'Settings saved!');
       setTimeout(() => router.push('/'), 1000);
     } catch (err) {
       console.error('Failed to save settings:', err);
-      setMessage('Failed to save settings');
+      setMessage(locale === 'zh' ? '保存失败' : 'Failed to save settings');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-base-bg text-base-text" style={{ fontFamily: 'inherit' }}>
-      <div className="max-w-md mx-auto p-6">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+      <Sidebar locale={locale} />
+      <div className="ml-[200px] max-w-md mx-auto p-6">
         <div className="mb-6">
-          <Link href="/" className="text-base-muted hover:text-base-text text-sm">
-            ← Back to chat
+          <Link href="/" className="text-sm hover:underline" style={{ color: 'var(--muted)' }}>
+            ← {t(locale, 'common.backToChat')}
           </Link>
         </div>
 
-        <h1 className="text-2xl font-display font-semibold text-base-text mb-2">AI Settings</h1>
-        <p className="text-base-muted mb-6">Configure your AI provider.</p>
+        <h1 className="text-2xl font-semibold mb-2">{t(locale, 'settings.title')}</h1>
+        <p className="mb-6" style={{ color: 'var(--muted)' }}>
+          {locale === 'zh' ? '配置您的偏好设置' : 'Configure your preferences'}
+        </p>
 
         {message && (
-          <div className="mb-4 p-3 rounded bg-base-surface border border-base-border text-base-text">
+          <div className="mb-4 p-3 rounded" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderWidth: '1px', borderStyle: 'solid' }}>
             {message}
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Theme Selection */}
           <div>
-            <label className="block text-sm font-medium text-base-text mb-2">
-              AI Provider Preset
+            <label className="block text-sm font-medium mb-3">
+              {t(locale, 'settings.theme')}
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setTheme('light')}
+                className="px-4 py-3 rounded-md border min-h-[44px] text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: theme === 'light' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: theme === 'light' ? 'var(--accent)' : 'var(--border)',
+                  color: theme === 'light' ? 'white' : 'var(--text)',
+                }}
+              >
+                ☀️ {t(locale, 'settings.themeLight')}
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className="px-4 py-3 rounded-md border min-h-[44px] text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: theme === 'dark' ? 'var(--accent)' : 'var(--border)',
+                  color: theme === 'dark' ? 'white' : 'var(--text)',
+                }}
+              >
+                🌙 {t(locale, 'settings.themeDark')}
+              </button>
+              <button
+                onClick={() => setTheme('system')}
+                className="px-4 py-3 rounded-md border min-h-[44px] text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: theme === 'system' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: theme === 'system' ? 'var(--accent)' : 'var(--border)',
+                  color: theme === 'system' ? 'white' : 'var(--text)',
+                }}
+              >
+                💻 {t(locale, 'settings.themeSystem')}
+              </button>
+            </div>
+          </div>
+
+          {/* Language Selection */}
+          <div>
+            <label className="block text-sm font-medium mb-3">
+              {t(locale, 'settings.language')}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setLocale('zh')}
+                className="px-4 py-3 rounded-md border min-h-[44px] text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: locale === 'zh' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: locale === 'zh' ? 'var(--accent)' : 'var(--border)',
+                  color: locale === 'zh' ? 'white' : 'var(--text)',
+                }}
+              >
+                🇨🇳 {t(locale, 'settings.languageZh')}
+              </button>
+              <button
+                onClick={() => setLocale('en')}
+                className="px-4 py-3 rounded-md border min-h-[44px] text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: locale === 'en' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: locale === 'en' ? 'var(--accent)' : 'var(--border)',
+                  color: locale === 'en' ? 'white' : 'var(--text)',
+                }}
+              >
+                🇺🇸 {t(locale, 'settings.languageEn')}
+              </button>
+            </div>
+          </div>
+
+          {/* AI Provider */}
+          <div>
+            <label className="block text-sm font-medium mb-3">
+              {t(locale, 'settings.aiProvider')}
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleProviderChange('anthropic')}
-                className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
-                  provider === 'anthropic'
-                    ? 'bg-accent-primary border-accent-primary text-white'
-                    : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
-                }`}
+                className="px-4 py-2.5 rounded-md border min-h-[44px] text-sm"
+                style={{
+                  backgroundColor: provider === 'anthropic' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: provider === 'anthropic' ? 'var(--accent)' : 'var(--border)',
+                  color: provider === 'anthropic' ? 'white' : 'var(--text)',
+                }}
               >
                 Anthropic
               </button>
               <button
                 onClick={() => handleProviderChange('openai')}
-                className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
-                  provider === 'openai'
-                    ? 'bg-accent-primary border-accent-primary text-white'
-                    : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
-                }`}
+                className="px-4 py-2.5 rounded-md border min-h-[44px] text-sm"
+                style={{
+                  backgroundColor: provider === 'openai' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: provider === 'openai' ? 'var(--accent)' : 'var(--border)',
+                  color: provider === 'openai' ? 'white' : 'var(--text)',
+                }}
               >
                 OpenAI
               </button>
               <button
                 onClick={() => handleProviderChange('ollama')}
-                className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
-                  provider === 'ollama'
-                    ? 'bg-accent-primary border-accent-primary text-white'
-                    : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
-                }`}
+                className="px-4 py-2.5 rounded-md border min-h-[44px] text-sm"
+                style={{
+                  backgroundColor: provider === 'ollama' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: provider === 'ollama' ? 'var(--accent)' : 'var(--border)',
+                  color: provider === 'ollama' ? 'white' : 'var(--text)',
+                }}
               >
-                Ollama (Local)
+                Ollama
               </button>
               <button
                 onClick={() => handleProviderChange('custom')}
-                className={`px-4 py-2.5 rounded-md border min-h-[44px] ${
-                  provider === 'custom'
-                    ? 'bg-accent-primary border-accent-primary text-white'
-                    : 'bg-base-surface border border-base-border text-base-muted hover:bg-base-bg'
-                }`}
+                className="px-4 py-2.5 rounded-md border min-h-[44px] text-sm"
+                style={{
+                  backgroundColor: provider === 'custom' ? 'var(--accent)' : 'var(--surface)',
+                  borderColor: provider === 'custom' ? 'var(--accent)' : 'var(--border)',
+                  color: provider === 'custom' ? 'white' : 'var(--text)',
+                }}
               >
-                Custom (OpenAI)
+                Custom
               </button>
             </div>
-            <p className="text-xs text-base-muted mt-2">
-              Click a preset to auto-fill defaults. All fields can be edited freely.
-            </p>
           </div>
 
           <div>
-            <label htmlFor="baseUrl" className="block text-sm font-medium text-base-text mb-2">
-              API Base URL
+            <label htmlFor="baseUrl" className="block text-sm font-medium mb-2">
+              {t(locale, 'settings.apiBase')}
             </label>
             <input
               id="baseUrl"
@@ -227,16 +313,14 @@ export default function SettingsPage() {
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
               placeholder="https://api.example.com/v1"
-              className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+              className="w-full rounded px-3 py-2.5 focus:outline-none focus:ring-2 min-h-[44px]"
+              style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', borderWidth: '1px', borderStyle: 'solid', color: 'var(--text)' }}
             />
-            <p className="text-xs text-base-muted mt-2">
-              Most providers use OpenAI-compatible API format. Include /v1 if required.
-            </p>
           </div>
 
           <div>
-            <label htmlFor="apiKey" className="block text-sm font-medium text-base-text mb-2">
-              API Key
+            <label htmlFor="apiKey" className="block text-sm font-medium mb-2">
+              {t(locale, 'settings.apiKey')}
             </label>
             <input
               id="apiKey"
@@ -244,39 +328,14 @@ export default function SettingsPage() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="sk-..."
-              className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+              className="w-full rounded px-3 py-2.5 focus:outline-none focus:ring-2 min-h-[44px]"
+              style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', borderWidth: '1px', borderStyle: 'solid', color: 'var(--text)' }}
             />
-            {provider === 'anthropic' && (
-              <p className="text-xs text-base-muted mt-2">
-                Get your API key from{' '}
-                <a
-                  href="https://console.anthropic.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent-primary underline hover:no-underline"
-                >
-                  console.anthropic.com
-                </a>
-              </p>
-            )}
-            {provider === 'openai' && (
-              <p className="text-xs text-base-muted mt-2">
-                Get your API key from{' '}
-                <a
-                  href="https://platform.openai.com/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent-primary underline hover:no-underline"
-                >
-                  platform.openai.com
-                </a>
-              </p>
-            )}
           </div>
 
           <div>
-            <label htmlFor="model" className="block text-sm font-medium text-base-text mb-2">
-              Model Name
+            <label htmlFor="model" className="block text-sm font-medium mb-2">
+              {t(locale, 'settings.model')}
             </label>
             <input
               id="model"
@@ -284,23 +343,26 @@ export default function SettingsPage() {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               placeholder={PRESETS[provider].defaultModel}
-              className="w-full bg-base-bg border border-base-border rounded-sm px-3 py-2.5 text-base-text focus:outline-none focus:ring-2 focus:ring-accent-primary min-h-[44px]"
+              className="w-full rounded px-3 py-2.5 focus:outline-none focus:ring-2 min-h-[44px]"
+              style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', borderWidth: '1px', borderStyle: 'solid', color: 'var(--text)' }}
             />
           </div>
 
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
+            className="w-full text-white rounded px-4 py-3 font-medium transition-colors duration-100 min-h-[44px] disabled:opacity-50"
+            style={{ backgroundColor: 'var(--accent)' }}
           >
-            {isSaving ? 'Saving...' : 'Save Settings'}
+            {isSaving ? (locale === 'zh' ? '保存中...' : 'Saving...') : t(locale, 'settings.save')}
           </button>
 
-          <div className="mt-4 text-xs text-base-muted text-center">
-            HeartMirror is not a substitute for professional mental health care.
+          <div className="text-xs text-center" style={{ color: 'var(--muted)' }}>
+            {locale === 'zh' ? 'HeartMirror 不能替代专业心理健康护理' : 'HeartMirror is not a substitute for professional mental health care.'}
           </div>
         </div>
       </div>
+      <div className="pb-20" />
     </div>
   );
 }

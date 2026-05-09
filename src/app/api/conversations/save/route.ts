@@ -5,12 +5,13 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { id, encryptedContent, iv, authTag, salt } = body;
+  const { id, encryptedContent, iv, authTag, salt, type } = body;
 
   const encryptedContentBuffer = Buffer.from(encryptedContent, 'base64');
   const ivBuffer = Buffer.from(iv, 'base64');
   const authTagBuffer = Buffer.from(authTag, 'base64');
   const saltBuffer = salt ? Buffer.from(salt, 'base64') : Buffer.alloc(0);
+  const conversationType = type === 'assessment' ? 'assessment' : 'chat';
 
   // Cloud mode: userId from JWT middleware sets RLS context
   const userId = request.headers.get('x-user-id');
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
       iv: ivBuffer,
       authTag: authTagBuffer,
       salt: saltBuffer,
+      type: conversationType,
     },
     create: {
       id,
@@ -37,6 +39,7 @@ export async function POST(request: Request) {
       iv: ivBuffer,
       authTag: authTagBuffer,
       salt: saltBuffer,
+      type: conversationType,
     },
   });
 
