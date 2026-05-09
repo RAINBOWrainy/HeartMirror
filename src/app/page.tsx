@@ -290,7 +290,7 @@ export default function Home() {
     }
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     const preset = PRESETS[settingsProvider];
     if (preset.requiresApiKey && !settingsApiKey.trim()) {
       alert(`${settingsProvider === 'custom' ? 'API key' : 'API key is required for ' + settingsProvider}`);
@@ -305,15 +305,40 @@ export default function Home() {
       return;
     }
 
-    localStorage.setItem(API_KEY_STORAGE_KEY, settingsApiKey.trim());
-    localStorage.setItem(PROVIDER_STORAGE_KEY, settingsProvider);
-    localStorage.setItem(BASE_URL_STORAGE_KEY, settingsBaseUrl.trim());
-    localStorage.setItem(MODEL_STORAGE_KEY, settingsModel.trim());
-
+    // Update local state
     setApiKey(settingsApiKey.trim());
     setProvider(settingsProvider);
     setBaseUrl(settingsBaseUrl.trim());
     setModel(settingsModel);
+
+    // Save based on mode
+    if (isAuthenticated) {
+      // Cloud mode: save to server
+      try {
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getAuthToken()}`,
+          },
+          body: JSON.stringify({
+            apiKey: settingsApiKey.trim(),
+            provider: settingsProvider,
+            baseUrl: settingsBaseUrl.trim(),
+            model: settingsModel.trim(),
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to save settings to cloud:', err);
+      }
+    } else {
+      // Local mode: save to localStorage
+      localStorage.setItem(API_KEY_STORAGE_KEY, settingsApiKey.trim());
+      localStorage.setItem(PROVIDER_STORAGE_KEY, settingsProvider);
+      localStorage.setItem(BASE_URL_STORAGE_KEY, settingsBaseUrl.trim());
+      localStorage.setItem(MODEL_STORAGE_KEY, settingsModel.trim());
+    }
+
     setShowSettings(false);
   };
 
