@@ -29,7 +29,6 @@ if (!databaseUrl) {
       datasources: { db: { url: databaseUrl } },
     })
 
-    // Clean up any existing test data
     await cleanup()
   })
 
@@ -56,18 +55,13 @@ if (!databaseUrl) {
 
   // Run queries within a transaction to maintain RLS context
   async function withRLSContext<T>(userId: string, fn: () => Promise<T>): Promise<T> {
-    return prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${userId}'`)
+    return prisma.$transaction(async () => {
+      await prisma.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${userId}'`)
       return fn()
     })
   }
 
   describe('Cloud Mode RLS', () => {
-    beforeEach(async () => {
-      // Ensure clean state before each test
-      await cleanup()
-    })
-
     it('should create users', async () => {
       await prisma.user.create({
         data: {
@@ -125,7 +119,6 @@ if (!databaseUrl) {
     })
 
     it('should allow user1 to read their own conversation with RLS', async () => {
-      // Create conversation
       await prisma.conversation.create({
         data: {
           id: user1ConversationId,
@@ -136,17 +129,15 @@ if (!databaseUrl) {
         },
       })
 
-      // Read with RLS context
       const conversation = await withRLSContext(user1Id, () =>
         prisma.conversation.findUnique({ where: { id: user1ConversationId } })
       )
 
       expect(conversation).not.toBeNull()
-      expect(conversation?.id).toBe(user1ConversationId)
+      expect((conversation as any)?.id).toBe(user1ConversationId)
     })
 
     it('should deny user1 access to user2 conversation with RLS', async () => {
-      // Create conversation for user2
       await prisma.conversation.create({
         data: {
           id: user2ConversationId,
@@ -157,7 +148,6 @@ if (!databaseUrl) {
         },
       })
 
-      // Try to read as user1
       const conversation = await withRLSContext(user1Id, () =>
         prisma.conversation.findUnique({ where: { id: user2ConversationId } })
       )
@@ -181,7 +171,7 @@ if (!databaseUrl) {
       )
 
       expect(conversation).not.toBeNull()
-      expect(conversation?.id).toBe(user2ConversationId)
+      expect((conversation as any)?.id).toBe(user2ConversationId)
     })
 
     it('should deny user2 access to user1 conversation with RLS', async () => {
