@@ -53,6 +53,7 @@ export default function Home() {
   const [model, setModel] = useState<string>(PRESETS.anthropic.defaultModel);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsApiKey, setSettingsApiKey] = useState('');
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [settingsProvider, setSettingsProvider] = useState<AIProvider>('anthropic');
   const [settingsBaseUrl, setSettingsBaseUrl] = useState<string>(PRESETS.anthropic.baseUrl);
   const [settingsModel, setSettingsModel] = useState<string>(PRESETS.anthropic.defaultModel);
@@ -94,6 +95,7 @@ export default function Home() {
           setProvider(data.provider || 'anthropic');
           setBaseUrl(data.baseUrl || PRESETS.anthropic.baseUrl);
           setModel(data.model || PRESETS.anthropic.defaultModel);
+          setShowSettings(false);
         } else {
           setShowSettings(true);
         }
@@ -101,6 +103,8 @@ export default function Home() {
     } catch (err) {
       console.error('Failed to load cloud settings:', err);
       setShowSettings(true);
+    } finally {
+      setIsLoadingSettings(false);
     }
   };
 
@@ -132,6 +136,7 @@ export default function Home() {
     if (!savedApiKey) {
       setShowSettings(true);
     }
+    setIsLoadingSettings(false);
   };
 
   // Update defaults when preset changes
@@ -538,6 +543,14 @@ export default function Home() {
   }
 
   // Settings modal for AI configuration
+  if (isLoadingSettings) {
+    return (
+      <div className="min-h-screen bg-base-bg flex items-center justify-center">
+        <div className="animate-pulse text-base-muted">Loading...</div>
+      </div>
+    );
+  }
+
   if (showSettings || !apiKey) {
     // Load current settings when opening
     if (apiKey) {
@@ -551,10 +564,10 @@ export default function Home() {
       <div className="min-h-screen bg-base-bg flex items-center justify-center p-4">
         <div className="bg-base-surface border border-base-border rounded-lg p-6 w-full max-w-md">
           <h2 className="text-xl font-semibold font-display text-base-text mb-4">
-            Welcome to HeartMirror
+            AI Settings
           </h2>
           <p className="text-base-muted mb-6">
-            Configure your AI provider. All settings are stored locally in your browser and never leave your device.
+            Configure your AI provider.
           </p>
 
           <div className="space-y-4">
@@ -694,8 +707,17 @@ export default function Home() {
               onClick={saveSettings}
               className="w-full bg-accent-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-sm px-4 py-3 font-medium transition-colors duration-100 min-h-[44px]"
             >
-              Save and Continue
+              Save Settings
             </button>
+
+            {apiKey && (
+              <button
+                onClick={() => setShowSettings(false)}
+                className="w-full mt-2 text-base-muted hover:text-base-text text-sm py-2"
+              >
+                Cancel
+              </button>
+            )}
 
             <div className="mt-4 text-xs text-base-muted text-center">
               HeartMirror is not a substitute for professional mental health care.
