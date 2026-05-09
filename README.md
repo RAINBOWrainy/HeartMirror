@@ -24,7 +24,7 @@ HeartMirror is a privacy-first AI mental health companion designed for those **2
 - **Crisis Detection** — Automatically detects self-harm/suicide keywords and displays emergency resources
 - **End-to-End Encryption** — AES-256-GCM encryption for all conversations
 - **Local-First Mode** — Your API key and data never leave your device
-- **Cloud Mode** —托管服务 with zero-knowledge architecture
+- **Cloud Mode** — Hosted service with zero-knowledge architecture
 - **PWA Support** — Add to home screen, access offline
 - **Import/Export** — Migrate data between local and cloud anytime
 
@@ -174,7 +174,7 @@ src/
 
 ### Disclaimer
 
-HeartMirror is a **mental health self-help tool** and **cannot replace professional心理咨询或治疗**.
+HeartMirror is a **mental health self-help tool** and **cannot replace professional mental health care or therapy**.
 
 If you are in crisis, please contact:
 - **China Mental Health Hotline**: **400-161-9995** (24/7)
