@@ -4,7 +4,7 @@
  * Requires PostgreSQL schema - skipped if TEST_DATABASE_URL not set
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 
 const databaseUrl = process.env.TEST_DATABASE_URL
 
@@ -54,15 +54,20 @@ if (!databaseUrl) {
     }
   }
 
-  async function setRLSContext(userId: string) {
-    await prisma.$executeRawUnsafe(`SET app.current_user_id = '${userId}'`)
-  }
-
-  async function resetRLSContext() {
-    await prisma.$executeRawUnsafe('RESET app.current_user_id')
+  // Run queries within a transaction to maintain RLS context
+  async function withRLSContext<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${userId}'`)
+      return fn()
+    })
   }
 
   describe('Cloud Mode RLS', () => {
+    beforeEach(async () => {
+      // Ensure clean state before each test
+      await cleanup()
+    })
+
     it('should create users', async () => {
       await prisma.user.create({
         data: {
@@ -120,78 +125,120 @@ if (!databaseUrl) {
     })
 
     it('should allow user1 to read their own conversation with RLS', async () => {
-      await setRLSContext(user1Id)
-
-      const conversation = await prisma.conversation.findUnique({
-        where: { id: user1ConversationId },
+      // Create conversation
+      await prisma.conversation.create({
+        data: {
+          id: user1ConversationId,
+          userId: user1Id,
+          encryptedContent: Buffer.from('user1-content'),
+          iv: Buffer.from('user1-iv'),
+          authTag: Buffer.from('user1-tag'),
+        },
       })
 
-      await resetRLSContext()
+      // Read with RLS context
+      const conversation = await withRLSContext(user1Id, () =>
+        prisma.conversation.findUnique({ where: { id: user1ConversationId } })
+      )
 
       expect(conversation).not.toBeNull()
       expect(conversation?.id).toBe(user1ConversationId)
     })
 
     it('should deny user1 access to user2 conversation with RLS', async () => {
-      await setRLSContext(user1Id)
-
-      const conversation = await prisma.conversation.findUnique({
-        where: { id: user2ConversationId },
+      // Create conversation for user2
+      await prisma.conversation.create({
+        data: {
+          id: user2ConversationId,
+          userId: user2Id,
+          encryptedContent: Buffer.from('user2-content'),
+          iv: Buffer.from('user2-iv'),
+          authTag: Buffer.from('user2-tag'),
+        },
       })
 
-      await resetRLSContext()
+      // Try to read as user1
+      const conversation = await withRLSContext(user1Id, () =>
+        prisma.conversation.findUnique({ where: { id: user2ConversationId } })
+      )
 
       expect(conversation).toBeNull()
     })
 
     it('should allow user2 to read their own conversation with RLS', async () => {
-      await setRLSContext(user2Id)
-
-      const conversation = await prisma.conversation.findUnique({
-        where: { id: user2ConversationId },
+      await prisma.conversation.create({
+        data: {
+          id: user2ConversationId,
+          userId: user2Id,
+          encryptedContent: Buffer.from('user2-content'),
+          iv: Buffer.from('user2-iv'),
+          authTag: Buffer.from('user2-tag'),
+        },
       })
 
-      await resetRLSContext()
+      const conversation = await withRLSContext(user2Id, () =>
+        prisma.conversation.findUnique({ where: { id: user2ConversationId } })
+      )
 
       expect(conversation).not.toBeNull()
       expect(conversation?.id).toBe(user2ConversationId)
     })
 
     it('should deny user2 access to user1 conversation with RLS', async () => {
-      await setRLSContext(user2Id)
-
-      const conversation = await prisma.conversation.findUnique({
-        where: { id: user1ConversationId },
+      await prisma.conversation.create({
+        data: {
+          id: user1ConversationId,
+          userId: user1Id,
+          encryptedContent: Buffer.from('user1-content'),
+          iv: Buffer.from('user1-iv'),
+          authTag: Buffer.from('user1-tag'),
+        },
       })
 
-      await resetRLSContext()
+      const conversation = await withRLSContext(user2Id, () =>
+        prisma.conversation.findUnique({ where: { id: user1ConversationId } })
+      )
 
       expect(conversation).toBeNull()
     })
 
     it('should deny user1 delete of user2 conversation', async () => {
-      await setRLSContext(user1Id)
+      await prisma.conversation.create({
+        data: {
+          id: user2ConversationId,
+          userId: user2Id,
+          encryptedContent: Buffer.from('user2-content'),
+          iv: Buffer.from('user2-iv'),
+          authTag: Buffer.from('user2-tag'),
+        },
+      })
 
       await expect(
-        prisma.conversation.delete({
-          where: { id: user2ConversationId },
-        })
+        withRLSContext(user1Id, () =>
+          prisma.conversation.delete({ where: { id: user2ConversationId } })
+        )
       ).rejects.toThrow()
-
-      await resetRLSContext()
     })
 
     it('should deny user1 update of user2 conversation', async () => {
-      await setRLSContext(user1Id)
+      await prisma.conversation.create({
+        data: {
+          id: user2ConversationId,
+          userId: user2Id,
+          encryptedContent: Buffer.from('user2-content'),
+          iv: Buffer.from('user2-iv'),
+          authTag: Buffer.from('user2-tag'),
+        },
+      })
 
       await expect(
-        prisma.conversation.update({
-          where: { id: user2ConversationId },
-          data: { encryptedContent: Buffer.from('hacked') },
-        })
+        withRLSContext(user1Id, () =>
+          prisma.conversation.update({
+            where: { id: user2ConversationId },
+            data: { encryptedContent: Buffer.from('hacked') },
+          })
+        )
       ).rejects.toThrow()
-
-      await resetRLSContext()
     })
   })
 }
