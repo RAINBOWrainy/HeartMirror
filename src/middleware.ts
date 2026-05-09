@@ -5,6 +5,7 @@ import * as jose from 'jose'
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/',
+  '/settings',
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/forgot-password',

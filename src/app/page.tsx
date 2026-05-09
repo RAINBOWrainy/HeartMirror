@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
 import * as localAuth from '@/features/auth/local';
 import { dbClient } from '@/features/database/shared/client';
 import { cloudClient } from '@/features/database/cloud-client';
@@ -806,18 +807,12 @@ export default function Home() {
           </div>
 
           <div className="p-3 border-t border-base-border">
-            <button
-              onClick={() => {
-                setSettingsApiKey(apiKey || '');
-                setSettingsProvider(provider || 'anthropic');
-                setSettingsBaseUrl(baseUrl || PRESETS.anthropic.baseUrl);
-                setSettingsModel(model || PRESETS.anthropic.defaultModel);
-                setShowSettings(true);
-              }}
-              className="w-full text-left px-3 py-2 text-sm text-base-muted hover:text-base-text hover:bg-base-bg rounded-md transition-colors"
+            <Link
+              href="/settings"
+              className="w-full text-left px-3 py-2 text-sm text-base-muted hover:text-base-text hover:bg-base-bg rounded-md transition-colors flex items-center gap-2"
             >
               ⚙️ Settings
-            </button>
+            </Link>
           </div>
         </div>
       </aside>
@@ -863,18 +858,12 @@ export default function Home() {
               </label>
             </>
           )}
-          <button
-            onClick={() => {
-              setSettingsApiKey(apiKey || '');
-              setSettingsProvider(provider || 'anthropic');
-              setSettingsBaseUrl(baseUrl || PRESETS.anthropic.baseUrl);
-              setSettingsModel(model || PRESETS.anthropic.defaultModel);
-              setShowSettings(true);
-            }}
+          <Link
+            href="/settings"
             className="text-sm text-base-muted hover:text-base-text px-3 py-1 rounded-md hover:bg-base-surface transition-colors duration-100"
           >
             Settings
-          </button>
+          </Link>
         </div>
 
         {/* Conversation History */}
