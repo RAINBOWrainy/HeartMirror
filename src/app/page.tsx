@@ -67,21 +67,25 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auth context for cloud mode
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  // Check for cloud mode and load settings
+  // Check for cloud mode and load settings (only after auth context is ready)
   useEffect(() => {
+    // Wait for auth context to finish loading
+    if (isAuthLoading) return;
+
     if (isAuthenticated && user) {
       // In cloud mode, load API key from cloud settings
       loadCloudSettings();
     } else if (localAuth.hasLocalPassword()) {
       // Local mode with password protection
       setIsLocked(true);
+      setIsLoadingSettings(false);
     } else {
       // Load local settings
       loadLocalSettings();
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, isAuthLoading]);
 
   const loadCloudSettings = async () => {
     try {
