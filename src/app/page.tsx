@@ -63,12 +63,20 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auth context for cloud mode
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { locale } = useLocale();
+
+  // Toast auto-dismiss
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Check for cloud mode and load settings (only after auth context is ready)
   useEffect(() => {
@@ -338,6 +346,36 @@ export default function Home() {
 
   const handleSend = async () => {
     if (!input.trim() || isLoading || !apiKey) return;
+
+    // Phase 1: Mood command guard — synchronous, before any async operations
+    const moodMatch = input.trim().match(/^mood\s+(\d+)$/i);
+    if (moodMatch) {
+      const score = parseInt(moodMatch[1], 10);
+      if (score >= 1 && score <= 10) {
+        const entry = {
+          id: `mood-${Date.now()}`,
+          createdAt: Date.now(),
+          moodScore: score,
+          textEntry: '',
+          tags: [],
+        };
+        try {
+          const key = 'heartmirror-journal-entries';
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          existing.push(entry);
+          localStorage.setItem(key, JSON.stringify(existing));
+          setToast(locale === 'zh' ? `已记录心情：${score}/10` : `Logged mood: ${score}/10`);
+        } catch {
+          setToast(locale === 'zh' ? '记录失败，请重试' : 'Failed to save — storage error');
+        }
+        setInput('');
+        return;
+      } else {
+        setToast(locale === 'zh' ? '请输入 1-10 的数字' : 'Please enter a number from 1 to 10');
+        setInput('');
+        return;
+      }
+    }
 
     const userMessage: Message = {
       role: 'user',
@@ -679,6 +717,14 @@ export default function Home() {
       </div>
     );
   }
+
+  // Toast notification
+  {toast && (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm font-medium z-50"
+      style={{ backgroundColor: 'var(--accent)', color: 'white' }}>
+      {toast}
+    </div>
+  )}
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
