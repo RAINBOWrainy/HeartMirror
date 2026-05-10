@@ -603,8 +603,11 @@ export default function AssessmentPage() {
 
   if (isLoadingSettings) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-        <p style={{ color: 'var(--muted)' }}>{t(locale, 'common.loading')}</p>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+        <Sidebar locale={locale} />
+        <div className="ml-[200px] flex items-center justify-center min-h-screen">
+          <p style={{ color: 'var(--muted)' }}>{t(locale, 'common.loading')}</p>
+        </div>
       </div>
     );
   }
