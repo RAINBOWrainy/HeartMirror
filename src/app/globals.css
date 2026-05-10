@@ -22,11 +22,11 @@
   --warning: #f59e0b;
 }
 
-/* Dark theme */
+/* Dark theme — warm charcoal palette (safer at 2AM) */
 [data-theme="dark"] {
-  --bg: #0a0a0a;
-  --surface: #171717;
-  --border: #262626;
+  --bg: #0f0e0d;
+  --surface: #1a1816;
+  --border: #2a2724;
   --muted: #78716c;
   --text: #e5e5e5;
   --accent: #3b82f6;

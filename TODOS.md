@@ -105,8 +105,9 @@ This file tracks deferred features and future improvements. Items are ordered by
 
 ### Mood tracking / analytics dashboard
 - **Why:** Helps users spot patterns (when do they spiral the most? what topics come up repeatedly?)
-- **Current state:** Not started. Would add a simple mood rating prompt after each conversation and a calendar/history view showing trends.
+- **Current state:** Substantially addressed by CEO plan accepted scope (Proposals 1-4: Unified Timeline, Pattern Engine, Insight Digest). Remaining: analytics-specific visualizations.
 - **Effort:** L (about 2 hours)
+- **Related:** See CEO plan `~/.gstack/projects/HeartMirror/ceo-plans/2026-05-10-tracking-expansion.md`
 
 ### User settings page
 - **Why:** Currently settings are only in the modal on the main page. A dedicated settings page would allow for more configuration options.
@@ -120,8 +121,55 @@ This file tracks deferred features and future improvements. Items are ordered by
 
 ### Mobile push notifications
 - **Why:** For PWA installed on home screen, could remind users to check in if they've been spiraling frequently.
-- **Current state:** Not started.
+- **Current state:** Partially addressed by CEO plan Proposal 3 (Proactive Check-In Nudges). VAPID key script needed.
 - **Effort:** L (requires service worker updates, permissions handling)
+
+### Pattern Engine LLM prompt template
+- **Why:** Isolates the LLM instruction from the API route code. Without a documented prompt template, Pattern Engine behavior drifts as the LLM API evolves.
+- **Current state:** Not started. Create `src/features/ai/shared/pattern-prompt.ts` with system prompt and Zod output schema.
+- **Effort:** S (~10min with CC)
+- **Related:** CEO plan Phase 2 — Pattern Intelligence Engine
+
+### Push notification VAPID key pair generation script
+- **Why:** VAPID keys are required for Web Push Protocol. No standard way to generate them in Node without a library.
+- **Current state:** Not started. Create `scripts/generate-vapid-keys.ts`.
+- **Effort:** S (~10min with CC)
+- **Related:** CEO plan Phase 6 — Proactive Check-In Nudges
+
+### Long-press gesture detection hook
+- **Why:** Required for "long-press assessment button for 2-question quick check" (CEO plan delight item 4). Currently no long-press handling in codebase.
+- **Current state:** Not started. Implement `useLongPress` hook (500ms threshold).
+- **Effort:** S (~10min with CC)
+- **Related:** CEO plan Phase 1 — Delight items
+
+### "/mood" slash command
+- **Why:** Support both "mood 6" (free text) and "/mood 6" (explicit slash command) for more discoverable, unambiguous mood logging.
+- **Current state:** Not started. Extend chat input parser.
+- **Effort:** S (~10min with CC)
+- **Related:** CEO plan Phase 4 — Chat-to-Tracker Integration
+
+## P3 - Lower Priority
+
+### Exercise recommendation rule data structure
+- **Why:** Refactor `exercises/page.tsx` to use a data-driven rules array instead of hardcoded if/else chains. Prevents silent breakage when exercises change.
+- **Current state:** Not started.
+- **Effort:** S (~20min with CC)
+
+### Pattern cache eviction policy
+- **Why:** Add `maxAge` check so stale cache (>7 days) triggers re-analysis instead of showing old patterns.
+- **Current state:** Pattern cache has 24hr TTL but no upper bound. User absent 2+ months sees stale data.
+- **Effort:** S (~5min with CC)
+
+### Weekly digest pre-computation (cloud mode)
+- **Why:** Pre-compute and store the weekly digest so returning users see it instantly instead of waiting 2-3s for LLM call.
+- **Current state:** Not started. On-demand generation works fine for v1.
+- **Effort:** M (~30min with CC)
+- **Note:** Premature until user scale justifies it. Revisit when DAU > 1000.
+
+### Insight Digest interaction analytics
+- **Why:** Track which patterns users expand vs. ignore to close the feedback loop on pattern quality. Feeds prompt improvement.
+- **Current state:** Not started. No feedback loop exists.
+- **Effort:** S (~20min with CC)
 
 ## Done / Completed
 

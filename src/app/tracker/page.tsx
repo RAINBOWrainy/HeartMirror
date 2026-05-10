@@ -5,10 +5,13 @@ import Link from 'next/link';
 import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
+import { analyzePatterns, type PatternAnalysis } from '@/lib/pattern-engine';
 import type { MoodJournalEntry, StandardizedTestResult } from '@/features/tracker/types';
 
 const JOURNAL_KEY = 'heartmirror-journal-entries';
 const ASSESSMENTS_KEY = 'heartmirror-assessment-results';
+const EXERCISES_KEY = 'heartmirror-exercise-completions';
+const CHAT_SESSIONS_KEY = 'heartmirror-chat-sessions';
 
 const MOOD_LABELS_ZH = ['很低落', '低落', '有些低落', '略低', '一般', '略好', '不错', '良好', '很好', '非常好'];
 const MOOD_LABELS_EN = ['Very Low', 'Low', 'Somewhat Low', 'Slightly Low', 'Neutral', 'Slightly Better', 'Good', 'Very Good', 'Great', 'Excellent'];
@@ -24,11 +27,39 @@ const TAG_IMPACT: Record<string, 'positive' | 'negative'> = {
   relationships: 'negative',
 };
 
+interface ExerciseCompletion {
+  id: string;
+  createdAt: number;
+  exerciseId: string;
+  durationMin: number;
+}
+
+interface ChatSession {
+  id: string;
+  createdAt: number;
+  messageCount: number;
+}
+
+interface TimelineEntry {
+  id: string;
+  date: Date;
+  type: 'journal' | 'assessment' | 'exercise' | 'chat';
+  score?: number;
+  label: string;
+  detail?: string;
+  icon: string;
+}
+
 export default function DashboardPage() {
   const { locale } = useLocale();
   const [journalEntries, setJournalEntries] = useState<MoodJournalEntry[]>([]);
   const [assessmentResults, setAssessmentResults] = useState<StandardizedTestResult[]>([]);
+  const [exerciseCompletions, setExerciseCompletions] = useState<ExerciseCompletion[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [patternAnalysis, setPatternAnalysis] = useState<PatternAnalysis | null>(null);
+  const [patternLoading, setPatternLoading] = useState(false);
+  const [patternError, setPatternError] = useState<string | null>(null);
 
   useEffect(() => {
     const storedJournal = localStorage.getItem(JOURNAL_KEY);
@@ -43,7 +74,42 @@ export default function DashboardPage() {
         setAssessmentResults(JSON.parse(storedAssessments));
       } catch { setAssessmentResults([]); }
     }
+    const storedExercises = localStorage.getItem(EXERCISES_KEY);
+    if (storedExercises) {
+      try {
+        setExerciseCompletions(JSON.parse(storedExercises));
+      } catch { setExerciseCompletions([]); }
+    }
+    const storedChats = localStorage.getItem(CHAT_SESSIONS_KEY);
+    if (storedChats) {
+      try {
+        setChatSessions(JSON.parse(storedChats));
+      } catch { setChatSessions([]); }
+    }
   }, []);
+
+  // Run pattern analysis when data changes
+  useEffect(() => {
+    if (journalEntries.length === 0) return;
+
+    setPatternLoading(true);
+    setPatternError(null);
+
+    analyzePatterns(journalEntries, assessmentResults)
+      .then(result => {
+        if ('error' in result) {
+          setPatternError(result.error);
+        } else {
+          setPatternAnalysis(result);
+        }
+      })
+      .catch(err => {
+        setPatternError(err instanceof Error ? err.message : 'Analysis failed');
+      })
+      .finally(() => {
+        setPatternLoading(false);
+      });
+  }, [journalEntries, assessmentResults]);
 
   // Get entries for current week
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -145,6 +211,57 @@ export default function DashboardPage() {
               ) : (
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
                   {locale === 'zh' ? '今天还没有记录' : 'No entries today'}
+                </p>
+              )}
+            </div>
+
+            {/* AI Insight Digest */}
+            <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">🧠</span>
+                <div>
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>{locale === 'zh' ? '本周洞察' : 'Weekly Insight'}</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
+                    {locale === 'zh' ? 'AI 分析' : 'AI Analysis'}
+                  </p>
+                </div>
+              </div>
+              {patternLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+                  <span className="text-sm" style={{ color: 'var(--muted)' }}>
+                    {locale === 'zh' ? '分析中...' : 'Analyzing...'}
+                  </span>
+                </div>
+              ) : patternError ? (
+                <button
+                  onClick={() => analyzePatterns(journalEntries, assessmentResults, true).then(r => {
+                    if ('error' in r) setPatternError(r.error);
+                    else { setPatternAnalysis(r); setPatternError(null); }
+                  })}
+                  className="text-sm underline" style={{ color: 'var(--muted)' }}
+                >
+                  {patternError} — {locale === 'zh' ? '点击重试' : 'Tap to retry'}
+                </button>
+              ) : patternAnalysis ? (
+                <div>
+                  <p className="text-sm leading-relaxed">{patternAnalysis.summary}</p>
+                  {patternAnalysis.patterns.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {patternAnalysis.patterns.slice(0, 2).map(p => (
+                        <div key={p.id} className="flex items-start gap-2">
+                          <span className="text-sm" style={{ color: p.severity === 'high' ? 'var(--error)' : 'var(--accent)' }}>
+                            {p.severity === 'high' ? '⚠️' : p.severity === 'medium' ? '⚡' : '💡'}
+                          </span>
+                          <span className="text-xs">{p.trigger}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                  {locale === 'zh' ? '记录更多数据以获得洞察' : 'Log more data to get insights'}
                 </p>
               )}
             </div>
@@ -273,6 +390,151 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+
+          {/* Unified Mood Timeline */}
+          <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                {locale === 'zh' ? '心情时间线' : 'Mood Timeline'}
+              </h3>
+              <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                {selectedDate.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'long', day: 'numeric' })}
+              </span>
+            </div>
+
+            {(() => {
+              const dateStr = selectedDate.toDateString();
+              const entries: TimelineEntry[] = [];
+
+              journalEntries
+                .filter(e => new Date(e.createdAt).toDateString() === dateStr)
+                .forEach(e => {
+                  entries.push({
+                    id: e.id,
+                    date: new Date(e.createdAt),
+                    type: 'journal',
+                    score: e.moodScore,
+                    label: e.moodScore + '/10',
+                    detail: e.textEntry || (locale === 'zh' ? '心情记录' : 'Mood entry'),
+                    icon: '📔',
+                  });
+                });
+
+              assessmentResults
+                .filter(r => new Date(r.createdAt).toDateString() === dateStr)
+                .forEach(r => {
+                  entries.push({
+                    id: r.id,
+                    date: new Date(r.createdAt),
+                    type: 'assessment',
+                    score: r.totalScore,
+                    label: r.type.toUpperCase() + ' ' + r.totalScore,
+                    detail: r.interpretation,
+                    icon: '📋',
+                  });
+                });
+
+              exerciseCompletions
+                .filter(e => new Date(e.createdAt).toDateString() === dateStr)
+                .forEach(e => {
+                  entries.push({
+                    id: e.id,
+                    date: new Date(e.createdAt),
+                    type: 'exercise',
+                    score: undefined,
+                    label: e.exerciseId,
+                    detail: (locale === 'zh' ? '完成' : 'Completed') + ` ${e.durationMin}min`,
+                    icon: '🧘',
+                  });
+                });
+
+              chatSessions
+                .filter(c => new Date(c.createdAt).toDateString() === dateStr && c.messageCount > 5)
+                .forEach(c => {
+                  entries.push({
+                    id: c.id,
+                    date: new Date(c.createdAt),
+                    type: 'chat',
+                    score: undefined,
+                    label: locale === 'zh' ? '对话' : 'Chat',
+                    detail: c.messageCount + ' ' + (locale === 'zh' ? '条消息' : 'messages'),
+                    icon: '💬',
+                  });
+                });
+
+              entries.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+              if (entries.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <p className="text-4xl mb-3">📊</p>
+                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                      {locale === 'zh' ? '这天还没有记录' : 'No entries for this day'}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="relative">
+                  <div className="absolute left-5 top-0 bottom-0 w-px" style={{ backgroundColor: 'var(--border)' }} />
+                  <div className="space-y-4">
+                    {entries.map(entry => (
+                      <div key={entry.id} className="flex items-start gap-4 relative">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 z-10"
+                          style={{ backgroundColor: 'var(--bg)', borderWidth: '2px', borderColor: 'var(--accent)' }}>
+                          {entry.icon}
+                        </div>
+                        <div className="flex-1 min-w-0 p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
+                          <div className="flex justify-between items-start">
+                            <span className="text-sm font-medium">{entry.label}</span>
+                            <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                              {entry.date.toLocaleTimeString(locale === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          {entry.detail && (
+                            <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--muted)' }}>{entry.detail}</p>
+                          )}
+                          {entry.score !== undefined && (
+                            <div className="mt-1 flex items-center gap-1">
+                              <div className="h-1.5 rounded-full flex-1 max-w-20" style={{ backgroundColor: 'var(--border)' }}>
+                                <div className="h-full rounded-full" style={{
+                                  backgroundColor: 'var(--accent)',
+                                  width: `${(entry.score / 10) * 100}%`,
+                                }} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Streak indicator */}
+          {(() => {
+            const trackingDays = weekDays.filter(day => {
+              const dateStr = day.toDateString();
+              return (
+                journalEntries.some(e => new Date(e.createdAt).toDateString() === dateStr) ||
+                assessmentResults.some(r => new Date(r.createdAt).toDateString() === dateStr) ||
+                exerciseCompletions.some(e => new Date(e.createdAt).toDateString() === dateStr) ||
+                chatSessions.some(c => new Date(c.createdAt).toDateString() === dateStr && c.messageCount > 5)
+              );
+            });
+            if (trackingDays.length === 0) return null;
+            return (
+              <div className="mt-4 text-center">
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
+                  style={{ backgroundColor: 'var(--surface)', color: 'var(--accent)', borderWidth: '1px', borderColor: 'var(--border)' }}>
+                  🔥 {trackingDays.length}/7 {locale === 'zh' ? '天追踪' : 'days tracked'}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Suggested Exercises */}
           <div className="p-6 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
