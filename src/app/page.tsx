@@ -11,6 +11,7 @@ import { useAuth, getAuthToken } from '@/contexts/AuthContext';
 import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
+import { scanForThemes, shouldOfferTheme } from '@/features/ai/shared/chat-to-tracker-keywords';
 
 const API_KEY_STORAGE_KEY = 'heartmirror-api-key';
 const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
@@ -64,6 +65,7 @@ export default function Home() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [offeredTheme, setOfferedTheme] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -187,6 +189,7 @@ export default function Home() {
       const loadedMessages = await dbClient.loadConversation(id);
       setMessages(loadedMessages);
       setCurrentConversationId(id);
+      setOfferedTheme(null); // reset theme offer on conversation switch
       localStorage.setItem(CURRENT_CONVERSATION_KEY, id);
       setSidebarOpen(false);
     } catch (err) {
@@ -199,6 +202,7 @@ export default function Home() {
   const createNewConversation = () => {
     setMessages([]);
     setCurrentConversationId(null);
+    setOfferedTheme(null);
     localStorage.removeItem(CURRENT_CONVERSATION_KEY);
     setSidebarOpen(false);
   };
@@ -425,6 +429,27 @@ export default function Home() {
       textareaRef.current?.focus();
       // Save conversation to database after response completes
       saveCurrentConversation();
+
+      // Phase 4: Post-chat theme detection — scan last 5 user messages
+      const recentMessages = messages.slice(-5);
+      const userTexts = recentMessages.filter(m => m.role === 'user').map(m => m.content).join(' ');
+      const matched = scanForThemes(userTexts);
+      if (shouldOfferTheme(matched) && !offeredTheme) {
+        const primaryTheme = matched[0];
+        setOfferedTheme(primaryTheme);
+        const labels: Record<string, string> = {
+          work: locale === 'zh' ? '工作' : 'Work',
+          relationships: locale === 'zh' ? '人际关系' : 'Relationships',
+          health: locale === 'zh' ? '健康' : 'Health',
+          anxiety: locale === 'zh' ? '焦虑' : 'Anxiety',
+          depression: locale === 'zh' ? '抑郁' : 'Depression',
+          sleep: locale === 'zh' ? '睡眠' : 'Sleep',
+          exercise: locale === 'zh' ? '运动' : 'Exercise',
+          mindfulness: locale === 'zh' ? '正念' : 'Mindfulness',
+        };
+        const label = labels[primaryTheme] || primaryTheme;
+        setToast(locale === 'zh' ? `注意到你提到${label}，想记录到日记吗？` : `Noticed you mentioned ${label} — add to journal?`);
+      }
     }
   };
 

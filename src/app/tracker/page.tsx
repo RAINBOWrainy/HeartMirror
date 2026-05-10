@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
-import { analyzePatterns, type PatternAnalysis } from '@/lib/pattern-engine';
+import { analyzePatterns, checkNudgeTrigger, type PatternAnalysis } from '@/lib/pattern-engine';
+import { requestPushPermission, canSendPush } from '@/lib/nudge';
 import type { MoodJournalEntry, StandardizedTestResult } from '@/features/tracker/types';
 
 const JOURNAL_KEY = 'heartmirror-journal-entries';
@@ -60,6 +61,7 @@ export default function DashboardPage() {
   const [patternAnalysis, setPatternAnalysis] = useState<PatternAnalysis | null>(null);
   const [patternLoading, setPatternLoading] = useState(false);
   const [patternError, setPatternError] = useState<string | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   useEffect(() => {
     const storedJournal = localStorage.getItem(JOURNAL_KEY);
@@ -110,6 +112,17 @@ export default function DashboardPage() {
         setPatternLoading(false);
       });
   }, [journalEntries, assessmentResults]);
+
+  // Phase 6: Check nudge trigger after pattern analysis completes
+  useEffect(() => {
+    if (!patternAnalysis || nudgeDismissed) return;
+    if (!checkNudgeTrigger(patternAnalysis)) return;
+    if (canSendPush()) {
+      // Push already permitted — notification will come via service worker
+    } else {
+      // Show in-app fallback banner
+    }
+  }, [patternAnalysis, nudgeDismissed]);
 
   // Get entries for current week
   const weekDays = Array.from({ length: 7 }, (_, i) => {

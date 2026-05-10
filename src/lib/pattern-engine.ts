@@ -386,3 +386,18 @@ export async function analyzePatterns(
 export function clearPatternCache(): void {
   localStorage.removeItem(PATTERN_CACHE_KEY);
 }
+
+/**
+ * Phase 6: Check if push notification should be triggered.
+ * Deterministic rule: decline ≥ 1.0 point in 7-day average vs prior 7-day average.
+ * Only triggers between 8AM-10PM local time.
+ */
+export function checkNudgeTrigger(analysis: PatternAnalysis): boolean {
+  const decline = analysis.avgMood14d - analysis.avgMood7d;
+  if (decline < 1.0) return false;
+
+  const hour = new Date().getHours();
+  if (hour < 8 || hour >= 22) return false;
+
+  return true;
+}

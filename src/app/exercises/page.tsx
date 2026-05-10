@@ -6,6 +6,8 @@ import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
 
+const JOURNAL_KEY = 'heartmirror-journal-entries';
+
 const MINDFULNESS_EXERCISES = [
   {
     id: 'breathing',
@@ -270,7 +272,49 @@ export default function ExercisesPage() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [recentMoodAvg, setRecentMoodAvg] = useState<number | null>(null);
 
+  // Load recent mood average for recommendations
+  useEffect(() => {
+    const stored = localStorage.getItem(JOURNAL_KEY);
+    if (!stored) return;
+    try {
+      const entries = JSON.parse(stored) as Array<{ createdAt: number; moodScore: number }>;
+      const now = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const last7d = entries.filter(e => now - e.createdAt < 7 * dayMs);
+      if (last7d.length > 0) {
+        const avg = last7d.reduce((sum, e) => sum + e.moodScore, 0) / last7d.length;
+        setRecentMoodAvg(avg);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Rules-based recommendations
+  const getRecommendations = () => {
+    if (recentMoodAvg === null) return []; // No filter if no data
+
+    const recommendations: Array<{ id: string; reason: string }> = [];
+
+    if (recentMoodAvg <= 4) {
+      // Low mood: prioritize grounding and breathing (quick anxiety relief)
+      recommendations.push({ id: 'grounding', reason: 'Anxiety relief' });
+      recommendations.push({ id: 'breathing', reason: 'Quick calm' });
+      recommendations.push({ id: 'self-compassion', reason: 'Self-kindness' });
+    } else if (recentMoodAvg <= 6) {
+      // Moderate mood: balance of relaxation and mindfulness
+      recommendations.push({ id: 'body-scan', reason: 'Tension release' });
+      recommendations.push({ id: 'gratitude', reason: 'Mood boost' });
+    } else {
+      // Good mood: maintain with mindfulness
+      recommendations.push({ id: 'gratitude', reason: 'Maintain well-being' });
+      recommendations.push({ id: 'mindfulness', reason: 'Strengthen awareness' });
+    }
+
+    return recommendations;
+  };
+
+  const recommendations = getRecommendations();
   const categories = getCategories();
   const filteredExercises = selectedCategory
     ? MINDFULNESS_EXERCISES.filter(e => e.category === selectedCategory)
@@ -345,6 +389,34 @@ export default function ExercisesPage() {
             </Link>
           </div>
         </div>
+
+        {/* Phase 5: Exercise Recommendations Banner */}
+        {recommendations.length > 0 && (
+          <div className="p-4 border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--accent)' }}>
+              {locale === 'zh' ? '推荐练习（基于最近心情）' : 'Recommended for you'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {recommendations.map(rec => {
+                const ex = MINDFULNESS_EXERCISES.find(e => e.id === rec.id);
+                if (!ex) return null;
+                return (
+                  <button key={rec.id} onClick={() => { setSelectedExercise(ex); setIsTimerRunning(false); setTimerSeconds(0); setActiveStep(0); }}
+                    className="px-3 py-1.5 rounded-full text-sm border transition-colors flex items-center gap-1"
+                    style={{
+                      backgroundColor: 'var(--accent)',
+                      borderColor: 'var(--accent)',
+                      color: 'white',
+                    }}>
+                    <span>{ex.icon}</span>
+                    <span>{locale === 'zh' ? ex.nameZh : ex.nameEn}</span>
+                    <span className="text-xs opacity-75">— {rec.reason}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Category Filter */}
         <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
