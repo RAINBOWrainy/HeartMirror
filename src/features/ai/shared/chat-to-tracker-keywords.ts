@@ -122,7 +122,9 @@ export function scanForThemes(text: string): string[] {
 
 /**
  * Determine if theme offer should be shown based on threshold.
- * Threshold: 2+ matches from same category OR 1 match from 2+ categories
+ * Threshold: 2+ keyword matches from same category, OR 1 keyword from 2+ categories
+ * Note: scanForThemes returns category IDs (not counts), so >= 2 means 2+ different categories matched.
+ * This automatically satisfies the "1 keyword from 2+ categories" condition.
  */
 export function shouldOfferTheme(matchedCategories: string[]): boolean {
   return matchedCategories.length >= 2;

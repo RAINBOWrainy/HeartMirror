@@ -6,7 +6,8 @@ import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
 import { analyzePatterns, checkNudgeTrigger, type PatternAnalysis } from '@/lib/pattern-engine';
-import { requestPushPermission, canSendPush } from '@/lib/nudge';
+import { canSendPush, requestPushPermission } from '@/lib/nudge';
+import { useLongPress } from '@/lib/useLongPress';
 import type { MoodJournalEntry, StandardizedTestResult } from '@/features/tracker/types';
 
 const JOURNAL_KEY = 'heartmirror-journal-entries';
@@ -62,6 +63,16 @@ export default function DashboardPage() {
   const [patternLoading, setPatternLoading] = useState(false);
   const [patternError, setPatternError] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [pushRequested, setPushRequested] = useState(false);
+
+  // Phase 6: Request push permission on mount (if not already granted/denied)
+  useEffect(() => {
+    if (pushRequested) return;
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
+    setPushRequested(true);
+    requestPushPermission();
+  }, [pushRequested]);
 
   useEffect(() => {
     const storedJournal = localStorage.getItem(JOURNAL_KEY);
@@ -117,12 +128,15 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!patternAnalysis || nudgeDismissed) return;
     if (!checkNudgeTrigger(patternAnalysis)) return;
-    if (canSendPush()) {
-      // Push already permitted — notification will come via service worker
-    } else {
+
+    if (!canSendPush()) {
       // Show in-app fallback banner
+      setNudgeDismissed(false); // ensure banner shows
     }
   }, [patternAnalysis, nudgeDismissed]);
+
+  // In-app nudge banner
+  const showNudgeBanner = patternAnalysis && checkNudgeTrigger(patternAnalysis) && !nudgeDismissed;
 
   // Get entries for current week
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -200,6 +214,34 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Phase 6: In-app nudge banner */}
+        {showNudgeBanner && (
+          <div className="mx-6 mt-4 p-4 rounded-lg border flex items-center justify-between"
+            style={{ backgroundColor: 'var(--warning)', color: 'var(--bg)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center gap-3">
+              <span className="text-xl">💭</span>
+              <div>
+                <p className="text-sm font-medium">
+                  {locale === 'zh' ? '最近状态有所下降，想聊聊吗？' : 'You\'ve been feeling down — want to talk?'}
+                </p>
+                <p className="text-xs opacity-80">
+                  {locale === 'zh' ? '你的心情最近不太好，我们在这里帮助你' : 'Your mood has been declining — we\'re here to help'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/" className="text-xs px-3 py-1.5 rounded font-medium"
+                style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+                {locale === 'zh' ? '去聊天' : 'Chat now'}
+              </Link>
+              <button onClick={() => setNudgeDismissed(true)} className="text-xs px-3 py-1.5 rounded"
+                style={{ backgroundColor: 'rgba(0,0,0,0.1)', color: 'var(--text)' }}>
+                {locale === 'zh' ? '忽略' : 'Dismiss'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 p-6 overflow-y-auto">
           {/* Status Overview */}

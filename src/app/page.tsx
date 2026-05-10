@@ -352,9 +352,11 @@ export default function Home() {
     if (!input.trim() || isLoading || !apiKey) return;
 
     // Phase 1: Mood command guard — synchronous, before any async operations
-    const moodMatch = input.trim().match(/^mood\s+(\d+)$/i);
+    // Supports both "mood 6" and "/mood 6"
+    const trimmed = input.trim();
+    const moodMatch = trimmed.match(/^(\/mood\s+|mood\s+)(\d+)$/i);
     if (moodMatch) {
-      const score = parseInt(moodMatch[1], 10);
+      const score = parseInt(moodMatch[2], 10);
       if (score >= 1 && score <= 10) {
         const entry = {
           id: `mood-${Date.now()}`,

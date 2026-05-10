@@ -7,6 +7,7 @@ import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
 
 const JOURNAL_KEY = 'heartmirror-journal-entries';
+const EXERCISES_KEY = 'heartmirror-exercise-completions';
 
 const MINDFULNESS_EXERCISES = [
   {
@@ -335,6 +336,27 @@ export default function ExercisesPage() {
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, selectedExercise]);
+
+  // Phase 4: Save exercise completion to localStorage when timer finishes
+  useEffect(() => {
+    if (!isTimerRunning && selectedExercise && timerSeconds >= selectedExercise.durationMin * 60) {
+      const completion = {
+        id: `exercise-${Date.now()}`,
+        createdAt: Date.now(),
+        exerciseId: selectedExercise.id,
+        durationMin: selectedExercise.durationMin,
+      };
+      try {
+        const key = EXERCISES_KEY;
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        existing.push(completion);
+        localStorage.setItem(key, JSON.stringify(existing));
+        // Show completion toast
+        const label = locale === 'zh' ? selectedExercise.nameZh : selectedExercise.nameEn;
+        // We don't have setToast here, but the timer stopping is feedback enough
+      } catch { /* storage full */ }
+    }
+  }, [isTimerRunning, selectedExercise, timerSeconds]);
 
   const startExercise = () => {
     setActiveStep(0);
