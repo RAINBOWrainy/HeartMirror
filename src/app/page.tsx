@@ -80,6 +80,13 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  // Clear pending input flag on unmount (when navigating away)
+  useEffect(() => {
+    return () => {
+      localStorage.setItem('heartmirror-pending-input', 'false');
+    };
+  }, []);
+
   // Check for cloud mode and load settings (only after auth context is ready)
   useEffect(() => {
     // Wait for auth context to finish loading
@@ -188,9 +195,11 @@ export default function Home() {
     try {
       const loadedMessages = await dbClient.loadConversation(id);
       setMessages(loadedMessages);
+      setInput('');
       setCurrentConversationId(id);
       setOfferedTheme(null); // reset theme offer on conversation switch
       localStorage.setItem(CURRENT_CONVERSATION_KEY, id);
+      localStorage.setItem('heartmirror-pending-input', 'false');
     } catch (err) {
       console.error('Failed to load conversation:', err);
       alert('Failed to load conversation. Wrong password or corrupted data.');
@@ -359,10 +368,12 @@ export default function Home() {
           setToast(locale === 'zh' ? '记录失败，请重试' : 'Failed to save — storage error');
         }
         setInput('');
+        localStorage.setItem('heartmirror-pending-input', 'false');
         return;
       } else {
         setToast(locale === 'zh' ? '请输入 1-10 的数字' : 'Please enter a number from 1 to 10');
         setInput('');
+        localStorage.setItem('heartmirror-pending-input', 'false');
         return;
       }
     }
@@ -394,6 +405,7 @@ export default function Home() {
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    localStorage.setItem('heartmirror-pending-input', 'false');
     setIsLoading(true);
 
     try {
@@ -467,6 +479,7 @@ export default function Home() {
       setMessages([]);
       setCurrentConversationId(null);
       localStorage.removeItem(CURRENT_CONVERSATION_KEY);
+      localStorage.setItem('heartmirror-pending-input', 'false');
       setConversations([]);
     } catch (err) {
       console.error('Failed to clear all conversations:', err);
