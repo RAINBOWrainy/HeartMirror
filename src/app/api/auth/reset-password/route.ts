@@ -1,19 +1,27 @@
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
 
 // Cloud mode only
 const isCloudMode = process.env.DEPLOY_MODE !== 'local'
 
+type PrismaClientType = {
+  user: {
+    findFirst: (opts: { where: { resetToken?: string; resetTokenExpiry?: { gte: Date } } }) => Promise<{
+      id: string
+    } | null>
+    update: (opts: { where: { id: string }; data: { resetToken: null; resetTokenExpiry: null } }) => Promise<unknown>
+  }
+}
+
 // Lazy Prisma client
-// @ts-ignore - Prisma client with user model only in cloud schema
-let prisma: any = null
-const getPrisma = () => {
+let prisma: PrismaClientType | null = null
+const getPrisma = (): PrismaClientType => {
   if (!isCloudMode) throw new Error('Cloud mode only')
   if (!prisma) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PrismaClient } = require('@prisma/client')
-    prisma = new PrismaClient()
+    prisma = new PrismaClient() as PrismaClientType
   }
-  return prisma
+  return prisma!
 }
 
 export async function POST(request: Request) {
@@ -59,8 +67,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ message: 'Password reset successfully' })
-  } catch (error) {
-    console.error('Reset password error:', error)
+  } catch (_error) {
+    console.error('Reset password error:', _error)
     return NextResponse.json(
       { error: 'Password reset failed' },
       { status: 500 }

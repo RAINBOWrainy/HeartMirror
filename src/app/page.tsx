@@ -12,6 +12,7 @@ import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
 import { scanForThemes, shouldOfferTheme } from '@/features/ai/shared/chat-to-tracker-keywords';
+import { invalidateApiKeyCache } from '@/lib/pattern-engine';
 
 const API_KEY_STORAGE_KEY = 'heartmirror-api-key';
 const PROVIDER_STORAGE_KEY = 'heartmirror-provider';
@@ -61,7 +62,6 @@ export default function Home() {
   const [isLocked, setIsLocked] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -191,37 +191,9 @@ export default function Home() {
       setCurrentConversationId(id);
       setOfferedTheme(null); // reset theme offer on conversation switch
       localStorage.setItem(CURRENT_CONVERSATION_KEY, id);
-      setSidebarOpen(false);
     } catch (err) {
       console.error('Failed to load conversation:', err);
       alert('Failed to load conversation. Wrong password or corrupted data.');
-    }
-  };
-
-  // Create a new empty conversation
-  const createNewConversation = () => {
-    setMessages([]);
-    setCurrentConversationId(null);
-    setOfferedTheme(null);
-    localStorage.removeItem(CURRENT_CONVERSATION_KEY);
-    setSidebarOpen(false);
-  };
-
-  // Delete a conversation
-  const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
-      return;
-    }
-    try {
-      await dbClient.deleteConversation(id);
-      if (id === currentConversationId) {
-        createNewConversation();
-      }
-      await loadConversationsList();
-    } catch (err) {
-      console.error('Failed to delete conversation:', err);
-      alert('Failed to delete conversation.');
     }
   };
 
@@ -328,6 +300,9 @@ export default function Home() {
       localStorage.setItem(MODEL_STORAGE_KEY, settingsModel.trim());
     }
 
+    // Invalidate pattern engine cache so new credentials are used immediately
+    invalidateApiKeyCache();
+
     setShowSettings(false);
   };
 
@@ -370,6 +345,15 @@ export default function Home() {
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
           existing.push(entry);
           localStorage.setItem(key, JSON.stringify(existing));
+          // Inject system message into chat history for visibility
+          const systemMessage: Message = {
+            role: 'system',
+            content: locale === 'zh'
+              ? `🟢 已记录心情：${score}/10`
+              : `🟢 Mood logged: ${score}/10`,
+            timestamp: Date.now(),
+          };
+          setMessages(prev => [...prev, systemMessage]);
           setToast(locale === 'zh' ? `已记录心情：${score}/10` : `Logged mood: ${score}/10`);
         } catch {
           setToast(locale === 'zh' ? '记录失败，请重试' : 'Failed to save — storage error');
@@ -381,6 +365,25 @@ export default function Home() {
         setInput('');
         return;
       }
+    }
+
+    // Phase 4: Pre-chat proactive theme detection — scan current input before AI response
+    const currentMatched = scanForThemes(input.trim());
+    if (shouldOfferTheme(currentMatched) && !offeredTheme) {
+      const primaryTheme = currentMatched[0];
+      setOfferedTheme(primaryTheme);
+      const labels: Record<string, string> = {
+        work: locale === 'zh' ? '工作' : 'Work',
+        relationships: locale === 'zh' ? '人际关系' : 'Relationships',
+        health: locale === 'zh' ? '健康' : 'Health',
+        anxiety: locale === 'zh' ? '焦虑' : 'Anxiety',
+        depression: locale === 'zh' ? '抑郁' : 'Depression',
+        sleep: locale === 'zh' ? '睡眠' : 'Sleep',
+        exercise: locale === 'zh' ? '运动' : 'Exercise',
+        mindfulness: locale === 'zh' ? '正念' : 'Mindfulness',
+      };
+      const label = labels[primaryTheme] || primaryTheme;
+      setToast(locale === 'zh' ? `注意到你提到${label}，想记录到日记吗？` : `Noticed you mentioned ${label} — add to journal?`);
     }
 
     const userMessage: Message = {
@@ -519,21 +522,6 @@ export default function Home() {
       }
     };
     reader.readAsText(file);
-  };
-
-  // Format date for sidebar display
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const day = 24 * 60 * 60 * 1000;
-    if (diff < day) {
-      return 'Today';
-    } else if (diff < 7 * day) {
-      const days = Math.floor(diff / day);
-      return `${days}d ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
   };
 
   // Password unlock screen
@@ -745,16 +733,14 @@ export default function Home() {
     );
   }
 
-  // Toast notification
-  {toast && (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm font-medium z-50"
-      style={{ backgroundColor: 'var(--accent)', color: 'white' }}>
-      {toast}
-    </div>
-  )}
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm font-medium z-50"
+          style={{ backgroundColor: 'var(--accent)', color: 'white' }}>
+          {toast}
+        </div>
+      )}
       <Sidebar locale={locale} />
       <div className="ml-[200px] flex flex-col h-screen">
         {/* Top bar */}
@@ -858,7 +844,11 @@ export default function Home() {
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Track pending input for navigation guard on assessment link
+                localStorage.setItem('heartmirror-pending-input', e.target.value.trim().length > 0 ? 'true' : 'false');
+              }}
               onKeyDown={handleKeyDown}
               placeholder={locale === 'zh' ? '输入消息...' : 'Type your message here...'}
               className="flex-1 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 resize-none min-h-[44px]"

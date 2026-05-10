@@ -27,6 +27,27 @@ export function Sidebar({ locale = 'zh' }: SidebarProps) {
     return pathname.startsWith(href);
   };
 
+  // Guard: prevent accidental navigation to assessment while composing a message.
+  // Shows confirmation if user has typed text in the main chat input.
+  const handleAssessmentNav = (e: React.MouseEvent) => {
+    const hasInput = typeof window !== 'undefined' && localStorage.getItem('heartmirror-pending-input') === 'true';
+    if (hasInput) {
+      const confirmed = window.confirm(
+        locale === 'zh'
+          ? '当前输入尚未发送。确定要离开吗？'
+          : 'You have unsent text. Are you sure you want to leave?'
+      );
+      if (!confirmed) {
+        e.preventDefault();
+        return;
+      }
+    }
+    // Close sidebar on mobile after navigation
+    if (window.innerWidth < 768) {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <>
       {/* Toggle button */}
@@ -79,6 +100,27 @@ export function Sidebar({ locale = 'zh' }: SidebarProps) {
           <nav className="flex-1 p-3 space-y-1">
             {navItems.map((item) => {
               const active = isActive(item.href);
+              // Assessment link gets navigation guard
+              if (item.href === '/assessment') {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={handleAssessmentNav}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg transition-colors"
+                    style={{
+                      backgroundColor: active ? 'var(--accent)' : 'transparent',
+                      color: active ? 'white' : 'var(--text)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="font-medium">
+                      {locale === 'zh' ? item.labelZh : item.labelKey}
+                    </span>
+                  </a>
+                );
+              }
               return (
                 <Link
                   key={item.href}

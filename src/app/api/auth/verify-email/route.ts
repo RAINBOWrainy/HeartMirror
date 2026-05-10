@@ -1,19 +1,27 @@
 import { NextResponse } from 'next/server'
-import * as jose from 'jose'
 
 // Cloud mode only - return 404 in local mode
 const isCloudMode = process.env.DEPLOY_MODE !== 'local'
 
+type PrismaClientType = {
+  user: {
+    findFirst: (opts: { where: { verificationToken: string } }) => Promise<{
+      id: string
+    } | null>
+    update: (opts: { where: { id: string }; data: { emailVerified: true; verificationToken: null } }) => Promise<unknown>
+  }
+}
+
 // Lazy Prisma client for cloud schema
-// @ts-ignore - Prisma client with user model only exists in cloud schema (PostgreSQL)
-let prisma: any = null
-const getPrisma = () => {
+let prisma: PrismaClientType | null = null
+const getPrisma = (): PrismaClientType => {
   if (!isCloudMode) throw new Error('Cloud mode only')
   if (!prisma) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PrismaClient } = require('@prisma/client')
-    prisma = new PrismaClient()
+    prisma = new PrismaClient() as PrismaClientType
   }
-  return prisma
+  return prisma!
 }
 
 export async function POST(request: Request) {
@@ -45,8 +53,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ message: 'Email verified successfully' })
-  } catch (error) {
-    console.error('Verify email error:', error)
+  } catch (_error) {
+    console.error('Verify email error:', _error)
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 })
   }
 }

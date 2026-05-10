@@ -33,7 +33,7 @@ export async function GET(request: Request) {
         emailVerified: true, // In a real implementation, would check from database
       },
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
   }
 }

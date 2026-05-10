@@ -10,7 +10,7 @@ interface CrisisSupportModalProps {
   locale?: 'zh' | 'en';
 }
 
-export function CrisisSupportModal({ isOpen, onClose, severity = 'moderate' }: CrisisSupportModalProps) {
+export function CrisisSupportModal({ isOpen, onClose }: CrisisSupportModalProps) {
   const currentLocale = useLocale();
   const l = currentLocale.locale;
 

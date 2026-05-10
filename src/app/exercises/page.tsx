@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale } from '@/lib/i18n/LocaleContext';
-import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
 
 const JOURNAL_KEY = 'heartmirror-journal-entries';
@@ -351,9 +350,7 @@ export default function ExercisesPage() {
         const existing = JSON.parse(localStorage.getItem(key) || '[]');
         existing.push(completion);
         localStorage.setItem(key, JSON.stringify(existing));
-        // Show completion toast
-        const label = locale === 'zh' ? selectedExercise.nameZh : selectedExercise.nameEn;
-        // We don't have setToast here, but the timer stopping is feedback enough
+        // Timer stopping is feedback enough
       } catch { /* storage full */ }
     }
   }, [isTimerRunning, selectedExercise, timerSeconds]);

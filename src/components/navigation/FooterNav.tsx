@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from '@/contexts/ThemeContext';
 
 const navItems = [
   { href: '/', icon: '💬', labelKey: 'chat' },
@@ -14,7 +13,6 @@ const navItems = [
 
 export function FooterNav() {
   const pathname = usePathname();
-  const { resolvedTheme } = useTheme();
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';

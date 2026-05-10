@@ -8,6 +8,8 @@
 
 const PUSH_CACHE_KEY = 'heartmirror-nudge-sent';
 const NUDGE_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours between nudges
+const SNOOZE_KEY = 'heartmirror-nudge-snoozed';
+const SNOOZE_DURATION = 24 * 60 * 60 * 1000; // 24-hour snooze
 
 export interface NudgePayload {
   title: string;
@@ -77,4 +79,31 @@ export async function sendNudge(payload: NudgePayload): Promise<void> {
  */
 export function resetNudgeCooldown(): void {
   localStorage.removeItem(PUSH_CACHE_KEY);
+}
+
+/**
+ * Check if nudge is currently snoozed (within 24h of last dismiss)
+ */
+export function isNudgeSnoozed(): boolean {
+  try {
+    const snoozed = localStorage.getItem(SNOOZE_KEY);
+    if (!snoozed) return false;
+    return Date.now() - parseInt(snoozed, 10) < SNOOZE_DURATION;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Snooze the nudge banner for 24 hours
+ */
+export function snoozeNudge(): void {
+  localStorage.setItem(SNOOZE_KEY, Date.now().toString());
+}
+
+/**
+ * Clear snooze state (for testing)
+ */
+export function clearNudgeSnooze(): void {
+  localStorage.removeItem(SNOOZE_KEY);
 }

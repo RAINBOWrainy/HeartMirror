@@ -98,7 +98,7 @@ const browserClient: DatabaseClient = {
     const data = await response.json();
 
     // In browser mode, decryption happens in the client
-    const { decryptPreview, decryptJson } = await import('./encryption');
+    const { decryptPreview } = await import('./encryption');
     const result: ConversationInfo[] = [];
 
     for (const conv of data.conversations) {

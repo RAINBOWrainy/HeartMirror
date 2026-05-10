@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useLocale } from '@/lib/i18n/LocaleContext';
 import { t } from '@/lib/i18n/translations';
@@ -292,7 +291,6 @@ const getTestCalculator = (test: StandardizedTest) => {
 
 export default function AssessmentPage() {
   const { locale } = useLocale();
-  const [assessmentType, setAssessmentType] = useState<AssessmentType>(null);
   const [standardizedTest, setStandardizedTest] = useState<StandardizedTest>(null);
   const [screen, setScreen] = useState<Screen>('select-type');
   const [apiKey, setApiKey] = useState<string>('');
@@ -312,7 +310,7 @@ export default function AssessmentPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationTurns, setConversationTurns] = useState(0);
-  const [conversationSummary, setConversationSummary] = useState<string | null>(null);
+  const [_conversationSummary, setConversationSummary] = useState<string | null>(null);
   const [showCrisisModal, setShowCrisisModal] = useState(false);
   const [settingsProvider, setSettingsProvider] = useState<'anthropic' | 'openai' | 'ollama' | 'custom'>('anthropic');
   const [settingsBaseUrl, setSettingsBaseUrl] = useState(PRESETS.anthropic.baseUrl);
@@ -373,7 +371,6 @@ export default function AssessmentPage() {
   };
 
   const handleSelectType = (type: AssessmentType) => {
-    setAssessmentType(type);
     if (type === 'conversational') {
       if (!apiKey) {
         setShowSettings(true);
@@ -597,7 +594,6 @@ export default function AssessmentPage() {
   };
 
   const startNew = () => {
-    setAssessmentType(null);
     setStandardizedTest(null);
     setTestResult(null);
     setAnswers([]);
@@ -808,7 +804,7 @@ export default function AssessmentPage() {
 
   // Test questions screen
   if (screen === 'test' && standardizedTest) {
-    const { questions, options, maxScore } = getTestQuestions(standardizedTest);
+    const { questions, options } = getTestQuestions(standardizedTest);
     const testInfo = STANDARDIZED_TESTS.find(t => t.id === standardizedTest);
     const question = questions[currentQuestion];
     const questionText = locale === 'zh' ? question.question.zh : question.question.en;

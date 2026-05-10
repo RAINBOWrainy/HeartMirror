@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { detectMode, getMigrationSummary, hasLocalDataForMigration, setMode } from '@/lib/mode'
+import { getMigrationSummary, setMode } from '@/lib/mode'
 import { cloudClient } from '@/features/database/cloud'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 

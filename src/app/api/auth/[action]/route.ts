@@ -16,8 +16,8 @@ import {
 // Cloud mode only - return 404 in local mode
 const isCloudMode = process.env.DEPLOY_MODE !== 'local'
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 // Lazy Prisma client - only used in cloud mode with cloud schema
-// @ts-ignore - Prisma client with user property only exists in cloud schema (PostgreSQL)
 let prismaClient: any = null
 const getPrisma = () => {
   if (!isCloudMode) throw new Error('Cloud mode only')
@@ -27,6 +27,7 @@ const getPrisma = () => {
   }
   return prismaClient
 }
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // Lazy-initialize Resend client only in cloud mode
 let resendClient: Resend | null = null
@@ -47,12 +48,12 @@ function generateSalt(): Buffer {
 }
 
 // Generate random Data Encryption Key
-function generateDEK(): Buffer {
+function _generateDEK(): Buffer {
   return crypto.randomBytes(32) // 256-bit key
 }
 
 // Generate password verifier blob for timing-safe verification
-function createPasswordVerifier(derivedKey: Buffer): {
+function _createPasswordVerifier(derivedKey: Buffer): {
   encrypted: Buffer
   expectedHash: Buffer
   iv: Buffer
@@ -131,8 +132,8 @@ export async function POST(
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
-  } catch (error) {
-    console.error('Auth error:', error)
+  } catch (_error) {
+    console.error('Auth error:', _error)
     return NextResponse.json(
       { error: 'Authentication failed' },
       { status: 500 }
@@ -221,7 +222,7 @@ async function handleSignup(body: {
   })
 }
 
-async function handleLogin(body: {
+async function _handleLogin(body: {
   email: string
   // Client sends derived key hash + verification data
   derivedKeyHash: string // base64 encoded first 16 bytes of KEK

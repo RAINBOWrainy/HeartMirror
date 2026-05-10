@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { execSync } from 'child_process'
 
 // Cloud mode only
 const isCloudMode = process.env.DEPLOY_MODE !== 'local'
@@ -17,8 +18,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { execSync } = require('child_process')
-
     // Run Prisma migrate
     execSync('npx prisma migrate deploy --schema=prisma/schema-cloud.prisma', {
       stdio: 'inherit',

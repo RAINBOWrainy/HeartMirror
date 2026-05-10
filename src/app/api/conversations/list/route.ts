@@ -3,12 +3,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   // Get user ID from middleware header (cloud mode RLS)
-  const userId = request.headers.get('x-user-id') || null;
-
-  // For cloud mode, Prisma RLS automatically filters by userId
-  // For local mode, userId is null so all are returned
+  // Note: In cloud mode, Prisma RLS automatically filters by userId via middleware
+  // For local mode, all conversations are returned
   const conversations = await prisma.conversation.findMany({
     orderBy: {
       createdAt: 'desc',

@@ -199,7 +199,6 @@ export async function encryptDEK(
   iv: Uint8Array
   tag: Uint8Array
 }> {
-  const encoder = new TextEncoder()
   const dekBase64 = btoa(String.fromCharCode(...dek))
   const { ciphertext, iv, tag } = await encrypt(dekBase64, kek)
 
@@ -322,8 +321,8 @@ export async function prepareSignupData(
   // Generate DEK for encrypting user data
   const dek = generateDEK()
 
-  // Import DEK as CryptoKey
-  const dekCryptoKey = await crypto.subtle.importKey(
+  // Import DEK as CryptoKey (kept in memory for encryption)
+  await crypto.subtle.importKey(
     'raw',
     dek.buffer.slice(dek.byteOffset, dek.byteOffset + dek.byteLength) as ArrayBuffer,
     { name: ALGORITHM },

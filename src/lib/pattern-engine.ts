@@ -388,6 +388,14 @@ export function clearPatternCache(): void {
 }
 
 /**
+ * Invalidate API key cache so next analysis picks up new credentials.
+ * Called when user changes their API key or provider in settings.
+ */
+export function invalidateApiKeyCache(): void {
+  clearPatternCache();
+}
+
+/**
  * Phase 6: Check if push notification should be triggered.
  * Deterministic rule: decline ≥ 1.0 point in 7-day average vs prior 7-day average.
  * Only triggers between 8AM-10PM local time.

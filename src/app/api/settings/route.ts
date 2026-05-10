@@ -1,20 +1,37 @@
 import { NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
 import * as jose from 'jose'
 
 // Cloud mode only
 const isCloudMode = process.env.DEPLOY_MODE !== 'local'
 
+type UserSettings = {
+  apiKey: string
+  provider: string
+  baseUrl: string
+  model: string
+}
+
+type PrismaClientType = {
+  userSettings: {
+    findUnique: (opts: { where: { userId: string } }) => Promise<UserSettings | null>
+    upsert: (opts: {
+      where: { userId: string }
+      create: { userId: string } & UserSettings
+      update: Partial<UserSettings>
+    }) => Promise<unknown>
+  }
+}
+
 // Lazy Prisma client
-// @ts-ignore - Prisma client with userSettings model only in cloud schema
-let prisma: any = null
-const getPrisma = () => {
+let prisma: PrismaClientType | null = null
+const getPrisma = (): PrismaClientType => {
   if (!isCloudMode) throw new Error('Cloud mode only')
   if (!prisma) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PrismaClient } = require('@prisma/client')
-    prisma = new PrismaClient()
+    prisma = new PrismaClient() as PrismaClientType
   }
-  return prisma
+  return prisma!
 }
 
 async function verifyJWT(token: string): Promise<{ userId: string } | null> {

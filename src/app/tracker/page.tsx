@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale } from '@/lib/i18n/LocaleContext';
-import { t } from '@/lib/i18n/translations';
 import { Sidebar } from '@/components/navigation/Sidebar';
 import { analyzePatterns, checkNudgeTrigger, type PatternAnalysis } from '@/lib/pattern-engine';
-import { canSendPush, requestPushPermission } from '@/lib/nudge';
-import { useLongPress } from '@/lib/useLongPress';
+import { canSendPush, requestPushPermission, isNudgeSnoozed, snoozeNudge } from '@/lib/nudge';
 import type { MoodJournalEntry, StandardizedTestResult } from '@/features/tracker/types';
 
 const JOURNAL_KEY = 'heartmirror-journal-entries';
@@ -17,17 +15,6 @@ const CHAT_SESSIONS_KEY = 'heartmirror-chat-sessions';
 
 const MOOD_LABELS_ZH = ['很低落', '低落', '有些低落', '略低', '一般', '略好', '不错', '良好', '很好', '非常好'];
 const MOOD_LABELS_EN = ['Very Low', 'Low', 'Somewhat Low', 'Slightly Low', 'Neutral', 'Slightly Better', 'Good', 'Very Good', 'Great', 'Excellent'];
-
-const TAG_IMPACT: Record<string, 'positive' | 'negative'> = {
-  sleep: 'positive',
-  exercise: 'positive',
-  social: 'positive',
-  mindfulness: 'positive',
-  diet: 'positive',
-  medication: 'positive',
-  work: 'negative',
-  relationships: 'negative',
-};
 
 interface ExerciseCompletion {
   id: string;
@@ -64,6 +51,14 @@ export default function DashboardPage() {
   const [patternError, setPatternError] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [pushRequested, setPushRequested] = useState(false);
+
+  // Sync snooze state on mount
+  useEffect(() => {
+    // If snoozed within 24h, treat as dismissed
+    if (isNudgeSnoozed()) {
+      setNudgeDismissed(true);
+    }
+  }, []);
 
   // Phase 6: Request push permission on mount (if not already granted/denied)
   useEffect(() => {
@@ -235,7 +230,7 @@ export default function DashboardPage() {
                 style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
                 {locale === 'zh' ? '去聊天' : 'Chat now'}
               </Link>
-              <button onClick={() => setNudgeDismissed(true)} className="text-xs px-3 py-1.5 rounded"
+              <button onClick={() => { setNudgeDismissed(true); snoozeNudge(); }} className="text-xs px-3 py-1.5 rounded"
                 style={{ backgroundColor: 'rgba(0,0,0,0.1)', color: 'var(--text)' }}>
                 {locale === 'zh' ? '忽略' : 'Dismiss'}
               </button>
@@ -329,7 +324,6 @@ export default function DashboardPage() {
               <div className="grid grid-cols-7 gap-2">
                 {weekDays.map((day, i) => {
                   const mood = getMoodForDate(day);
-                  const isToday = day.toDateString() === new Date().toDateString();
                   const isSelected = day.toDateString() === selectedDate.toDateString();
                   return (
                     <button key={i} onClick={() => setSelectedDate(day)}

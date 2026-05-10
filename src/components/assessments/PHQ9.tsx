@@ -9,8 +9,6 @@
  * 20-27: Severe depression
  */
 
-import { useLocale } from '@/lib/i18n/LocaleContext';
-import { t } from '@/lib/i18n/translations';
 import type { StandardizedTestType } from '@/features/tracker/types';
 
 export const phq9Questions = [
