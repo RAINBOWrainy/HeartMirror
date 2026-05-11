@@ -67,8 +67,10 @@ export interface StandardizedTestResult {
   status: AssessmentSessionStatus;
   rawScores: number[]; // per-question scores (0-3 each)
   totalScore: number; // sum of rawScores
-  severity: string; // e.g. "无", "轻度", "中度", "中重度", "重度"
-  interpretation: string; // clinical interpretation
+  severity: string; // e.g. "Minimal", "Mild", "Moderate", "Moderately Severe", "Severe"
+  severityZh: string; // e.g. "极轻微", "轻度", "中度", "中重度", "重度"
+  interpretation: string; // clinical interpretation in English
+  interpretationZh: string; // clinical interpretation in Chinese
   crisisTriggered: boolean; // true if PHQ-9 Q9 > 0
 }
 

@@ -430,7 +430,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-right">
                           <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{result.totalScore}</span>
-                          <p className="text-xs" style={{ color: 'var(--muted)' }}>{result.severity}</p>
+                          <p className="text-xs" style={{ color: 'var(--muted)' }}>{locale === 'zh' ? result.severityZh : result.severity}</p>
                         </div>
                       </div>
                     </div>
@@ -478,7 +478,7 @@ export default function DashboardPage() {
                     type: 'assessment',
                     score: r.totalScore,
                     label: r.type.toUpperCase() + ' ' + r.totalScore,
-                    detail: r.interpretation,
+                    detail: locale === 'zh' ? r.interpretationZh : r.interpretation,
                     icon: '📋',
                   });
                 });

@@ -409,8 +409,10 @@ export default function AssessmentPage() {
         status: 'completed',
         rawScores: newAnswers,
         totalScore: result.total,
-        severity: locale === 'zh' ? result.severityZh : result.severity,
-        interpretation: locale === 'zh' ? result.interpretationZh : result.interpretation,
+        severity: result.severity,
+        severityZh: result.severityZh,
+        interpretation: result.interpretation,
+        interpretationZh: result.interpretationZh,
         crisisTriggered,
       };
       setTestResult(testResult);
@@ -567,7 +569,9 @@ export default function AssessmentPage() {
           rawScores: [moodScore],
           totalScore: moodScore,
           severity: moodScore >= 7 ? '良好' : moodScore >= 5 ? '一般' : '需要关注',
+          severityZh: moodScore >= 7 ? '良好' : moodScore >= 5 ? '一般' : '需要关注',
           interpretation: fullContent,
+          interpretationZh: fullContent,
           crisisTriggered: false,
         };
 
@@ -873,11 +877,11 @@ export default function AssessmentPage() {
             </div>
             <div className="text-center mb-6">
               <p className="text-lg font-semibold" style={{ color: 'var(--accent)' }}>
-                {t(locale, 'assessment.severity')}: {testResult.severity}
+                {t(locale, 'assessment.severity')}: {locale === 'zh' ? testResult.severityZh : testResult.severity}
               </p>
             </div>
             <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}>
-              <p className="text-sm">{testResult.interpretation}</p>
+              <p className="text-sm">{locale === 'zh' ? testResult.interpretationZh : testResult.interpretation}</p>
             </div>
             {testResult.crisisTriggered && (
               <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--error)' }}>
